@@ -84,7 +84,7 @@ date: "2026-07-10"
 - 用户按 ManualOperationsRunbook 第 9 节确认 RealityHub、Network Prototype、CombatGym、BossGym 的固定侧视构图全部 PASS。
 - MCP 实测发现三项 Experimental 工具差异：Graph DSL 在中文文化下无法匹配英文 AddEvent ID；WorldSettings 属于地图主 Package；新 External Actor 首次保存需使用其准确 Actor object ref。均通过受控、精确范围流程处理并记录在 MCP Authoring/KI-006。
 - 最终 Source/Content Package/地图为 106/1102/9；新增 UE Package 349，既有 753 个 UE Package 未修改，暂存路径为 0。
-- 未修改 `CURRENT_VERSION.md`、uproject、Build.cs、Targets、GameplayTags、Save 或模板/Variant 文件；未暂存、提交、推送或运行 GC。
+- v0.0.3 实施未修改 `CURRENT_VERSION.md`、uproject、Build.cs、Targets、GameplayTags、Save 或模板/Variant 文件；正式提交已创建：`cc3cc695c1929bf2de0af40b3cd938f2af674176`（`v0.0.3 Create core framework and formal maps`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：v0.0.4 可直接消费五个稳定地图路径、`EPRMapId`、`OpenMap`、默认启动设置和既有 Build 入口；v0.1.0 可在 `APRPlayerCharacter` 上增量实现输入与移动，无需重设 Blueprint 父类。
 
 # 版本记录模板
