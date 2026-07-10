@@ -35,6 +35,20 @@ date: "2026-07-10"
 - push 和 GC 均未执行；`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：未修改工程名、模块名、Targets、GameplayTag、Blueprint API、Save、Config 或资产路径；v0.0.1 可从稳定 `Docs`、构建入口和 `Source/ProjectR/Core` 扩展。
 
+# 2026-07-10 - v0.0.1 工程规范与 DeveloperSettings（Completed）
+
+- 创建 `CodingStandard.md` 和 `AssetNaming.md`；完善 AGENTS 必读顺序、CodexWorkflow、ManualOperationsRunbook 和 ADR-010。
+- 在 `Source/ProjectR/Core` 创建 `UPRDeveloperSettings`，三个 Config 开关默认值为 Debug=false、MockDirector=true、Steam=false；未暴露 Blueprint API，未实现对应业务系统。
+- 首次 Build 被运行中 Editor 的 Live Coding 阻断；确认无 PIE、无打开资产且地图未脏后正常关闭 ProjectR Editor。
+- 第二次 Build 完成 UHT 和 C++ 编译，但因缺少 `DeveloperSettings` 直接模块依赖产生 11 个链接错误；按计划停止并取得用户对 `ProjectR.Build.cs` 唯一 Allowed-path 例外的明确批准。
+- 在 `PublicDependencyModuleNames` 增加 `DeveloperSettings` 后，正式 `ProjectREditor Win64 Development` Build 退出 0，日志为 `Result: Succeeded`。
+- ProjectR Editor 重启并重新持有 `127.0.0.1:8000`；MCP 反射类 `/Script/ProjectR.PRDeveloperSettings`，CDO 返回 `false/true/false`。
+- MCP 仅执行状态、日志、类和属性读取；没有 set/save/create/move/delete、Blueprint 修改或 UE Package 写入。
+- 用户按 ManualOperationsRunbook 第 7 节确认 `Game > ProjectR` 面板、`Feature Flags` 和三个默认值均为 PASS，未修改配置。
+- `git diff --check`、Allowed-path、文件计数和保护路径检查通过；Source/Content/Config/地图为 89/753/5/4，CURRENT_VERSION、Targets、uproject、Config、Content 和资产路径不变。
+- PIE 不属于本版本验收范围，标记 `NOT RUN`；未暂存、未提交、未推送，也未运行 GC。
+- Future Compatibility Review：Core 设置类不依赖 GameplayTags、GAS、Director、Steam 或 Debug 具体类型；v0.0.2 可直接接入基础模块与 Tag Library，无需改写本版本公共设置契约。
+
 # 版本记录模板
 
 ```text

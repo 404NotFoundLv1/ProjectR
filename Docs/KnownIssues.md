@@ -20,6 +20,12 @@ date: "2026-07-10"
 | KI-009 | 误暂存的生成物仍作为不可达 loose objects 占用 `.git`，审计时约 1.34 GiB | 本地仓库占用偏大，但不影响工作树或正确索引 | 首次基线提交后另行批准并验证安全 GC；本版本禁止主动清理 | Open |
 | KI-010 | 无 HEAD 的首次基线上，`git diff --cached --check` 报告模板 Source/Config 和既有文档中的尾空格/EOF 空行 | 全量 cached whitespace gate 为 FAIL；不影响 Build/PIE，但阻止把静态门写成通过 | 在允许修改各路径且有兼容审查的独立卫生变更中建立格式基线；v0.0.0 不越权批量改写 | Open |
 
+# 2026-07-10 - v0.0.1 Known Issues Review
+
+- 未发现由 `UPRDeveloperSettings`、规范文档或模块依赖引入的持续性问题。
+- 首次正式 Build 的 Live Coding 阻断通过正常关闭 ProjectR Editor 消除；随后发现的 `UDeveloperSettings` 链接错误由经批准的直接 `DeveloperSettings` 公共模块依赖修复，最终 Build 退出 0，因此不登记为未关闭 KI。
+- KI-002、KI-003、KI-004、KI-006、KI-008、KI-009、KI-010 的范围和状态不变；本版本未提前处理模板迁移、GAS、专用 Toolset、SaveGame 或 Git GC。
+
 # 记录规则
 
 问题必须包含复现/证据、影响版本、临时处理、负责人和可验证关闭条件。不能用删除日志或降低校验来关闭问题。

@@ -62,6 +62,17 @@ date: "2026-07-10"
 **迁移/回滚**：移动前后核对 22 份文档的聚合 SHA-256；实施中止时可经同样的临时名恢复原大小写。
 **验证**：实际目录名严格等于 `Docs`，文档数量和内容哈希不变，Git 索引只出现 `Docs/`。
 
+# ADR-010 - Core DeveloperSettings 使用最小 C++ 配置契约
+
+**状态**：Accepted。
+**上下文**：v0.0.1 需要为 Debug、MockDirector 和 Steam 提供长期稳定的功能开关，但对应业务系统尚未进入实现版本；提前暴露 Blueprint API 或引用未来类型会扩大公共合同并造成反向依赖。
+**选项**：只写文档；创建 Blueprint 可读设置；创建只由 C++ 和 Project Settings 使用的最小配置类。
+**决策**：在 Core 创建 `UPRDeveloperSettings`，使用 `Config=Game, DefaultConfig`，自动注册为 `Game > ProjectR`。三个 Config 布尔值固定为 `bEnableDebugFeatures=false`、`bUseMockDirector=true`、`bEnableSteamFeatures=false`；不暴露 Blueprint API，不实现被开关控制的系统。由于导出的公共 Header 直接继承 `UDeveloperSettings`，`ProjectR.Build.cs` 经用户明确批准在 `PublicDependencyModuleNames` 声明 `DeveloperSettings`。
+**后果**：未来 C++ 消费者通过 `GetDefault<UPRDeveloperSettings>()` 读取确定性配置；Mock 默认保持离线回退，Steam 与 Debug 默认关闭。Debug 开关不替代 Shipping 安全边界。
+**影响版本/合同**：v0.0.1 建立 Core 配置入口；v0.0.2 可独立接入模块和 GameplayTags，不依赖具体 Director、Steam 或 Debug 类型。
+**迁移/回滚**：当前没有 Config、Blueprint、Save 或资产消费者；需要回滚时只删除本轮类和反向撤销文档 diff，不修改 UE Package。
+**验证**：ProjectREditor Build 成功；Editor 重启后 MCP 能反射类和 CDO；Project Settings 面板显示准确分组、名称和默认值。
+
 # ADR 模板
 
 ```text

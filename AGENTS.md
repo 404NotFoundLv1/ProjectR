@@ -17,7 +17,10 @@ Before any implementation:
 3. The task file referenced by CURRENT_VERSION
 4. `Docs/Architecture/VersionDependencyMap.md` for the current version, its direct upstream, and listed downstream consumers
 5. `Docs/Architecture/DataAndInterfaceContracts.md` sections named by the task
-6. Only the directly relevant product/design sections
+6. `Docs/Workflow/CodexWorkflow.md` for every implementation
+7. `Docs/Workflow/CodingStandard.md` before C++ or configuration work
+8. `Docs/Workflow/AssetNaming.md` before asset work
+9. Only the directly relevant product/design sections
 
 Implement only the current version. Do not advance CURRENT_VERSION yourself.
 

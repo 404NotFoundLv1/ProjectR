@@ -83,7 +83,23 @@ Codex 只有在记录已审计的 Toolset 与替代方案后，才能引用本 R
 **期望**：默认模板角色生成，移动、镜头和跳跃均可用，无阻断性视觉问题。
 **回滚**：本步骤不修改资产；失败时保持 v0.0.0 In Progress，由 Codex根据 Build/PIE 日志定位，不让用户手动改代码或配置。
 
-# 7. 报告模板
+# 7. v0.0.1 DeveloperSettings 面板验收
+
+**原因**：当前 19 个 MCP Toolset 可以反射 `UPRDeveloperSettings` 类和 CDO，但没有打开或导航 Project Settings 的专用 Tool；本步骤只确认自动注册后的可见界面，不代替 Build 和反射验证。
+
+**前置**：Codex 已完成 `ProjectREditor Win64 Development` Build、重启 ProjectR Editor，并通过只读 MCP 确认三个属性的默认值为 `false/true/false`。
+
+1. 在 ProjectR Editor 打开 `Edit -> Project Settings`。
+2. 在左侧展开 `Game`，选择 `ProjectR`。
+3. 确认页面包含 `Feature Flags`，并显示 `Enable Debug Features`、`Use Mock Director`、`Enable Steam Features`。
+4. 确认三个复选框依次为关闭、开启、关闭。
+5. 不切换任何复选框，不点击会写入配置的操作，直接关闭 Project Settings。
+6. 返回 Codex：`DeveloperSettings 面板：PASS`；失败时返回缺失项、实际默认值和截图。
+
+**期望**：`Game > ProjectR` 可见，三个显示名和默认值与 CDO 一致。
+**回滚**：本步骤不修改配置或资产；若误改值，在保存前关闭设置并选择不保存。若已经产生 Config diff，立即通知 Codex，不手工编辑 ini。
+
+# 8. 报告模板
 
 ```text
 Runbook：

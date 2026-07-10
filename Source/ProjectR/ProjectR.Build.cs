@@ -12,6 +12,7 @@ public class ProjectR : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
+			"DeveloperSettings",
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",
