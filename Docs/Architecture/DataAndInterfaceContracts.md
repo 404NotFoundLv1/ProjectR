@@ -36,6 +36,21 @@ date: "2026-07-10"
 - 公共 C++ 只通过 `UPRTagLibrary` 的显式 checked getter 读取 16 个高频基础标签；不得添加任意字符串查询或 Blueprint 暴露。
 - 后续只能增量添加子标签；重命名或删除必须提供 Redirect、ADR、消费者清单和兼容测试。
 
+# Game Framework 与正式地图旅行合同
+
+**所有者**：Core。
+
+**建立版本**：v0.0.3。
+
+**消费者**：v0.0.4 构建/打包入口、v0.1.0 Enhanced Input 与 2.5D 移动，以及后续 Reality Hub、Network Run、Combat 和 Boss 内容。
+
+- `EPRMapId` 冻结五个正式 ID：`MainMenu`、`RealityHub`、`NetworkPrototype`、`CombatGym`、`BossGym`。
+- `UPRGameInstance::OpenMap(EPRMapId)` 是唯一冻结的 Blueprint 地图旅行入口；使用 Soft World 引用，非法 ID 或无 World 时返回 `false` 并记录 `LogProjectR` Error。
+- 正式地图路径冻结为 `/Game/ProjectR/Maps/L_MainMenu`、`L_RealityHub`、`L_Network_Prototype`、`L_CombatGym` 和 `L_BossGym`。删除、重命名或改动 ID 映射必须提供 ADR、消费者清单和迁移验证。
+- 正式生命周期扩展点为 `UPRGameInstance`、`APRGameModeBase`、`APRRealityGameMode`、`APRNetworkRunGameMode`、`APRPlayerController`、`APRPlayerState` 和 `APRPlayerCharacter`；模板 `AProjectR*` 与 Variant 类型不是正式消费者依赖。
+- GameMode Blueprint 统一使用 `BP_PlayerCharacter`、`BP_PlayerController` 和 `BP_PlayerState`；RealityHub 使用 `BP_RealityGameMode`，网络原型与两个测试场使用 `BP_NetworkRunGameMode`。
+- v0.0.3 只冻结固定侧视相机脚手架，不冻结输入、移动、GAS、Save 或玩法行为；这些由各自版本增量实现。
+
 # 1. CombatEvent 合同
 
 **所有者**：Combat。  

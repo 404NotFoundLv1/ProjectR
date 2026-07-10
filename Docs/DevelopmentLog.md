@@ -70,6 +70,23 @@ date: "2026-07-10"
 - push 和 GC 均未执行；`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：v0.0.3 可直接使用 Core、模块下限和稳定 GameplayTags 创建 Game Framework；本版本没有改变工程名、模块名、Targets、构建入口、Blueprint API、Save 字段、Config 既有值或资产路径。后续 Tag 只能增量扩展；重命名/删除必须提供 Redirect、ADR、消费者清单和兼容测试。
 
+# 2026-07-10 - v0.0.3 正式地图与 Game Framework（Completed）
+
+- 创建 `EPRMapId`、`UPRGameInstance` 和六个正式 APR Framework 基类；`OpenMap` 冻结五个 Soft World 映射，失败显式返回并记录 `LogProjectR`。
+- `APRPlayerCharacter` 只创建固定侧视 CameraComponent：位置 `(0,600,100)`、旋转 `(0,-90,0)`、FOV 60；未添加 Tick、输入、移动、平面约束、GAS、Save 或未来玩法。
+- 正式 Build 首次执行即完成 11/11 actions，退出码 0，`Result: Succeeded`。
+- 正常关闭 ProjectR Editor 后，使用 UE5.8 官方 `WorldPartitionRenameDuplicateBuilder` 串行创建五张正式地图；每张初始生成 65 个 External Actor、2 个 External Object 和 1 个 World Package，退出码均为 0。
+- 通过 MCP 创建八个 Blueprint；全部 warnings-as-errors 编译并精确保存。三个 GameMode CDO 统一引用正式 Pawn/Controller/State；PlayerCharacter 临时使用 Quinn Simple 与 ABP_Unarmed。
+- `BP_MainMenuFlow` 的 Graph DSL 为 `BeginPlay -> Delay(1.0) -> Cast UPRGameInstance -> OpenMap(RealityHub)`；未使用地图字符串或 Tick。MainMenu 放置 1 个 Flow Actor，最终新增 External Actor 精确落盘。
+- 五张地图的 GameMode Override、1 个 PlayerStart、依赖和零 Dirty 状态在重启后逐张验证；MainMenu 不再依赖 `BP_ThirdPersonGameMode`。
+- `DefaultEngine.ini` 将 Game/Editor 默认地图改为 L_MainMenu，GlobalDefaultGameMode 改为 BP_GameModeBase，并注册 BP_ProjectRGameInstance；其他 Config 保持不变。
+- 自动 PIE 实际验证 MainMenu 在 1 秒后进入 RealityHub；RealityHub、Network Prototype、CombatGym、BossGym 均生成 1 个正式 Pawn、产生新的 Framework spawn 日志、返回非空截图数据且无新增阻断日志，每次 PIE 均已停止。
+- 用户按 ManualOperationsRunbook 第 9 节确认 RealityHub、Network Prototype、CombatGym、BossGym 的固定侧视构图全部 PASS。
+- MCP 实测发现三项 Experimental 工具差异：Graph DSL 在中文文化下无法匹配英文 AddEvent ID；WorldSettings 属于地图主 Package；新 External Actor 首次保存需使用其准确 Actor object ref。均通过受控、精确范围流程处理并记录在 MCP Authoring/KI-006。
+- 最终 Source/Content Package/地图为 106/1102/9；新增 UE Package 349，既有 753 个 UE Package 未修改，暂存路径为 0。
+- 未修改 `CURRENT_VERSION.md`、uproject、Build.cs、Targets、GameplayTags、Save 或模板/Variant 文件；未暂存、提交、推送或运行 GC。
+- Future Compatibility Review：v0.0.4 可直接消费五个稳定地图路径、`EPRMapId`、`OpenMap`、默认启动设置和既有 Build 入口；v0.1.0 可在 `APRPlayerCharacter` 上增量实现输入与移动，无需重设 Blueprint 父类。
+
 # 版本记录模板
 
 ```text

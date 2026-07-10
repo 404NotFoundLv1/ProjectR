@@ -39,6 +39,16 @@ Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 
 4. 前三层不可行或需要主观/凭据/破坏性确认时才转人工。
 # Blueprint 自动化
 当前 BlueprintTools 可创建 Blueprint、设置父类、变量/函数/事件/Dispatcher、节点、Pin 和连线；Graph DSL 支持 event、fn、if/elif、for、while、switch 和多执行出口。与 ActorTools/ObjectTools 组合后，可添加组件和配置 CDO。每次修改必须分别报告创建、编译、重启加载和 PIE 状态。
+
+v0.0.3 实测发现 Graph DSL 的事件前缀固定为英文 `AddEvent|`。若非英文 Editor 文化返回本地化 Node Type ID，必须先保存全部准确目标 Package、确认零 Dirty，再以运行时参数 `-culture=en` 重启同一 ProjectR Editor；重新执行 node discovery、写入、回读和 warnings-as-errors 编译，保存后以默认文化重启验证。不得把猜测 Type ID 写入 Graph，也不得修改工程文化配置绕过问题。
+
+# World Partition 地图与 External Actor
+
+- 普通 AssetTools Duplicate 不保证复制 World Partition 的 External Actors/External Objects；v0.0.3 使用官方 `WorldPartitionRenameDuplicateBuilder`，且 Editor 必须关闭。
+- Builder 会处理既有目标 Package，因此每张地图执行前必须同时检查主 World、`__ExternalActors__` 和 `__ExternalObjects__` 目标子树均不存在；一次只复制一张，退出 0 后立刻枚举实际 Package、数量和哈希再继续。
+- WorldSettings 属于 World 主 Package，不是 External Actor；修改 GameMode 后只保存准确地图 Package，不调用 `save_actor`。
+- 新放置的 External Actor 在首次落盘前可能尚未被 AssetRegistry 识别，`SceneTools.save_actor` 会因此拒绝。此时可对 MCP 返回的准确 Actor object ref 调用单项 `AssetTools.save_assets`；禁止传空列表。保存后必须核对预期 External Actor 文件数量、路径和 SHA-256。
+- 不使用普通文件 IO、二进制 Patch、Save All、Resave All 或未批准删除处理 External Package。
 # GameplayTagsToolset 实测语义
 v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersByTag`、`AddTag`、`RemoveTag`、`RenameTag` 六个工具。只读验收显示 53 个 ini 显式标签和 6 个层级自动生成的父节点；计数时必须区分管理器节点与事实源条目。默认只调用前三个只读工具；增删改仍属于配置写入，必须有当前版本 Allowed path、碰撞检查、Redirect/ADR/兼容审查和明确操作清单。
 

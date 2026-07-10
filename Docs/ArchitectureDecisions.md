@@ -91,6 +91,24 @@ date: "2026-07-10"
 
 **验证**：静态核对 53 个标签、9 个根、16 个 getter 和模块唯一性；ProjectREditor Build；Editor 重启后使用 GameplayTagsToolset、ObjectTools 与设置反射进行只读验证。
 
+# ADR-012 - 正式 Game Framework、稳定地图 ID 与 World Partition 基线
+
+**状态**：Accepted。
+
+**上下文**：v0.0.3 需要建立可由 v0.0.4 打包和后续玩法版本稳定消费的地图与生命周期入口，同时现有四张模板地图采用 World Partition/External Actors，通用 MCP Duplicate 无法完整迁移其外部 Package。直接继承模板或 Variant Framework 会把演示实现冻结为正式架构依赖。
+
+**选项**：继续使用模板 `AProjectR*`；为每张图各自硬编码 OpenLevel；创建独立 APR/UPR Framework、枚举式旅行入口并通过官方 World Partition Builder 复制灰盒地图。
+
+**决策**：创建独立的正式 APR/UPR Framework 和 `EPRMapId`，由 `UPRGameInstance::OpenMap` 统一映射五张 Soft World；不依赖模板/Variant Framework。五张地图由 UE5.8 `WorldPartitionRenameDuplicateBuilder` 在逐目标碰撞门后串行创建，并允许其准确 ExternalActors/ExternalObjects 子树。`APRPlayerCharacter` 只提供位置 `(0,600,100)`、旋转 `(0,-90,0)`、FOV 60 的固定侧视相机，不提前实现 v0.1.0 输入和移动。
+
+**后果**：v0.0.4 获得稳定地图和默认启动入口；v0.1.0 可在正式 Character 上增量实现 2.5D 操作。模板和 Variant 继续保留为参考，灰盒环境与 Quinn 外观可临时复用，但正式 Framework 不引用其类。
+
+**影响版本/合同**：v0.0.3 冻结 Framework 生命周期、五个地图 ID/路径和 `OpenMap` Blueprint API；v0.0.4 只消费这些入口，不修改其语义。
+
+**迁移/回滚**：文本/C++ 可反向撤销本轮 Patch；DefaultEngine 可恢复模板默认值。新增 World Partition Package 不自动删除，失败时先撤回引用并输出准确 Package 清单，再取得逐项破坏性删除批准。
+
+**验证**：正式 Build；13 个主 Package 与 336 个 External Package 精确落盘；八个 Blueprint warnings-as-errors 编译；Editor 重启回载；五图 GameMode/PlayerStart/Dirty/依赖审计；MainMenu 旅行；四图 PIE；四图人工相机构图 PASS。
+
 # ADR 模板
 
 ```text

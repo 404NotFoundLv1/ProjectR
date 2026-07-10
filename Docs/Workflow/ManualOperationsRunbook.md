@@ -117,7 +117,43 @@ Codex 只有在记录已审计的 Toolset 与替代方案后，才能引用本 R
 
 **回滚**：本步骤不应产生 Config 或 Package 变化；若误改，保存前关闭并选择不保存。若已产生 diff，立即通知 Codex，不手工编辑 ini。
 
-# 9. 报告模板
+# 9. v0.0.3 正式地图固定侧视相机验收
+
+**原因**：MCP 已验证正式玩家生成、相机 CDO、PIE、日志和非空画面，但侧视构图是否舒适、角色和地面是否清晰仍需要人工视觉判断。
+
+**前置**：Codex 已完成五张正式地图的创建和回载、八个 Blueprint 的 warnings-as-errors 编译、MainMenu 到 RealityHub 的自动旅行测试，以及四张玩法地图的自动 PIE；当前 PIE 已停止。
+
+依次对以下地图执行步骤 1-6：
+
+- `/Game/ProjectR/Maps/L_RealityHub`
+- `/Game/ProjectR/Maps/L_Network_Prototype`
+- `/Game/ProjectR/Maps/L_CombatGym`
+- `/Game/ProjectR/Maps/L_BossGym`
+
+1. 在 ProjectR Editor 中打开指定地图。
+2. 选择 `Selected Viewport`、单玩家并启动 PIE。
+3. 本版本没有移动输入属于预期；不要以无法移动判定失败。
+4. 确认角色可见、视角明确为侧视、地面和环境轮廓可读，没有严重裁切、黑屏或持续抖动/漂移。
+5. 按 `Esc` 停止 PIE；不要修改 Blueprint、地图、Project Settings 或相机数值。
+6. 分别记录每张地图为 PASS/FAIL。失败时附截图和最短描述，例如“角色在画面外”或“地面被完全裁切”。
+
+**期望**：四张地图均能稳定显示固定侧视构图。相机原生基线为角色相对位置 `(0, 600, 100)`、旋转 `(0, -90, 0)`、FOV 60；本步骤只判断结果，不调整数值。
+
+**返回模板**：
+
+```text
+RealityHub：PASS / FAIL
+Network Prototype：PASS / FAIL
+CombatGym：PASS / FAIL
+BossGym：PASS / FAIL
+失败说明/截图：无 / <内容>
+```
+
+**2026-07-10 实际结果**：RealityHub、Network Prototype、CombatGym、BossGym 均由用户确认 PASS；失败说明/截图为无。
+
+**回滚**：本步骤不应产生资产或配置变更。若误改或出现保存提示，不保存并立即通知 Codex；v0.0.3 保持 In Progress。
+
+# 10. 报告模板
 
 ```text
 Runbook：
