@@ -1,8 +1,8 @@
 # Current Development Version
 
-Version: v0.0.2
+Version: v0.0.3
 
-Task file: `Docs/Versions/v0.0.2.md`
+Task file: `Docs/Versions/v0.0.3.md`
 
 Status: In Progress
 

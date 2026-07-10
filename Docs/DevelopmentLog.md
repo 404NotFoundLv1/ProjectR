@@ -66,7 +66,8 @@ date: "2026-07-10"
 - MCP Operation Manifest 全部为只读，只调用 Toolset/Tag/类/属性/状态/日志查询；AddTag、RemoveTag、RenameTag 和所有 set/save/create/move/delete/Package 写工具均未调用。
 - 重启后默认地图仍为 `/Game/ThirdPerson/Lvl_ThirdPerson`，PIE=false、打开资产为空、地图未 Dirty；PIE 与主观玩法验收不属于本版本，均标记 `NOT RUN`，自动证据充分，未触发人工 Gameplay Tags 面板备用步骤。
 - 启动日志只有既有引擎示例自动化错误、非目标平台 SDK/采集 DLL 警告和一次重启后的旧 MCP session-id 自恢复记录；ProjectR/GameplayTags 专项日志无本版本阻断错误。
-- 没有暂存、提交、push 或 GC；`CURRENT_VERSION.md` 保持 v0.0.2 / In Progress。
+- v0.0.2 正式提交已创建：`37bad148674f5fb466c2335edcfed94ca42560ad`（`v0.0.2 Enable modules and gameplay tags`）；版本转换前工作区干净。
+- push 和 GC 均未执行；`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：v0.0.3 可直接使用 Core、模块下限和稳定 GameplayTags 创建 Game Framework；本版本没有改变工程名、模块名、Targets、构建入口、Blueprint API、Save 字段、Config 既有值或资产路径。后续 Tag 只能增量扩展；重命名/删除必须提供 Redirect、ADR、消费者清单和兼容测试。
 
 # 版本记录模板
