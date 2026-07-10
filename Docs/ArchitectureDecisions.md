@@ -73,6 +73,24 @@ date: "2026-07-10"
 **迁移/回滚**：当前没有 Config、Blueprint、Save 或资产消费者；需要回滚时只删除本轮类和反向撤销文档 diff，不修改 UE Package。
 **验证**：ProjectREditor Build 成功；Editor 重启后 MCP 能反射类和 CDO；Project Settings 面板显示准确分组、名称和默认值。
 
+# ADR-011 - GameplayTags 使用单一 ini 事实源与分层模块下限
+
+**状态**：Accepted。
+
+**上下文**：v0.0.2 需要为后续 Game Framework、GAS、Companion、QTE、Director 和 Roguelike 建立稳定标签面，同时不得提前实现 Ability、ASC、AttributeSet、GameplayEffect 或内容资产。重复使用 Native Tag、Blueprint 或多个 ini 定义会造成事实源漂移；把编辑器工具模块带入 Runtime 会污染依赖边界。
+
+**选项**：使用 Native GameplayTag；在 Blueprint/资产中按需创建；以 `DefaultGameplayTags.ini` 为唯一事实源并提供受限 C++ getter。
+
+**决策**：在 `Config/DefaultGameplayTags.ini` 按完整名称字典序定义 53 个带非空注释的标签，开启 Config 导入和无效标签警告，关闭 Fast/Dynamic Replication，不添加 Redirect。`UPRTagLibrary` 只提供 16 个 checked、缓存的 C++ 静态 getter，不暴露 Blueprint API 或通用字符串查询。Runtime 启用 `GameplayAbilities`，Editor-only 启用实验性 `GameplayTagsToolset`，不启用 `GASToolsets`。`GameplayAbilities`、`GameplayTags`、`GameplayTasks`、`EnhancedInput`、`UMG`、`AIModule`、`NavigationSystem` 属于 Public 模块下限；`HTTP`、`Json`、`JsonUtilities`、`AudioMixer` 保持 Private。
+
+**后果**：后续版本可直接消费稳定 Tag 与模块入口，内容标签仍保持数据驱动；Editor Toolset 不成为运行时依赖。实验性 Toolset 的 Schema/API 变化继续按 KI-006 审计。
+
+**影响版本/合同**：v0.0.2 冻结 GameplayTag taxonomy、module dependency floor 和 `UPRTagLibrary`；v0.0.3 可创建 Game Framework，v0.1.1 可接入 ASC/AttributeSet/GAS，无需重写本版本。
+
+**迁移/回滚**：后续只能增量加子标签；重命名或删除必须提供 Redirect、ADR、消费者清单和兼容测试。v0.0.2 回滚只反向撤销 ini/C++/uproject/Build.cs 与文档 diff，不修改 UE Package。
+
+**验证**：静态核对 53 个标签、9 个根、16 个 getter 和模块唯一性；ProjectREditor Build；Editor 重启后使用 GameplayTagsToolset、ObjectTools 与设置反射进行只读验证。
+
 # ADR 模板
 
 ```text

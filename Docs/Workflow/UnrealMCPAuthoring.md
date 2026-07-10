@@ -8,12 +8,13 @@ date: "2026-07-10"
 # 已验证连接
 ProjectR 的 Codex 配置指向 `http://127.0.0.1:8000/mcp`。审计时该端口由打开 `ProjectR.uproject` 的 UnrealEditor 进程监听，读取调用返回当前关卡 `/Game/ThirdPerson/Lvl_ThirdPerson`。
 ## 当前暴露能力
-Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；其后是 19 个 Toolset、255 个底层 Tool。
+Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.0.2 重启实测其后是 20 个 Toolset、261 个底层 Tool。
 | Toolset | Tool 数 | 主要能力 |
 |---|---:|---|
 | AgentSkillToolset | 4 | UE AgentSkill 资产查询与创建 |
 | EditorAppToolset | 21 | 视口、选择、截图、PIE、Content Browser |
 | LogsToolset | 4 | 日志类别、过滤和详细度 |
+| GameplayTagsToolset | 6 | 标签列表、详情、引用查询以及受控增删改；v0.0.2 仅使用只读工具 |
 | ActorTools | 17 | Actor/组件、Transform、标签、父子关系 |
 | AssetTools | 21 | 查找、依赖、复制、移动、保存、Dirty、文件读取 |
 | BlueprintTools | 53 | 创建/父类/变量/函数/事件/节点/Pin/Graph DSL/编译 |
@@ -33,11 +34,14 @@ Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 
 
 # 自动化能力分层
 1. 先用当前通用 Toolset。
-2. 任务需要时选择性启用 GameplayTags、GAS、UMG、StateTree、AIModule、Automation、Animation、LiveCoding、Niagara、PCG。
+2. 任务需要时选择性启用 GAS、UMG、StateTree、AIModule、Automation、Animation、LiveCoding、Niagara、PCG；GameplayTagsToolset 已在 v0.0.2 启用。
 3. 官方工具无法幂等完成时，Codex 创建 ProjectR editor-only Python/C++ Toolset。
 4. 前三层不可行或需要主观/凭据/破坏性确认时才转人工。
 # Blueprint 自动化
 当前 BlueprintTools 可创建 Blueprint、设置父类、变量/函数/事件/Dispatcher、节点、Pin 和连线；Graph DSL 支持 event、fn、if/elif、for、while、switch 和多执行出口。与 ActorTools/ObjectTools 组合后，可添加组件和配置 CDO。每次修改必须分别报告创建、编译、重启加载和 PIE 状态。
+# GameplayTagsToolset 实测语义
+v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersByTag`、`AddTag`、`RemoveTag`、`RenameTag` 六个工具。只读验收显示 53 个 ini 显式标签和 6 个层级自动生成的父节点；计数时必须区分管理器节点与事实源条目。默认只调用前三个只读工具；增删改仍属于配置写入，必须有当前版本 Allowed path、碰撞检查、Redirect/ADR/兼容审查和明确操作清单。
+
 # 当前未承诺的专用能力
 GAS/GameplayEffect、完整 UMG Designer Tree、StateTree/BehaviorTree、AnimBlueprint 状态机、Niagara 和 Automation 的专用 Toolset 当前未启用。进入相关版本时先启用并重审计；重审计后仍有缺口才创建专用 Toolset。
 # MCP Operation Manifest

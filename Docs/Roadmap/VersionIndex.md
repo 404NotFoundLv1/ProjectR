@@ -9,9 +9,9 @@ date: "2026-07-10"
 只有 `CURRENT_VERSION.md` 指向的版本可以执行。v0.0.0-v0.0.5 已生成独立任务合同；后续任务合同在进入对应阶段前，从路线图和依赖矩阵生成并复核。
 | 版本 | 阶段 | 名称 | 状态 | 前置 | 独立任务合同 |
 |---|---|---|---|---|---|
-| v0.0.0 | 生产工程初始化 | 创建 Steam 版 UE 工程与仓库 | In Progress | 当前模板工程 | Versions/v0.0.0.md |
-| v0.0.1 | 生产工程初始化 | 制定工程规范、命名规则和 Codex 协作规则 | Planned | v0.0.0 | Versions/v0.0.1.md |
-| v0.0.2 | 生产工程初始化 | 接入基础模块依赖和 GameplayTags | Planned | v0.0.1 | Versions/v0.0.2.md |
+| v0.0.0 | 生产工程初始化 | 创建 Steam 版 UE 工程与仓库 | Completed | 当前模板工程 | Versions/v0.0.0.md |
+| v0.0.1 | 生产工程初始化 | 制定工程规范、命名规则和 Codex 协作规则 | Completed | v0.0.0 | Versions/v0.0.1.md |
+| v0.0.2 | 生产工程初始化 | 接入基础模块依赖和 GameplayTags | Completed | v0.0.1 | Versions/v0.0.2.md |
 | v0.0.3 | 生产工程初始化 | 创建核心地图与 Game Framework | Planned | v0.0.2 | Versions/v0.0.3.md |
 | v0.0.4 | 生产工程初始化 | 建立自动化构建脚本和日志目录 | Planned | v0.0.3 | Versions/v0.0.4.md |
 | v0.0.5 | 生产工程初始化 | 建立 Unreal MCP 安全资产生产基线 | Planned | v0.0.4 | Versions/v0.0.5.md |

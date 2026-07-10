@@ -17,6 +17,25 @@ date: "2026-07-10"
 - 结构体用于持久化时必须包含 Schema/SaveVersion 或由所属 SaveGame 统一版本化。
 - Blueprint 可调用函数的参数和语义一旦发布，新增参数优先使用新函数或带默认值的兼容入口。
 
+# GameplayTag taxonomy 合同
+
+**所有者**：Core/Tags。
+
+**建立版本**：v0.0.2。
+
+**事实源**：`Config/DefaultGameplayTags.ini`。
+
+**规范入口**：`Docs/Architecture/GameplayTagTaxonomy.md`。
+
+**消费者**：v0.0.3 及之后的 Game Framework、Enhanced Input、GAS、Combat、Companion、QTE、Director、Roguelike、Content 和 Save 合同。
+
+- `Input.*` 是未来 Enhanced Input 到系统/Ability 的语义提交面，不绑定具体 Ability 类。
+- `Skill.*` 是稳定技能 ID，并可由未来 GAS 消费为 AbilityTag。
+- `Companion.*`、`QTE.*`、`Rule.*` 分别冻结伙伴身份、QTE 类型/结果和本地法令 ID。
+- `Chapter.*`、`Room.*`、`Reward.*` 是数据驱动内容分类，本版本不创建对应业务对象或资产。
+- 公共 C++ 只通过 `UPRTagLibrary` 的显式 checked getter 读取 16 个高频基础标签；不得添加任意字符串查询或 Blueprint 暴露。
+- 后续只能增量添加子标签；重命名或删除必须提供 Redirect、ADR、消费者清单和兼容测试。
+
 # 1. CombatEvent 合同
 
 **所有者**：Combat。  

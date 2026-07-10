@@ -1,0 +1,38 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+
+#include "PRTagLibrary.generated.h"
+
+/** Checked C++ access to common ProjectR gameplay tags defined in DefaultGameplayTags.ini. */
+UCLASS(Abstract)
+class PROJECTR_API UPRTagLibrary : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	static const FGameplayTag& GetInputMoveTag();
+	static const FGameplayTag& GetInputLookTag();
+	static const FGameplayTag& GetInputJumpTag();
+	static const FGameplayTag& GetInputAttackTag();
+	static const FGameplayTag& GetInputDodgeTag();
+	static const FGameplayTag& GetInputInteractTag();
+	static const FGameplayTag& GetInputExecuteTag();
+
+	static const FGameplayTag& GetStateAliveTag();
+	static const FGameplayTag& GetStateDeadTag();
+	static const FGameplayTag& GetStateInCombatTag();
+	static const FGameplayTag& GetStateInvulnerableTag();
+	static const FGameplayTag& GetStateStunnedTag();
+
+	static const FGameplayTag& GetQTEResultSuccessTag();
+	static const FGameplayTag& GetQTEResultFailureTag();
+	static const FGameplayTag& GetQTEResultRejectedTag();
+	static const FGameplayTag& GetQTEResultTimeoutTag();
+
+private:
+	static FGameplayTag RequestRequiredTag(const FName& TagName);
+};

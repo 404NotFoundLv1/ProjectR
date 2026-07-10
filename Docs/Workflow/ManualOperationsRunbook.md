@@ -99,7 +99,25 @@ Codex 只有在记录已审计的 Toolset 与替代方案后，才能引用本 R
 **期望**：`Game > ProjectR` 可见，三个显示名和默认值与 CDO 一致。
 **回滚**：本步骤不修改配置或资产；若误改值，在保存前关闭设置并选择不保存。若已经产生 Config diff，立即通知 Codex，不手工编辑 ini。
 
-# 8. 报告模板
+# 8. v0.0.2 Gameplay Tags 面板只读验收（自动化失败时备用）
+
+**原因**：优先由 GameplayTagsToolset 和设置反射自动验证。只有 Toolset 加载失败或无法证明 Project Settings 语义时，才执行本步骤。
+
+**前置**：Codex 已完成 `ProjectREditor Win64 Development` Build、重启 ProjectR Editor，并记录自动验证缺口；当前无 PIE、无打开资产且地图未 Dirty。
+
+1. 在 ProjectR Editor 打开 `Edit -> Project Settings`。
+2. 搜索并打开 `Gameplay Tags` 设置页。
+3. 只读确认 `Import Tags From Config` 与 `Warn On Invalid Tags` 为开启。
+4. 只读确认 `Fast Replication` 与 `Dynamic Replication` 为关闭。
+5. 确认标签列表中可见 `Input.Move`、`State.Alive`、`QTE.Result.Success`，且来源显示为 `DefaultGameplayTags.ini`。
+6. 不切换复选框、不添加/重命名/删除 Tag、不点击会写入配置的操作，直接关闭设置页。
+7. 返回 Codex：`Gameplay Tags 面板：PASS`；失败时报告缺失项、实际值和截图。
+
+**期望**：四个设置值与配置合同一致，配置 Tag 可见且来源正确。
+
+**回滚**：本步骤不应产生 Config 或 Package 变化；若误改，保存前关闭并选择不保存。若已产生 diff，立即通知 Codex，不手工编辑 ini。
+
+# 9. 报告模板
 
 ```text
 Runbook：

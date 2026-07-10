@@ -13,16 +13,25 @@ public class ProjectR : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"DeveloperSettings",
+			"GameplayAbilities",
+			"GameplayTags",
+			"GameplayTasks",
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",
+			"NavigationSystem",
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { });
+		PrivateDependencyModuleNames.AddRange(new string[] {
+			"AudioMixer",
+			"HTTP",
+			"Json",
+			"JsonUtilities"
+		});
 
 		PublicIncludePaths.AddRange(new string[] {
 			"ProjectR",
