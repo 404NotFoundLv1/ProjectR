@@ -18,7 +18,7 @@ date: "2026-07-10"
 - 生成 CodexReady v6 文档体系；未实现任何游戏功能，未调用 MCP 写工具。
 - 当前版本设为 v0.0.0。
 
-# 2026-07-10 - v0.0.0 仓库基线实施（In Progress）
+# 2026-07-10 - v0.0.0 仓库基线实施（Completed）
 
 - 清理前索引为 1299 个路径、未跟踪 293 个；生成/本地目录占暂存工作树约 4.77 GB。
 - 用树 `e32a2786e2a870f622f5e715c6e502d2c179cea0` 保留索引回滚点；只清索引，工作树缺失文件 0。
@@ -31,7 +31,8 @@ date: "2026-07-10"
 - MCP 只执行状态读取、PIE Start/Stop 和截图；没有资产保存、Blueprint 修改或 Package 写入。
 - `git diff --check` 通过；全量 `git diff --cached --check` 因无 HEAD 而检查全部首次导入文件，发现模板 Source/Config 与既有文档的历史空白问题，按 KI-010 记录且不越权格式化。
 - 用户按 ManualOperationsRunbook 第 6 节确认移动 PASS、镜头 PASS、跳跃 PASS；未报告失败复现。
-- commit、push、GC 和 CURRENT_VERSION 更新均未执行。
+- v0.0.0 基线提交已创建：`2bad8adb7fc2a38d27453bb07a4c91bac76e1726`（`v0.0.0 Init Steam production project`）；版本转换前工作区干净。
+- push 和 GC 均未执行；`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：未修改工程名、模块名、Targets、GameplayTag、Blueprint API、Save、Config 或资产路径；v0.0.1 可从稳定 `Docs`、构建入口和 `Source/ProjectR/Core` 扩展。
 
 # 版本记录模板
