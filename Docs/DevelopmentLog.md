@@ -46,7 +46,9 @@ date: "2026-07-10"
 - MCP 仅执行状态、日志、类和属性读取；没有 set/save/create/move/delete、Blueprint 修改或 UE Package 写入。
 - 用户按 ManualOperationsRunbook 第 7 节确认 `Game > ProjectR` 面板、`Feature Flags` 和三个默认值均为 PASS，未修改配置。
 - `git diff --check`、Allowed-path、文件计数和保护路径检查通过；Source/Content/Config/地图为 89/753/5/4，CURRENT_VERSION、Targets、uproject、Config、Content 和资产路径不变。
-- PIE 不属于本版本验收范围，标记 `NOT RUN`；未暂存、未提交、未推送，也未运行 GC。
+- PIE 不属于本版本验收范围，标记 `NOT RUN`。
+- v0.0.1 正式提交已创建：`cb6c22feb6e87c41630cfb880c5cd20ec68279bf`（`v0.0.1 Add coding standards and Codex workflow`）；版本转换前工作区干净。
+- push 和 GC 均未执行；`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：Core 设置类不依赖 GameplayTags、GAS、Director、Steam 或 Debug 具体类型；v0.0.2 可直接接入基础模块与 Tag Library，无需改写本版本公共设置契约。
 
 # 版本记录模板
