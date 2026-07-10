@@ -1,0 +1,8 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "ProjectR.h"
+#include "Modules/ModuleManager.h"
+
+IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, ProjectR, "ProjectR" );
+
+DEFINE_LOG_CATEGORY(LogProjectR)

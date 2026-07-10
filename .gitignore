@@ -1,0 +1,34 @@
+# Unreal Engine generated output
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+/Plugins/**/Binaries/
+/Plugins/**/DerivedDataCache/
+/Plugins/**/Intermediate/
+/Plugins/**/Saved/
+
+# IDE-generated state and project files
+/.vs/
+/.vscode/
+/.idea/
+*.sln
+*.slnx
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+*.sdf
+*.opensdf
+
+# Local agent/client state and temporary output
+/.codex/
+/.cursor/
+/.gemini/
+/.superpowers/
+/tmp/
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
