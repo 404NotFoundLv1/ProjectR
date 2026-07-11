@@ -115,7 +115,7 @@ date: "2026-07-10"
 - PIE 后 `/Game` inventory 为 302 项，其中 248 个可查询资产 Dirty 全为 false；54 个不可浏览 External Object 通过物理清单/SHA-256 门验证。最终新增 Package 71（3 主、66 EA、2 EO），工程 Package/地图为 1173/10；原有 1102 个 Package 与受保护工程文件哈希全部不变，暂存路径为 0。
 - AutomationReport `v005-report-20260711T022722Z` 实际退出 0，14/14 required checks 为 PASS。KI-005、KI-011、KI-012 Closed；KI-004 Open，KI-006 Accepted Risk。
 - Future Compatibility Review：v0.1.0 可直接复用 20/261 Toolset 矩阵、Operation Manifest、精确保存、复合 Dirty 门、重启回载、BuildEditor 和 AutomationReport。工程名、模块名、Targets、Config、Source、GameplayTags、正式地图/Framework、Save 和正式打包清单均未改变；未提前实现 v0.1.0。
-- 本轮未暂存、提交、推送或运行 GC；`CURRENT_VERSION.md` 保持 v0.0.5 / In Progress。建议提交名：`v0.0.5 Establish safe Unreal MCP authoring baseline`。
+- v0.0.5 正式提交已创建：`e9ba1ae3090c86688819b08b68aeb3effb0ab389`（`v0.0.5 Establish safe Unreal MCP authoring baseline`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
 # 版本记录模板
 

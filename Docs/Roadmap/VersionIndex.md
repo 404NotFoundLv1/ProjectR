@@ -6,7 +6,7 @@ date: "2026-07-10"
 ---
 
 # 使用规则
-只有 `CURRENT_VERSION.md` 指向的版本可以执行。v0.0.0-v0.0.5 已生成独立任务合同；后续任务合同在进入对应阶段前，从路线图和依赖矩阵生成并复核。
+只有 `CURRENT_VERSION.md` 指向的版本可以执行。v0.0.0-v0.1.0 已生成独立任务合同；后续任务合同在进入对应阶段前，从路线图和依赖矩阵生成并复核。
 | 版本 | 阶段 | 名称 | 状态 | 前置 | 独立任务合同 |
 |---|---|---|---|---|---|
 | v0.0.0 | 生产工程初始化 | 创建 Steam 版 UE 工程与仓库 | Completed | 当前模板工程 | Versions/v0.0.0.md |
@@ -15,7 +15,7 @@ date: "2026-07-10"
 | v0.0.3 | 生产工程初始化 | 创建核心地图与 Game Framework | Completed | v0.0.2 | Versions/v0.0.3.md |
 | v0.0.4 | 生产工程初始化 | 建立自动化构建脚本和日志目录 | Completed | v0.0.3 | Versions/v0.0.4.md |
 | v0.0.5 | 生产工程初始化 | 建立 Unreal MCP 安全资产生产基线 | Completed | v0.0.4 | Versions/v0.0.5.md |
-| v0.1.0 | 核心基础设施 | 实现 Enhanced Input 和 2.5D 移动 | Planned | v0.0.5 | 进入阶段前生成 |
+| v0.1.0 | 核心基础设施 | 实现 Enhanced Input 和 2.5D 移动 | In Progress | v0.0.5 | Versions/v0.1.0.md |
 | v0.1.1 | 核心基础设施 | 接入 GAS：ASC、AttributeSet、默认属性 | Planned | v0.1.0 | 进入阶段前生成 |
 | v0.1.2 | 核心基础设施 | 统一伤害、死亡、复活和受击表现 | Planned | v0.1.1 | 进入阶段前生成 |
 | v0.1.3 | 核心基础设施 | 技能授予、冷却、资源消耗和输入 Tag | Planned | v0.1.2 | 进入阶段前生成 |

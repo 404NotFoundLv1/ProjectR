@@ -30,6 +30,12 @@ date: "2026-07-10"
 | E-012 | v0.0.5 的 Allowed paths 只列出 `Content/ProjectR/MCPTest/**`；复制 World Partition 测试地图可能同时创建 `Content/__ExternalActors__/ProjectR/MCPTest/**` 和 `Content/__ExternalObjects__/ProjectR/MCPTest/**` | 只读审计确认源图为 65 个 External Actor 与 2 个 External Object；任务合同已增加两个准确 roots、阶段清单冻结、SHA-256 和失败隔离规则 | Resolved by v0.0.5 startup gate |
 | E-013 | v0.0.5 的人工步骤写有“Save All 后重启”，与 `AGENTS.md`、CodexWorkflow 和 UnrealMCPAuthoring 的 Manifest 精确保存、禁止 Save All 合同冲突 | 已改为“Blueprint 编译通过、Manifest 非空精确保存成功、意外 Dirty Package 为 0 后重启”；Save All/空数组保存均明确禁止 | Resolved by v0.0.5 startup gate |
 
+# v0.1.0 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-014 | v0.1.0 仍以 v0.0.4 为直接前置，并同时要求技能/QTE 输入绑定和输入调试显示 | 直接前置改为 v0.0.5；v0.1.0 只建立稳定 InputAction→InputTag 语义、2.5D 移动和固定侧视相机；技能输入延期至 v0.1.3，QTE 输入延期至 v0.3.2，调试证据使用日志、Enhanced Input 内置能力和 AutomationReport，不创建 v0.1.5 Debug UI | 避免输入层硬编码未来 Ability/QTE 类，并确保正式资产生产遵守 v0.0.5 MCP 安全合同 | Resolved by v0.1.0 task contract |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。
