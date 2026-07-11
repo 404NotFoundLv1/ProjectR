@@ -101,7 +101,7 @@ date: "2026-07-10"
 - Clean Apply、工程文件生成、PIE、Editor restart、AutomationTestToolset 和 MCP 写操作均为 `NOT RUN`；本版本没有 UE Package、Blueprint 或玩法验收项。
 - ADR-013 已接受；v0.0.5 草案的 External Package Allowed paths 与 Save All 冲突记录为 KI-011、E-012、E-013，留待 v0.0.5 启动审计修正，不提前修改任务合同或创建 MCPTest 资产。
 - Future Compatibility Review：v0.0.5 可原样复用已通过合同回归、真实 Build 与真实 Package 的稳定入口、五地图 Config 事实源和 SchemaVersion 1 报告；`/Game/ProjectR/MCPTest/**` 未进入正式打包清单。工程名、模块名、Targets、地图路径、GameplayTags、Blueprint API、Save 和 UE Package 均未改变，无需下游大规模改写。
-- Git 暂存、commit、push、GC 均未执行；建议提交名仍为 `v0.0.4 Add build scripts and build guide`。
+- v0.0.4 正式提交已创建：`380d2c1e7b4d1b5069a5252e1cb00e5e8b85b09e`（`v0.0.4 Add build scripts and build guide`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
 # 版本记录模板
 
