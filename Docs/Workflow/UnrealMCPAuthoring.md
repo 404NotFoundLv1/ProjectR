@@ -63,6 +63,15 @@ GAS/GameplayEffect、完整 UMG Designer Tree、StateTree/BehaviorTree、AnimBlu
 - 未批准不覆盖、重命名、移动、删除、批量迁移或 Resave All。
 - 写入前检查 exists/can_edit；写入后精确 save_assets。
 - 不因 create 返回成功就声称资产有效。
+
+# v0.0.4 自动化报告衔接
+
+- v0.0.4 不启用 AutomationTestToolset、不依赖 8000 端口，也不执行 MCP 写入、资产保存、Editor restart 或 PIE；Build/Package 证据由 Shell/UAT 和 `Saved/AutomationReports` 提供。
+- 后续 MCP 任务使用 `BuildScripts/AutomationReport.bat` 汇总已经实际取得的独立 check。报告入口不调用 MCP，也不把 create 返回值推断为 Blueprint compile、Package save、restart load 或 PIE 通过。
+- v0.0.5 至少为资产创建、Blueprint compile、Manifest 精确保存、意外 Dirty=0、重启回载和 PIE 分别提供 check；未执行项必须写 `NOT_RUN`。
+- `Saved/AutomationReports/<RunId>/<EntryPoint>-<Configuration>/` 是被忽略的本地证据目录，不是 UE Package 根，也不得作为 CleanGenerated Apply 的候选。
+- v0.0.5 草案尚有 KI-011/E-012/E-013：World Partition 测试地图的 External Package roots 未进入 Allowed paths，“Save All 后重启”与精确保存合同冲突。首次 MCP 写入前必须在 v0.0.5 启动审计修正并取得批准；v0.0.4 不提前修改该任务页或创建测试资产。
+
 # 建议 v0.0.5 冒烟测试
 1. 查询目标路径不存在。
 2. 创建测试 DataAsset 并设置属性。

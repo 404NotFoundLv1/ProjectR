@@ -153,7 +153,52 @@ BossGym：PASS / FAIL
 
 **回滚**：本步骤不应产生资产或配置变更。若误改或出现保存提示，不保存并立即通知 Codex；v0.0.3 保持 In Progress。
 
-# 10. 报告模板
+# 10. v0.0.4 Build/Package 前置门
+
+**原因**：BuildEditor 和 PackageDevelopment 由 Codex 自动执行，但真实打包前需要足够的系统卷空间；运行中的同工程 Editor 若出现未保存提示，也不能由自动化猜测处理。
+
+## 10.1 释放系统卷空间
+
+**触发条件**：Codex 报告 `SystemVolumeSpace` 少于 10 GiB。真实入口报告 `v004-package-gate-19f4d96e020` 记录 C: 3.18 GiB，并在启动 UAT 前以退出码 65 停止，不满足 PackageDevelopment 门禁。
+
+**2026-07-11 实际结果**：用户将 C: 释放到 12.47 GiB；随后 `v004-actual-package-19f4ece2a19` 的四个磁盘门、UAT、五地图和 EXE/Pak/IoStore 产物均 PASS。完成后 C: 仍为 12.10 GiB。
+
+1. 打开 Windows `设置 -> 系统 -> 存储 -> 临时文件`。
+2. 只选择本人确认可删除的系统临时项；不要选择 Downloads，不删除 ProjectR、Unreal Engine、Visual Studio 或个人目录。
+3. 也可由用户自行把明确识别的大文件移至其他磁盘；Codex 不猜测或批量删除系统/用户文件。
+4. 完成后把下列只读检查结果返回 Codex：
+
+   ```powershell
+   [math]::Round((Get-PSDrive C).Free / 1GB, 2)
+   ```
+
+5. 返回值至少为 `10.00` 后，由 Codex 运行 PackageDevelopment；用户不手动执行 UAT、修改 Config 或删除生成目录。
+
+**回滚**：本步骤不修改仓库。若不确定某项能否删除，取消并保留该项。
+
+## 10.2 Editor 保存提示
+
+**触发条件**：Codex 正常关闭指向 `E:/MyWork/ProjectR/ProjectR.uproject` 的 Editor 时出现保存提示。
+
+1. 不选择 `Save` 或 `Don't Save`，先选择 `Cancel`。
+2. 记录提示列出的准确 Dirty Package/文件并返回 Codex；不要手工打开、修改或保存这些目标。
+3. Codex 根据当前版本 Allowed paths、Manifest 和哈希判断是否可保存；未获得准确结论前保持 Editor 打开。
+4. 禁止通过任务管理器、`Stop-Process -Force` 或重启系统绕过提示。
+
+**期望**：只有在无 Dirty 或准确保存范围另行批准后才正常退出 Editor；Build/Package 不与同工程 Editor、Live Coding、UBT 或 UAT 并发。
+
+## 10.3 UE 5.8 路径歧义
+
+**触发条件**：脚本退出码为 66，并在日志中列出多个有效 UE 5.8 候选。
+
+1. 只核对 Codex 提供的候选路径及其 `Engine/Build/Build.version`。
+2. 确认 Major/Minor/Patch 为 5.8.0、Changelist 为 55116800 的目标根目录。
+3. 把准确 EngineRoot 返回 Codex；由 Codex 通过 `-EngineRoot` 重跑。
+4. 不修改 `.uproject` 的 EngineAssociation，不卸载其他引擎，不手工编辑脚本。
+
+**当前审计**：只有 `D:/Unreal Engine 5/UE_5.8` 精确匹配，因此本步骤当前不触发。
+
+# 11. 报告模板
 
 ```text
 Runbook：

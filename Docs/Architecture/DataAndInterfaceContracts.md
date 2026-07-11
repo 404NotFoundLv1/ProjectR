@@ -51,6 +51,23 @@ date: "2026-07-10"
 - GameMode Blueprint 统一使用 `BP_PlayerCharacter`、`BP_PlayerController` 和 `BP_PlayerState`；RealityHub 使用 `BP_RealityGameMode`，网络原型与两个测试场使用 `BP_NetworkRunGameMode`。
 - v0.0.3 只冻结固定侧视相机脚手架，不冻结输入、移动、GAS、Save 或玩法行为；这些由各自版本增量实现。
 
+# 构建、打包与自动化报告合同
+
+**所有者**：Platform/Release Automation。
+
+**建立版本**：v0.0.4。
+
+**消费者**：v0.0.5 Unreal MCP 安全资产生产基线，以及后续 C++ Build、Cook/Package、自动化测试、QA 和发布版本。
+
+- 公共入口冻结为 `BuildScripts/BuildEditor.bat`、`PackageDevelopment.bat`、`CleanGenerated.bat` 和 `AutomationReport.bat`；`PackageDev.bat` 仅为原样转发参数和退出码的兼容别名。
+- 所有入口必须接收绝对 `.uproject` 路径，不依赖当前工作目录或 PATH 中的 UE/VS 工具；UE Root 按显式参数、`PROJECTR_UE_ROOT`、精确版本自动发现的优先级解析，零个或多个有效候选均显式失败。
+- Development/Shipping 的唯一正式地图清单来自 `Config/DefaultGame.ini` 的五条 `MapsToCook`；打包脚本只读取、验证并转译该清单，不维护第二份可漂移列表。
+- 每次入口调用写入 `Saved/AutomationReports/<RunId>/<EntryPoint>-<Configuration>/`，至少包含脱敏 `command.txt`、完整 `run.log` 和 SchemaVersion 1 `result.json`；创建任何文件前必须验证目标严格位于报告根下、既有路径链无 reparse point、Git ignored/untracked 且目标目录不碰撞。
+- 自动化状态只允许 `PASS`、`FAIL`、`NOT_RUN`；WhatIf、预览和未执行门不得冒充真实 Build、Package、Clean Apply、Editor restart、Blueprint compile 或 PIE 通过。
+- `AutomationReport.bat` 只汇总调用者提交的独立 checks，不执行或推断 MCP 写入；v0.0.5 必须分别记录资产创建、Blueprint compile、精确保存、重启回载和 PIE 的实际状态。
+- `CleanGenerated.bat` 默认只预览。实际删除必须通过精确项目根确认、项目内包含关系、Git ignore/untracked、从项目根到候选的祖先链及候选全部后代无 reparse point、删除前重验、活动进程和保护路径检查；`Source`、`Content`、`Config`、`Docs`、`BuildScripts`、`.git`、uproject、AutomationReports、Packages、Autosaves、SaveGames、Logs 和 Screenshots 永久不在清理集合中。
+- 公共 CLI、退出码、报告 Schema、磁盘门禁和人工例外的规范说明位于 `Docs/Workflow/BuildGuide.md`；破坏性更改必须新增 ADR、消费者清单和兼容回归。
+
 # 1. CombatEvent 合同
 
 **所有者**：Combat。  

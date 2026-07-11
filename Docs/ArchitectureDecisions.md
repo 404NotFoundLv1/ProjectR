@@ -109,6 +109,24 @@ date: "2026-07-10"
 
 **验证**：正式 Build；13 个主 Package 与 336 个 External Package 精确落盘；八个 Blueprint warnings-as-errors 编译；Editor 重启回载；五图 GameMode/PlayerStart/Dirty/依赖审计；MainMenu 旅行；四图 PIE；四图人工相机构图 PASS。
 
+# ADR-013 - 统一构建入口、Config 地图事实源与实际结果报告
+
+**状态**：Accepted。
+
+**上下文**：v0.0.4 需要为 v0.0.5 和后续版本提供可从任意工作目录重复调用的 Editor Build、Win64 Package、生成目录清理和 QA 记录入口。当前机器同时存在多个 UE 次版本，UE/VS 工具不在 PATH；真实 Package 还必须与 v0.0.3 冻结的五张正式地图保持一致，并避免把预览或命令生成写成执行通过。
+
+**选项**：只在文档中保存人工命令；在各批处理文件中复制独立逻辑；由稳定 `.bat` 入口调用同一 PowerShell 实现，并使用 Config 地图事实源和统一报告 Schema。
+
+**决策**：公共入口为 `BuildEditor.bat`、`PackageDevelopment.bat`、`CleanGenerated.bat` 和 `AutomationReport.bat`，`PackageDev.bat` 仅作兼容转发。入口要求绝对 Project 路径，按显式参数、环境变量、精确版本自动发现解析 UE。五张 `MapsToCook` 写入 `DefaultGame.ini` 并作为打包唯一事实源。每次运行在被忽略的 `Saved/AutomationReports` 中保存脱敏命令、完整日志和 SchemaVersion 1 实际结果；清理默认只预览，Apply 需双重确认和逐路径保护门。
+
+**后果**：v0.0.5 可原样复用 Build、Package 和独立 check 报告入口；测试资产不会因打包脚本中的第二份地图列表而进入正式包。统一包装器成为兼容表面，后续变更必须保留参数、退出码和报告字段语义。报告和包是本地审计产物，不进入 Git。
+
+**影响版本/合同**：v0.0.4 建立构建、打包、清理和报告合同；v0.0.5 直接消费这些入口记录资产创建、Blueprint compile、精确保存、重启回载和 PIE。工程名、模块名、Targets、GameplayTags、Blueprint API、Save 和 UE Package 不变。
+
+**迁移/回滚**：当前没有既有自动化消费者；回滚只反向撤销本轮 BuildScripts、BuildGuide、报告合同和五条 `MapsToCook`。不得用 `git clean`、硬重置或 CleanGenerated Apply 代替回滚；已生成的忽略目录保留用于审计。
+
+**验证**：公共 CLI、WhatIf、清理预览、报告 Schema、退出码和路径门的完整合同测试及独立复审均已通过。最终 `ProjectREditor Win64 Development` Build `v004-final-build-19f4ed6c55e` 退出 0，模块 DLL 后置条件 PASS；Development Package `v004-actual-package-19f4ece2a19` 的 UAT/包装器均退出 0，五张地图精确匹配，归档 EXE、Pak、UTOC、UCAS 均存在且非空。Shipping、Clean Apply、PIE 和 MCP 写入按本版本边界为 `NOT RUN`，不阻断接受本 ADR。
+
 # ADR 模板
 
 ```text

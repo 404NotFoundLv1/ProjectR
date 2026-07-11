@@ -21,6 +21,15 @@ date: "2026-07-10"
 | E-010 | 路线图重复粘贴完整提示词 | 改用 AGENTS + CURRENT_VERSION + 独立合同 | 减少上下文噪声 |
 | E-011 | 没有跨版本消费者和冻结规则 | 增加 51 版本依赖矩阵和八项稳定合同 | 防止后续大规模返工 |
 
+# 待 v0.0.5 启动审计落实的勘误
+
+以下项目仅记录已发现的合同冲突，不代表已经修改 v0.0.5 合同或授权对应写入。
+
+| 编号 | 草案缺口 | v0.0.5 启动审计必须落实 | 当前状态 |
+|---|---|---|---|
+| E-012 | v0.0.5 的 Allowed paths 只列出 `Content/ProjectR/MCPTest/**`；复制 World Partition 测试地图可能同时创建 `Content/__ExternalActors__/ProjectR/MCPTest/**` 和 `Content/__ExternalObjects__/ProjectR/MCPTest/**` | 在任何地图写入前完成只读碰撞与能力审计；若确定使用 World Partition Builder，先把准确 External Package roots、逐图清单、保存范围和失败隔离规则写入当期任务合同并重新批准 | Pending v0.0.5 startup audit |
+| E-013 | v0.0.5 的人工步骤写有“Save All 后重启”，与 `AGENTS.md`、CodexWorkflow 和 UnrealMCPAuthoring 的 Manifest 精确保存、禁止 Save All 合同冲突 | 改为“Manifest 中所有准确 Package 分别保存、Blueprint 编译通过、意外 Dirty Package 为 0 后重启”；不得以 Save All 扩大写入范围 | Pending v0.0.5 startup audit |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

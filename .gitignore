@@ -1,4 +1,4 @@
-# Unreal Engine generated output
+# Unreal Engine generated output; /Saved/ also covers local AutomationReports and Packages
 /Binaries/
 /DerivedDataCache/
 /Intermediate/
@@ -7,6 +7,9 @@
 /Plugins/**/DerivedDataCache/
 /Plugins/**/Intermediate/
 /Plugins/**/Saved/
+
+# UAT-generated file-order logs; preserve other /Build content for platform configuration
+/Build/**/FileOpenOrder/
 
 # IDE-generated state and project files
 /.vs/

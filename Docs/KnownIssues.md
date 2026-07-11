@@ -19,6 +19,7 @@ date: "2026-07-10"
 | KI-008 | 当前没有版本化 SaveGame | 后续关系/墓园易返工 | v0.1.4 建立合同与迁移测试 | Planned |
 | KI-009 | 误暂存的生成物仍作为不可达 loose objects 占用 `.git`，审计时约 1.34 GiB | 本地仓库占用偏大，但不影响工作树或正确索引 | 首次基线提交后另行批准并验证安全 GC；本版本禁止主动清理 | Open |
 | KI-010 | 无 HEAD 的首次基线上，`git diff --cached --check` 报告模板 Source/Config 和既有文档中的尾空格/EOF 空行 | 全量 cached whitespace gate 为 FAIL；不影响 Build/PIE，但阻止把静态门写成通过 | 在允许修改各路径且有兼容审查的独立卫生变更中建立格式基线；v0.0.0 不越权批量改写 | Open |
+| KI-011 | v0.0.5 草案的 World Partition MCP 冒烟 Allowed paths 未覆盖 External Actors/Objects，且“Save All 后重启”与精确 Package 保存合同冲突 | 合同修正前，v0.0.5 不能安全执行模板地图复制或保存/重启门 | v0.0.5 首次 MCP 写入前，任务合同列出准确 External Package roots，改为 Manifest 精确保存且 Dirty=0 后重启，并完成只读启动审计 | Open |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -41,6 +42,13 @@ date: "2026-07-10"
 - KI-006 保持 Accepted Risk：中文文化下 Graph DSL 的英文事件 ID 不匹配、`CaptureViewport` 的可选参数实际需显式传 null，以及新 External Actor 首次保存的 AssetRegistry 时序差异均已记录；这些工具问题不进入运行时或 UE Package 公共合同。
 - 未发现由正式 Framework、地图旅行、固定相机或 DefaultEngine 设置引入的持续性阻断问题，因此不虚构新 KI。
 - KI-003、KI-004、KI-008、KI-009、KI-010 的状态不变；本版本未提前实现 GAS、Save、专用未来 Toolset、打包脚本或 GC。
+
+# 2026-07-11 - v0.0.4 Known Issues Review（Completed）
+
+- 新增 KI-011：v0.0.5 草案的 World Partition 测试地图可能产生 `__ExternalActors__`/`__ExternalObjects__` Package，但当前 Allowed paths 未覆盖；同时“Save All 后重启”与工程的 Manifest 精确保存、禁止 Save All 合同冲突。两项都留到 v0.0.5 启动审计修正，本版本不改任务页、不创建 MCPTest 资产。
+- 初次磁盘门禁 65 已由用户释放系统卷空间后消除；真实 BuildEditor `v004-final-build-19f4ed6c55e` 与 Development Package `v004-actual-package-19f4ece2a19` 均 PASS，未形成长期问题。
+- 最终脚本快照的完整合同测试与独立复审均实际退出 0，Spec compliance PASS、Code quality Approved；真实 Build/Package 及产物后置条件也已通过，v0.0.4 可关闭并接受 ADR-013。
+- KI-003、KI-004、KI-005、KI-006、KI-008、KI-009、KI-010 的状态不变；本版本不实现 GAS、Save、MCP Toolset、资产写入或 Git GC。
 
 # 记录规则
 

@@ -87,6 +87,22 @@ date: "2026-07-10"
 - v0.0.3 实施未修改 `CURRENT_VERSION.md`、uproject、Build.cs、Targets、GameplayTags、Save 或模板/Variant 文件；正式提交已创建：`cc3cc695c1929bf2de0af40b3cd938f2af674176`（`v0.0.3 Create core framework and formal maps`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 - Future Compatibility Review：v0.0.4 可直接消费五个稳定地图路径、`EPRMapId`、`OpenMap`、默认启动设置和既有 Build 入口；v0.1.0 可在 `APRPlayerCharacter` 上增量实现输入与移动，无需重设 Blueprint 父类。
 
+# 2026-07-11 - v0.0.4 自动化构建与报告入口（Completed）
+
+- 已创建 BuildEditor、PackageDevelopment、PackageDev 兼容别名、CleanGenerated 和 AutomationReport 批处理入口及共同 PowerShell 实现；详细 CLI、退出码、日志 Schema、清理保护和回滚写入 BuildGuide。
+- `DefaultGame.ini` 已按 v0.0.3 冻结顺序加入五条 `MapsToCook`；正式地图路径、Game Framework、Source、Content、uproject、Build.cs、Targets、DefaultEngine 和 GameplayTags 未修改，UE Package 写入为 0。
+- 报告根固定为被忽略的 `Saved/AutomationReports/<RunId>/<EntryPoint>-<Configuration>/`，每次运行保存脱敏 command、UTF-8 log 和 SchemaVersion 1 result；WhatIf 与未执行状态不能冒充实际通过。
+- 最终脚本快照的命令生成证据为：BuildEditor Development `v004-final2-build-19f4d9279e6`、Package Development `v004-final2-pkgdev-19f4d9279e6`、Package Shipping 兼容入口 `v004-final2-pkgship-19f4d9279e6`；三者均为 WhatIf，总体 `NOT_RUN`，没有调用 Build.bat 或 RunUAT.bat。
+- CleanGenerated Standard/Deep 预览分别记录为 `v004-final2-cleanstd-19f4d9279e6` 和 `v004-final2-cleandeep-19f4d9279e6`，均为 PASS 且没有删除路径，Apply 为 `NOT RUN`；AutomationReport 冒烟 `v004-final2-report-19f4d9279e6` 为 PASS。
+- 完整合同测试 `WindowsPowerShell -File Saved/AutomationTests/ProjectRAutomation.Contract.Tests.ps1` 在最终脚本快照实际退出 0；独立复审同样退出 0，并给出 Spec compliance PASS、Code quality Approved。覆盖原生 stdout/stderr 与退出码、严格 JSON、脱敏、配置段、路径碰撞、ancestor/descendant reparse、进程精确归属和 Clean 保护。
+- 指向 `ProjectR.uproject` 的 Editor 均经正常窗口关闭退出，没有保存提示，Live Coding/UBT/UAT 和 8000 监听随后均为 0。最终 BuildEditor Development `v004-final-build-19f4ed6c55e` 包装器与子进程退出码均为 0，UBT `Result: Succeeded`，目标 DLL 后置条件 PASS。
+- 用户将系统卷释放到 12.47 GiB 后，Development Package `v004-actual-package-19f4ece2a19` 实际运行 519.4 秒并 PASS：UAT/包装器退出 0，五张 Config 地图精确匹配，`Windows/ProjectR.exe`、Pak、两个 UTOC 和两个 UCAS 均存在且非空；归档与报告被 Git ignore 且未跟踪。Shipping Package 仍按合同只保留 WhatIf 证据。
+- 首次真实 Cook 额外生成 `Build/Windows/FileOpenOrder/{CookerOpenOrder,EditorOpenOrder}.log`；UAT 日志明确包含 `WriteCookerOpenOrder`。`.gitignore` 只忽略 `Build/**/FileOpenOrder/`，不忽略整个 `Build/`，确保未来平台图标和构建配置仍可跟踪；合同测试已覆盖这两个边界。
+- Clean Apply、工程文件生成、PIE、Editor restart、AutomationTestToolset 和 MCP 写操作均为 `NOT RUN`；本版本没有 UE Package、Blueprint 或玩法验收项。
+- ADR-013 已接受；v0.0.5 草案的 External Package Allowed paths 与 Save All 冲突记录为 KI-011、E-012、E-013，留待 v0.0.5 启动审计修正，不提前修改任务合同或创建 MCPTest 资产。
+- Future Compatibility Review：v0.0.5 可原样复用已通过合同回归、真实 Build 与真实 Package 的稳定入口、五地图 Config 事实源和 SchemaVersion 1 报告；`/Game/ProjectR/MCPTest/**` 未进入正式打包清单。工程名、模块名、Targets、地图路径、GameplayTags、Blueprint API、Save 和 UE Package 均未改变，无需下游大规模改写。
+- Git 暂存、commit、push、GC 均未执行；建议提交名仍为 `v0.0.4 Add build scripts and build guide`。
+
 # 版本记录模板
 
 ```text
