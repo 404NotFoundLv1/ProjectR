@@ -14,7 +14,7 @@ date: "2026-07-10"
 | v0.0.2 | 生产工程初始化 | 接入基础模块依赖和 GameplayTags | Completed | v0.0.1 | Versions/v0.0.2.md |
 | v0.0.3 | 生产工程初始化 | 创建核心地图与 Game Framework | Completed | v0.0.2 | Versions/v0.0.3.md |
 | v0.0.4 | 生产工程初始化 | 建立自动化构建脚本和日志目录 | Completed | v0.0.3 | Versions/v0.0.4.md |
-| v0.0.5 | 生产工程初始化 | 建立 Unreal MCP 安全资产生产基线 | Planned | v0.0.4 | Versions/v0.0.5.md |
+| v0.0.5 | 生产工程初始化 | 建立 Unreal MCP 安全资产生产基线 | Completed | v0.0.4 | Versions/v0.0.5.md |
 | v0.1.0 | 核心基础设施 | 实现 Enhanced Input 和 2.5D 移动 | Planned | v0.0.5 | 进入阶段前生成 |
 | v0.1.1 | 核心基础设施 | 接入 GAS：ASC、AttributeSet、默认属性 | Planned | v0.1.0 | 进入阶段前生成 |
 | v0.1.2 | 核心基础设施 | 统一伤害、死亡、复活和受击表现 | Planned | v0.1.1 | 进入阶段前生成 |

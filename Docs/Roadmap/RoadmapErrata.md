@@ -27,8 +27,8 @@ date: "2026-07-10"
 
 | 编号 | 草案缺口 | v0.0.5 启动审计必须落实 | 当前状态 |
 |---|---|---|---|
-| E-012 | v0.0.5 的 Allowed paths 只列出 `Content/ProjectR/MCPTest/**`；复制 World Partition 测试地图可能同时创建 `Content/__ExternalActors__/ProjectR/MCPTest/**` 和 `Content/__ExternalObjects__/ProjectR/MCPTest/**` | 在任何地图写入前完成只读碰撞与能力审计；若确定使用 World Partition Builder，先把准确 External Package roots、逐图清单、保存范围和失败隔离规则写入当期任务合同并重新批准 | Pending v0.0.5 startup audit |
-| E-013 | v0.0.5 的人工步骤写有“Save All 后重启”，与 `AGENTS.md`、CodexWorkflow 和 UnrealMCPAuthoring 的 Manifest 精确保存、禁止 Save All 合同冲突 | 改为“Manifest 中所有准确 Package 分别保存、Blueprint 编译通过、意外 Dirty Package 为 0 后重启”；不得以 Save All 扩大写入范围 | Pending v0.0.5 startup audit |
+| E-012 | v0.0.5 的 Allowed paths 只列出 `Content/ProjectR/MCPTest/**`；复制 World Partition 测试地图可能同时创建 `Content/__ExternalActors__/ProjectR/MCPTest/**` 和 `Content/__ExternalObjects__/ProjectR/MCPTest/**` | 只读审计确认源图为 65 个 External Actor 与 2 个 External Object；任务合同已增加两个准确 roots、阶段清单冻结、SHA-256 和失败隔离规则 | Resolved by v0.0.5 startup gate |
+| E-013 | v0.0.5 的人工步骤写有“Save All 后重启”，与 `AGENTS.md`、CodexWorkflow 和 UnrealMCPAuthoring 的 Manifest 精确保存、禁止 Save All 合同冲突 | 已改为“Blueprint 编译通过、Manifest 非空精确保存成功、意外 Dirty Package 为 0 后重启”；Save All/空数组保存均明确禁止 | Resolved by v0.0.5 startup gate |
 
 # 已接受的架构决策
 

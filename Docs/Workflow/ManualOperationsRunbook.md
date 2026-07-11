@@ -20,13 +20,22 @@ Codex 只有在记录已审计的 Toolset 与替代方案后，才能引用本 R
 2. 搜索 Codex 指定的准确插件名，例如 `GASToolsets` 或 `UMG ToolSet`。
 3. 核对插件位于 Engine/Experimental Toolsets，勾选 Enabled。
 4. 如果弹出 Experimental 警告，确认本项目接受实验性开发工具风险。
-5. 执行 `File -> Save All`，确认 Codex 报告中的 Dirty Package 均已保存。
-6. 关闭并重新打开 `E:/MyWork/ProjectR/ProjectR.uproject`。
+5. 不执行 Save All。若存在 Dirty Package 或关闭时出现保存提示，选择 Cancel，把准确 Package 清单返回 Codex；由 Codex 按 Operation Manifest 逐项精确保存并确认 Dirty=0。
+6. 只有在 Codex 报告 Blueprint 编译通过、Manifest 精确保存成功且 Dirty=0 后，才关闭并重新打开 `E:/MyWork/ProjectR/ProjectR.uproject`。
 7. 在 Output Log 确认 MCP 监听 `127.0.0.1:8000/mcp`。
 8. 返回 Codex：“插件已启用、Editor 已重启、MCP 已监听”。
 
 **验证**：Codex重新调用 list_toolsets/describe_toolset。  
 **回滚**：插件导致启动失败时，在 `.uproject` 中将对应插件 Enabled 改回 false；此文件修改由 Codex执行。
+
+# 1A. v0.0.5 MCP 冒烟资产条件式只读检查
+
+**仅在以下情况使用**：Codex 已完成 Blueprint warnings-as-errors 编译、Manifest 精确保存、Dirty=0 和 Editor 重启回载，但自动截图无法提供可判定画面。正常情况下本节 `NOT RUN`。
+
+1. 只读打开 `/Game/ProjectR/MCPTest/Blueprints/BP_MCPAuthoringSmokeActor`，确认 Parent 为 Actor，存在 `SmokeCube` 和 `SmokeData`，EventGraph 为 BeginPlay 到日志输出。
+2. 只读打开 `/Game/ProjectR/MCPTest/Data/DA_MCPAuthoringSmoke`，确认类型为非抽象 `PrimaryAssetLabel`，且 Runtime Label、目录标签与显式资产集合保持空/false。
+3. 只读打开 `/Game/ProjectR/MCPTest/Maps/L_MCPAuthoringSmoke`，确认场景中存在唯一 `MCPAuthoringSmokeActor` 且可见 Cube。
+4. 不修改属性、不切换开关、不保存；返回三项 PASS/FAIL 后关闭资产编辑器。
 
 # 2. 动作手感与镜头验收
 

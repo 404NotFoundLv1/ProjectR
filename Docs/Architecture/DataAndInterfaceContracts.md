@@ -68,6 +68,21 @@ date: "2026-07-10"
 - `CleanGenerated.bat` 默认只预览。实际删除必须通过精确项目根确认、项目内包含关系、Git ignore/untracked、从项目根到候选的祖先链及候选全部后代无 reparse point、删除前重验、活动进程和保护路径检查；`Source`、`Content`、`Config`、`Docs`、`BuildScripts`、`.git`、uproject、AutomationReports、Packages、Autosaves、SaveGames、Logs 和 Screenshots 永久不在清理集合中。
 - 公共 CLI、退出码、报告 Schema、磁盘门禁和人工例外的规范说明位于 `Docs/Workflow/BuildGuide.md`；破坏性更改必须新增 ADR、消费者清单和兼容回归。
 
+# Unreal MCP 安全资产生产合同
+
+**所有者**：Content Authoring Automation。
+
+**建立版本**：v0.0.5。
+
+**消费者**：v0.1.0 及之后需要通过 Unreal MCP 创建或修改 UE Package 的版本。
+
+- 每次写入前必须冻结 Operation Manifest：准确 Package/允许的动态 External roots、Tool/参数、碰撞和可编辑性结果、串行顺序、停止点、精确保存范围、重启与 PIE 门。
+- World Partition 地图不得使用通用 AssetTools Duplicate；使用 UE5.8 官方 Builder，并在主 World、External Actors 和 External Objects 均无碰撞后串行执行。生成哈希 Package 在每个阶段后枚举并冻结路径与 SHA-256。
+- `AssetTools.save_assets` 必须传非空准确列表；空列表、Save All、Resave All、普通文件 IO 和未批准删除/移动/重命名永久禁止。
+- 重启前必须满足 Blueprint warnings-as-errors 编译通过、Manifest 目标逐项保存成功、可查询 AssetRegistry inventory 的逐项 `is_dirty=false`；不可浏览的 External Package 通过冻结清单、SHA-256 和无保存提示的正常关闭门补足，不得把 object ref 当作磁盘 Package path 解释。
+- 资产创建、Blueprint compile、精确保存、Dirty=0、重启回载、引用验证和 PIE 是独立验收状态；任一状态不能由其他状态推断。
+- 测试资产隔离在 `/Game/ProjectR/MCPTest/**` 及任务明确批准的两个对应 External roots，不进入五张正式 `MapsToCook`，正式 Framework 和地图不得引用测试根。
+
 # 1. CombatEvent 合同
 
 **所有者**：Combat。  

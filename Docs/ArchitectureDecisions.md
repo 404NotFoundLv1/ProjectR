@@ -127,6 +127,24 @@ date: "2026-07-10"
 
 **验证**：公共 CLI、WhatIf、清理预览、报告 Schema、退出码和路径门的完整合同测试及独立复审均已通过。最终 `ProjectREditor Win64 Development` Build `v004-final-build-19f4ed6c55e` 退出 0，模块 DLL 后置条件 PASS；Development Package `v004-actual-package-19f4ece2a19` 的 UAT/包装器均退出 0，五张地图精确匹配，归档 EXE、Pak、UTOC、UCAS 均存在且非空。Shipping、Clean Apply、PIE 和 MCP 写入按本版本边界为 `NOT RUN`，不阻断接受本 ADR。
 
+# ADR-014 - 官方 MCP Toolset、World Partition Builder 与精确保存基线
+
+**状态**：Accepted。
+
+**上下文**：v0.0.5 需要把当前 UE5.8 MCP 连接变为可审计资产生产能力，同时测试地图复制会产生 External Package，且旧草案的 Save All 指令违反工程的精确保存合同。当前 Toolset 必须先证明能覆盖 Blueprint、DataAsset、组件、Graph、Actor、保存、重载和 PIE，缺口被证明前不得创建自定义插件。
+
+**选项**：使用 Save All 和通用 Duplicate；预先创建 ProjectR Authoring Toolset；复用 20/261 个官方工具并对 World Partition 单独使用官方 Builder。
+
+**决策**：复用现有官方 Toolset；World Partition 只使用 `WorldPartitionRenameDuplicateBuilder`。DataAsset 冒烟使用非抽象 `/Script/Engine.PrimaryAssetLabel` 并保持标签规则为空/false；不直接实例化 UE5.8 中标记为 Abstract 的 `/Script/Engine.PrimaryDataAsset`。测试 Package 隔离在 `/Game/ProjectR/MCPTest/**` 及两个批准的对应 External roots。所有保存使用 Manifest 非空精确列表，Blueprint compile 与 Dirty=0 后才重启；`ProjectRAuthoringTools` 仅在可复现的官方能力缺口被记录并另行批准后创建。
+
+**后果**：v0.1.0 可直接复用 Manifest、碰撞、精确保存、Dirty、重载、PIE、BuildEditor 和 AutomationReport，不依赖新的插件或运行时类型。测试资产不进入正式打包地图清单。
+
+**影响版本/合同**：v0.0.5 建立 MCP 安全资产生产合同；v0.1.0 只消费工具和验证入口，不消费测试资产或新增玩法 API。工程名、模块名、Targets、GameplayTags、Save、正式地图和 Framework 不变。
+
+**迁移/回滚**：文档可反向撤销；失败测试 Package 留在隔离根并输出准确路径/哈希，未获批准不自动删除。不得使用硬重置、Git clean、普通文件 IO、Save All、Resave All 或 GC。
+
+**验证**：合同静态门在首次 Package 写入前通过。首次尝试证明抽象 `PrimaryDataAsset` 能创建内存对象但 SavePackage 明确拒绝；经用户批准只丢弃两个未落盘测试对象并改用具体 `PrimaryAssetLabel`。BuildEditor 退出 0；Builder 生成 1 Map、65 External Actor、2 External Object，放置 Actor 后 External Actor 为 66；Blueprint/DataAsset 创建、warnings-as-errors 编译、非空精确保存、默认文化重启回载、引用验证和 PIE 均分别 PASS。PIE 日志出现 `ProjectR MCP smoke PASS`，截图非黑屏且 Cube 可见，停止后 248 个可查询资产 Dirty 为 0；原有 1102 个 Package 的 SHA-256 全部不变。AutomationReport `v005-report-20260711T022722Z` 汇总 14/14 required checks 为 PASS。
+
 # ADR 模板
 
 ```text

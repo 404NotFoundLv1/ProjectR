@@ -103,6 +103,20 @@ date: "2026-07-10"
 - Future Compatibility Review：v0.0.5 可原样复用已通过合同回归、真实 Build 与真实 Package 的稳定入口、五地图 Config 事实源和 SchemaVersion 1 报告；`/Game/ProjectR/MCPTest/**` 未进入正式打包清单。工程名、模块名、Targets、地图路径、GameplayTags、Blueprint API、Save 和 UE Package 均未改变，无需下游大规模改写。
 - v0.0.4 正式提交已创建：`380d2c1e7b4d1b5069a5252e1cb00e5e8b85b09e`（`v0.0.4 Add build scripts and build guide`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
+# 2026-07-11 - v0.0.5 Unreal MCP 安全资产生产基线（Completed）
+
+- KI-011 在首次 Package 写入前完成 RED→GREEN 合同门：Allowed paths 增加两个准确 External roots，Save All/空数组保存被禁止，重启顺序冻结为 compile PASS → exact save PASS → Dirty=0。
+- BuildEditor Development `v005-build-20260711T022722Z` 实际退出 0；全部收尾后再次运行 `v005-final-build-20260711T034624Z`，目标 up to date、包装器/子进程退出 0、DLL 后置条件 PASS、`Result: Succeeded`。官方 `WorldPartitionRenameDuplicateBuilder` 实际退出 0，复制后为 1 Map、65 External Actor、2 External Object。
+- 首次计划的 `/Script/Engine.PrimaryDataAsset` 因 UE5.8 标记 Abstract 而被 SavePackage 拒绝；用户批准只丢弃两个未落盘测试对象。随后使用具体 `PrimaryAssetLabel` 创建并保存 `DA_MCPAuthoringSmoke`，未删除或覆盖用户文件。
+- 官方 Toolset 创建 `BP_MCPAuthoringSmokeActor`，配置 `SmokeData`、SmokeCube、Engine Cube、Transform 和 BeginPlay→PrintString；warnings-as-errors 编译与非空精确保存均 PASS。测试地图放置唯一 Actor 后新增 External Actor 为 66。
+- 默认文化重启后整图 DSL 曾返回空；经用户批准的一次官方 node-level 只读复核确认 Graph、执行连接和 Pin 值完整存在，根因为本地化 Node Type ID 的反编译假阴性。未执行重复节点写入，也未创建 `ProjectRAuthoringTools`。
+- 重启回载验证 DataAsset、Blueprint、组件、变量、Graph、引用和地图 Actor 均保持。Blueprint 依赖仅含测试 DataAsset 与 Engine Cube；DataAsset 仅被测试 Blueprint 引用；Blueprint 仅被测试 External Actor 引用，正式 Package 不引用 MCPTest。
+- Selected Viewport PIE 实际为 running=true，日志新增 `ProjectR MCP smoke PASS`；截图非黑屏且测试 Cube 可见，新时间窗无阻断 Error。StopPIE 后 running=false。
+- PIE 后 `/Game` inventory 为 302 项，其中 248 个可查询资产 Dirty 全为 false；54 个不可浏览 External Object 通过物理清单/SHA-256 门验证。最终新增 Package 71（3 主、66 EA、2 EO），工程 Package/地图为 1173/10；原有 1102 个 Package 与受保护工程文件哈希全部不变，暂存路径为 0。
+- AutomationReport `v005-report-20260711T022722Z` 实际退出 0，14/14 required checks 为 PASS。KI-005、KI-011、KI-012 Closed；KI-004 Open，KI-006 Accepted Risk。
+- Future Compatibility Review：v0.1.0 可直接复用 20/261 Toolset 矩阵、Operation Manifest、精确保存、复合 Dirty 门、重启回载、BuildEditor 和 AutomationReport。工程名、模块名、Targets、Config、Source、GameplayTags、正式地图/Framework、Save 和正式打包清单均未改变；未提前实现 v0.1.0。
+- 本轮未暂存、提交、推送或运行 GC；`CURRENT_VERSION.md` 保持 v0.0.5 / In Progress。建议提交名：`v0.0.5 Establish safe Unreal MCP authoring baseline`。
+
 # 版本记录模板
 
 ```text

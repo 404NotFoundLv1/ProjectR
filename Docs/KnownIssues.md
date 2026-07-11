@@ -13,13 +13,14 @@ date: "2026-07-10"
 | KI-002 | 正式 APR/UPR Framework 已建立；模板与 Variant 仅保留为参考 | 正式系统不再依赖模板 Framework，后续仍需避免重新引入 | v0.0.3 父类、地图依赖和 Source 审计均无模板/Variant Framework 引用 | Closed |
 | KI-003 | GAS 基础模块下限已接入；ASC、AttributeSet、GameplayAbility/Effect 尚未实现 | GAS 运行时玩法仍不可用 | v0.1.1 实现 ASC/AttributeSet/默认属性并构建通过 | Open |
 | KI-004 | GameplayTagsToolset 已启用并验证；专用 GAS/UMG/Automation/Animation 等 Toolset 仍未启用 | Tag 自动化可用，其他对应 Editor 自动化能力未承诺 | 相关版本前选择性启用并重审计 | Open |
-| KI-005 | 通用 MCP 没有直接创建空白关卡 Tool；v0.0.3 已验证官方 World Partition Builder 复制路径 | 新地图仍需批准模板复制或未来专用 Tool | v0.0.5 完成安全资产生产冒烟；必要时创建专用 Tool | Open |
+| KI-005 | 通用 MCP 没有直接创建空白关卡 Tool；官方 World Partition Builder 已完成受控复制、External Package 枚举、重载和 PIE | 已有安全模板复制路径，不阻断资产生产基线 | v0.0.5 Builder、精确保存、重启回载与 PIE 全部通过 | Closed |
 | KI-006 | UE MCP 为 Experimental | Tool Schema/API 可能变化 | 每次引擎升级重新审计；不作为运行时依赖 | Accepted Risk |
 | KI-007 | 首次 Build、自动 PIE 与移动/镜头/跳跃人工验收均已记录 | 主观操作门已有可审计结果 | Build 退出 0；自动 PIE 无新增阻断日志；ManualOperationsRunbook 第 6 节三项 PASS | Closed |
 | KI-008 | 当前没有版本化 SaveGame | 后续关系/墓园易返工 | v0.1.4 建立合同与迁移测试 | Planned |
 | KI-009 | 误暂存的生成物仍作为不可达 loose objects 占用 `.git`，审计时约 1.34 GiB | 本地仓库占用偏大，但不影响工作树或正确索引 | 首次基线提交后另行批准并验证安全 GC；本版本禁止主动清理 | Open |
 | KI-010 | 无 HEAD 的首次基线上，`git diff --cached --check` 报告模板 Source/Config 和既有文档中的尾空格/EOF 空行 | 全量 cached whitespace gate 为 FAIL；不影响 Build/PIE，但阻止把静态门写成通过 | 在允许修改各路径且有兼容审查的独立卫生变更中建立格式基线；v0.0.0 不越权批量改写 | Open |
-| KI-011 | v0.0.5 草案的 World Partition MCP 冒烟 Allowed paths 未覆盖 External Actors/Objects，且“Save All 后重启”与精确 Package 保存合同冲突 | 合同修正前，v0.0.5 不能安全执行模板地图复制或保存/重启门 | v0.0.5 首次 MCP 写入前，任务合同列出准确 External Package roots，改为 Manifest 精确保存且 Dirty=0 后重启，并完成只读启动审计 | Open |
+| KI-011 | v0.0.5 草案的 World Partition MCP 冒烟 Allowed paths 未覆盖 External Actors/Objects，且“Save All 后重启”与精确 Package 保存合同冲突 | 合同修正前，v0.0.5 不能安全执行模板地图复制或保存/重启门 | v0.0.5 首次 MCP 写入前，任务合同列出准确 External Package roots，改为 Manifest 精确保存且 Dirty=0 后重启，并完成只读启动审计 | Closed |
+| KI-012 | 默认文化下整图 DSL 反编译因本地化 Node Type ID 返回假阴性；node-level 回读证明 Graph 未丢失 | 整图 DSL 结果不能脱离 node-level/PIE 证据单独判定 Graph 持久化 | 默认文化重启后 node-level 连接与 Pin 精确匹配，PIE 输出日志标记并停止成功 | Closed |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -49,6 +50,16 @@ date: "2026-07-10"
 - 初次磁盘门禁 65 已由用户释放系统卷空间后消除；真实 BuildEditor `v004-final-build-19f4ed6c55e` 与 Development Package `v004-actual-package-19f4ece2a19` 均 PASS，未形成长期问题。
 - 最终脚本快照的完整合同测试与独立复审均实际退出 0，Spec compliance PASS、Code quality Approved；真实 Build/Package 及产物后置条件也已通过，v0.0.4 可关闭并接受 ADR-013。
 - KI-003、KI-004、KI-005、KI-006、KI-008、KI-009、KI-010 的状态不变；本版本不实现 GAS、Save、MCP Toolset、资产写入或 Git GC。
+
+# 2026-07-11 - v0.0.5 Known Issues Review（Completed）
+
+- KI-011 关闭：只读审计确认源 World Partition 地图包含 65 个 External Actor 与 2 个 External Object Package；v0.0.5 Allowed paths 已增加两个准确 External roots，并把 Save All 改为 Blueprint 编译、Manifest 非空精确保存、全量意外 Dirty=0 后重启。合同静态门在首次 Package 写入前单独执行。
+- KI-004 保持 Open：当前 20/261 个官方工具已覆盖本版本需要的资产能力，无需启用其他专用 Toolset。
+- KI-005 关闭：官方 World Partition Builder、External Package 数量/哈希、精确保存、默认文化重启回载和 PIE 均取得实际 PASS；本版本不需要空白地图 Tool 或自定义插件。
+- KI-006 保持 Accepted Risk：Graph DSL 文化差异、External Actor 首次保存时序和 Experimental Schema 均通过已记录的停止点与回读门约束。
+- 启动实施发现 UE5.8 的 `UPrimaryDataAsset` 为 Abstract：工具可创建内存对象，但 SavePackage 明确拒绝。用户批准只丢弃本轮两个未落盘测试对象；合同改用具体 `UPrimaryAssetLabel`。该失败未删除或覆盖磁盘文件，属于已定位并当期修正的类型选择错误，不新增长期 KI。
+- KI-012 关闭：默认文化下整图 DSL 的空结果是本地化 Type ID 引起的反编译假阴性。经用户批准的一次官方 node-level 复核确认 BeginPlay、PrintString、执行连接和 Pin 值均在重启后存在；warnings-as-errors 编译、精确保存、再次默认文化重载与 PIE 日志标记全部通过。
+- KI-004 保持 Open，KI-006 保持 Accepted Risk；当前 20/261 个官方工具与 Builder 已覆盖本版本，不启用额外 Toolset，也不创建 `ProjectRAuthoringTools`。
 
 # 记录规则
 

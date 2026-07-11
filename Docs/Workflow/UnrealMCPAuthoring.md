@@ -6,9 +6,9 @@ date: "2026-07-10"
 ---
 
 # 已验证连接
-ProjectR 的 Codex 配置指向 `http://127.0.0.1:8000/mcp`。审计时该端口由打开 `ProjectR.uproject` 的 UnrealEditor 进程监听，读取调用返回当前关卡 `/Game/ThirdPerson/Lvl_ThirdPerson`。
+ProjectR 的 Codex 配置指向 `http://127.0.0.1:8000/mcp`。v0.0.5 启动审计时该端口由打开 `ProjectR.uproject` 的 UnrealEditor 进程监听，协议协商为 `2025-11-25`，读取调用返回当前关卡 `/Game/ProjectR/Maps/L_MainMenu`、PIE=false、无打开或选中资产且地图未 Dirty。
 ## 当前暴露能力
-Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.0.2 重启实测其后是 20 个 Toolset、261 个底层 Tool。
+Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.0.5 再次逐 Toolset 审计，实测其后仍为 20 个 Toolset、261 个底层 Tool。
 | Toolset | Tool 数 | 主要能力 |
 |---|---:|---|
 | AgentSkillToolset | 4 | UE AgentSkill 资产查询与创建 |
@@ -60,8 +60,9 @@ GAS/GameplayEffect、完整 UMG Designer Tree、StateTree/BehaviorTree、AnimBlu
 - 不通过 shell 或普通文件 IO 修改 `.uasset/.umap`。
 - 写入串行；不让多个 Agent 同时写同一 Editor。
 - 默认仅写 `/Game/ProjectR/`，测试写 `/Game/ProjectR/MCPTest/`。
+- World Partition 测试地图只额外允许当前任务明确列出的 `/Game/__ExternalActors__/ProjectR/MCPTest/**` 与 `/Game/__ExternalObjects__/ProjectR/MCPTest/**`；生成哈希路径必须在每个写入阶段后枚举冻结。
 - 未批准不覆盖、重命名、移动、删除、批量迁移或 Resave All。
-- 写入前检查 exists/can_edit；写入后精确 save_assets。
+- 写入前检查 exists/can_edit；写入后只使用非空精确列表调用 `save_assets`。空数组等价于 Save All，永久禁止。
 - 不因 create 返回成功就声称资产有效。
 
 # v0.0.4 自动化报告衔接
@@ -70,14 +71,24 @@ GAS/GameplayEffect、完整 UMG Designer Tree、StateTree/BehaviorTree、AnimBlu
 - 后续 MCP 任务使用 `BuildScripts/AutomationReport.bat` 汇总已经实际取得的独立 check。报告入口不调用 MCP，也不把 create 返回值推断为 Blueprint compile、Package save、restart load 或 PIE 通过。
 - v0.0.5 至少为资产创建、Blueprint compile、Manifest 精确保存、意外 Dirty=0、重启回载和 PIE 分别提供 check；未执行项必须写 `NOT_RUN`。
 - `Saved/AutomationReports/<RunId>/<EntryPoint>-<Configuration>/` 是被忽略的本地证据目录，不是 UE Package 根，也不得作为 CleanGenerated Apply 的候选。
-- v0.0.5 草案尚有 KI-011/E-012/E-013：World Partition 测试地图的 External Package roots 未进入 Allowed paths，“Save All 后重启”与精确保存合同冲突。首次 MCP 写入前必须在 v0.0.5 启动审计修正并取得批准；v0.0.4 不提前修改该任务页或创建测试资产。
+- v0.0.5 启动审计确认模板地图包含 65 个 External Actor 与 2 个 External Object Package，并已将两个准确测试 External roots 加入任务 Allowed paths；E-012/E-013 的 Save All 冲突改为“warnings-as-errors 编译通过、Manifest 非空精确保存成功、全量意外 Dirty=0 后重启”。该合同必须在首次 Package 写入前独立静态验证。
 
 # 建议 v0.0.5 冒烟测试
 1. 查询目标路径不存在。
-2. 创建测试 DataAsset 并设置属性。
-3. 创建 C++ 子类 Blueprint、添加组件、设置 CDO。
+2. 使用非抽象 `/Script/Engine.PrimaryAssetLabel` 创建测试 DataAsset，保持 Runtime Label、目录标签和显式资产集合为空/false，并验证类型、路径、保存、引用与重载；UE5.8 的 `/Script/Engine.PrimaryDataAsset` 标记为 Abstract，创建内存对象后 SavePackage 必然拒绝，不得直接实例化，也不为冒烟测试新增运行时数据类。
+3. 创建 Actor Blueprint、添加组件、设置 CDO 与指向测试 DataAsset 的默认引用。
 4. 写入简单 EventGraph，编译并保存。
 5. 复制模板地图、放置 Actor、保存。
 6. 检查 Dirty/日志/引用。
 7. 重启 Editor 后重新加载。
 8. PIE 并采集日志/截图。
+
+# v0.0.5 精确保存与 Dirty 审计
+
+- 主测试 Package 固定为 `BP_MCPAuthoringSmokeActor`、`DA_MCPAuthoringSmoke` 和 `L_MCPAuthoringSmoke`；地图复制使用 UE5.8 官方 World Partition Builder，不调用通用 AssetTools Duplicate。
+- Blueprint 使用临时 Editor 参数 `-culture=en` 完成 DSL node discovery/write/read，精确保存且 Dirty=0 后再以默认文化重启验证；不修改工程文化配置。
+- 新 External Actor 优先使用 `SceneTools.save_actor`；若 AssetRegistry 首次时序导致失败，只能对 MCP 返回的准确 Actor object ref 使用单项非空 `save_assets`。
+- 全量 Dirty 门先对 `/Game` AssetRegistry inventory 中可查询资产逐项执行 `is_dirty`；不可浏览的 External Objects/Actors 由 Manifest 精确保存、物理 Package 清单与 SHA-256、以及正常关闭无 Save Content 提示共同验证。Actor object ref 不能直接作为磁盘 Package path 传给 `is_dirty`。
+- 当前官方工具覆盖 Blueprint、具体 `PrimaryAssetLabel` DataAsset、Blueprint 组件、Graph、Actor、精确保存、重载和 PIE；地图复制由官方 Builder 覆盖，因此 v0.0.5 不创建 `ProjectRAuthoringTools`。若 compile/restart 后组件或 Graph 丢失，或 Dirty 门不能闭合，立即停止并记录缺口，不在同轮创建插件。
+- v0.0.5 实测 `write_graph_dsl` 在 `-culture=en` 中写入、回读、warnings-as-errors 编译并精确保存成功。默认文化重启后的整图 DSL 反编译曾返回空，随后经用户批准使用现有官方 node-level 只读接口复核，确认 EventGraph 实际完整持久化：一个 BeginPlay 连接一个 PrintString，Pin 值和日志字符串均正确；根因是本地化 Node Type ID 导致整图 DSL 的假阴性，而非 Graph 丢失。默认文化重载与 PIE 均 PASS，因此关闭 KI-012，不创建插件。
+- `AssetTools.find_assets` 会列出非 browsable 的 `__ExternalObjects__`，但 `is_dirty` 对这些路径明确返回 Asset does not exist；External Actor 哈希 Package 同样不能作为普通 browsable asset 查询。Dirty 门因此由可查询 AssetRegistry 条目逐项 `is_dirty`、Manifest 对象精确保存、External Package SHA-256 和关闭 Editor 无 Save Content 提示共同闭合，不能对 Actor object ref 的 `is_dirty=true` 作结论，因为实现会把 object ref 当磁盘 Package path 比较而产生假阳性。
