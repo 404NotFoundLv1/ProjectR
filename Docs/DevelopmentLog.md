@@ -117,6 +117,23 @@ date: "2026-07-10"
 - Future Compatibility Review：v0.1.0 可直接复用 20/261 Toolset 矩阵、Operation Manifest、精确保存、复合 Dirty 门、重启回载、BuildEditor 和 AutomationReport。工程名、模块名、Targets、Config、Source、GameplayTags、正式地图/Framework、Save 和正式打包清单均未改变；未提前实现 v0.1.0。
 - v0.0.5 正式提交已创建：`e9ba1ae3090c86688819b08b68aeb3effb0ab389`（`v0.0.5 Establish safe Unreal MCP authoring baseline`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
+# 2026-07-11 - v0.1.0 Enhanced Input 与 2.5D 移动（Completed）
+
+- 以 TDD 实施 `UPRInputConfigDataAsset`、Controller Mapping Context 生命周期、Character X/Z 移动/Y 平面约束/左右 Mesh 朝向和六个语义输入钩子；RED Build 因目标 Header 不存在退出 6，生产实现后的正式 Build 转为成功。
+- Unreal MCP 串行创建并精确保存六个 InputAction、`IMC_Player`、`DA_PlayerInputConfig`，并修改 `BP_PlayerController` CDO；`BP_PlayerCharacter` 后续由用户明确确认保存并要求保留。九项自动非空保存 Manifest、用户批准的 Character Package 保存、重启回载与两个 Blueprint warnings-as-errors 编译均有独立证据。
+- IMC 实际为 13 条基线 Mapping，A 唯一使用 `InputModifierNegate`；InputConfig 六组既有 Tag/Action 精确对应。正式输入资产不引用 `/Game/Input`、Variant 或 MCPTest；GameplayTag 仍为 53，Config、地图、uproject、Build.cs 和 Targets 未修改。
+- 官方 20/261 Tool 缺少真实 PIE 输入注入，经用户批准新增最小 Editor-only `ProjectRAuthoringTools`。插件只提供 `RunPIEInputSmoke`，自动加载后 MCP 为 21/262，不保存 Package或暴露任意代码执行。
+- 插件初次注册因 `Default` LoadingPhase 早于 ToolsetRegistrySubsystem 初始化而失败，改用官方 Toolset 相同的 `PostEngineInit` 后解决。首次输入调用因 `CreateSimulated` 的默认 null Viewport 在 GameViewportClient 中被解引用而崩溃；传入实际 `FSceneViewport` 与默认 InputDevice 后复验通过，崩溃没有产生 Package Dirty 或落盘变化。
+- 修复后 CombatGym PIE 实测：D/A 位移 `+126.69/-94.12 cm`，键鼠/手柄跳跃上升约 `85.56 cm`，最大 Y 漂移 `0 cm`，Mesh yaw `-90/+90`，Actor 旋转与相机 Transform 稳定。Mapping Context Add 日志一次；Attack/Dodge/Interact/Execute 的 Pressed/Released 各收到一次键鼠和一次手柄事件。
+- 原生自动化最终报告 `v010-native-final-20260711` 为 3 succeeded、0 warning、0 failure；加入 PIE 中断安全护栏后的最终 BuildEditor `v010-final-build-20260711b` 包装器/子进程退出 0。最终 Package/地图/Source/Config 为 1181/10/109/6，八个新 Package 具备 LFS 属性，原 1173 Package 聚合基线不变，暂存路径为 0。
+- 自动 PIE 已 Stop，PIE 后 256 个可查询资产 Dirty=0；截图非黑屏且灰盒环境可读。首次人工结果暴露空中反向问题，随后按 KI-014 完成当前版本内修复和复验。
+- 首次人工键鼠验收返回 FAIL：跳跃中按反方向只翻转 Mesh，实际仍沿原方向惯性移动。根因证据为正式 CharacterMovement `AirControl=0.05`、Falling lateral friction/braking 均为 0；用户确认采用空中反向时同幅翻转 X 速度的方案，不修改速度上限、跳高或资产。
+- 新增 PIE 回归断言先在旧实现得到 `airReverseDeltaX≈0.000005 cm` 的预期 RED；修复后连续三次 PASS，0.1 秒反向位移约 `-44～47 cm`、Y 漂移 `0 cm`、相机/Actor 稳定；用户键鼠复验返回 PASS，KI-014 关闭。
+- 用户追加要求 Mesh 转向不瞬切并批准 0.12 秒方案。实现以 Timer 驱动 Ease-In-Out，不启用永久 Tick，实际移动仍即时反向；快速 A/D 从当前 yaw 重启插值。旧实现的早期样本为端点 `90`（RED），新实现诊断得到早期 `-83.06`、最终 `90`，快速反向从当前 `62.22` 连续收敛（GREEN）。
+- 最终 BuildEditor `v010-smooth-facing-final2-20260711` 退出 0；标准 PIE PASS：D/A 位移 `+126.69/-94.12 cm`、键鼠/手柄跳跃约 `85.56 cm`、Y 漂移 `0`、最终 Mesh yaw `-90/+90`、Actor/相机稳定。原生自动化报告 `v010-smooth-facing-final-20260711/Automation-Editor/index.json` 为 3/3 PASS；全 `/Game` 310 条记录中 256 个可查询资产 Dirty=0，54 条 ExternalObjects 按工具限制排除。用户平滑转向手感返回 PASS，KI-015 关闭。
+- 最终 AutomationReport `v010-final-20260711/v010-final-None/result.json` 实际退出 0，22/22 required checks PASS；`PhysicalGamepadHandfeel` 为 optional `NOT_RUN`。v0.1.0 任务页和 VersionIndex 标记 Completed，`CURRENT_VERSION.md` 保持 v0.1.0，未暂存、未提交、未推送。
+- Future Compatibility Review（自动部分）：v0.1.1 可增量接入 ASC/AttributeSet；v0.1.3 可覆写 native Tag 钩子；v0.3.2 可增加 QTE Action/Tag/Mapping；v0.8.2 可替换玩家 Mapping。未引入未来具体类型、Save/Tag/API/正式地图破坏。
+
 # 版本记录模板
 
 ```text

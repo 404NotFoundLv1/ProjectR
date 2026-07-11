@@ -145,6 +145,24 @@ date: "2026-07-10"
 
 **验证**：合同静态门在首次 Package 写入前通过。首次尝试证明抽象 `PrimaryDataAsset` 能创建内存对象但 SavePackage 明确拒绝；经用户批准只丢弃两个未落盘测试对象并改用具体 `PrimaryAssetLabel`。BuildEditor 退出 0；Builder 生成 1 Map、65 External Actor、2 External Object，放置 Actor 后 External Actor 为 66；Blueprint/DataAsset 创建、warnings-as-errors 编译、非空精确保存、默认文化重启回载、引用验证和 PIE 均分别 PASS。PIE 日志出现 `ProjectR MCP smoke PASS`，截图非黑屏且 Cube 可见，停止后 248 个可查询资产 Dirty 为 0；原有 1102 个 Package 的 SHA-256 全部不变。AutomationReport `v005-report-20260711T022722Z` 汇总 14/14 required checks 为 PASS。
 
+# ADR-015 - 语义输入配置、Controller 生命周期与最小 PIE 输入 Toolset
+
+**状态**：Accepted。
+
+**上下文**：v0.1.0 需要建立可由 GAS、QTE 与重绑定系统增量消费的正式 Enhanced Input 层，并客观证明键鼠与手柄路径在真实 PIE 中生效。现有 20/261 个官方 Tool 覆盖 InputAction、IMC、DataAsset、Blueprint、保存、Dirty、重载和 PIE，但没有键、轴或手柄事件注入入口。
+
+**选项**：只做人工输入验收；把 InputAction 直接绑定未来 Ability 类；创建覆盖资产生产的通用插件；保留官方资产工具并只增加一个窄范围 Editor-only 输入冒烟工具。
+
+**决策**：正式输入通过 `UPRInputConfigDataAsset` 的 InputTag→InputAction 数据合同驱动；`APRPlayerController` 幂等拥有 Mapping Context 生命周期，`APRPlayerCharacter` 负责 X/Z 移动、生成 Y 平面约束、Mesh 左右朝向和 protected native 语义钩子。空中反向输入按用户确认采用动作游戏式即时转向：只把当前 X 速度以相同绝对值切换到输入方向，Z/Y、地面参数、最大速度和跳跃参数不变。实际移动与视觉朝向解耦：输入方向立即生效，Mesh 使用无永久 Tick 的 0.12 秒 Timer Ease-In-Out；快速反向从当前 yaw 重新插值。经用户单独批准创建无 Content 的 `ProjectRAuthoringTools`，只注册 `RunPIEInputSmoke`；工具在活跃 PIE 中注入固定键/轴序列、采样客观状态并释放全部输入，不提供资产保存或任意代码执行。
+
+**后果**：v0.1.1 不必改写 Context 生命周期；v0.1.3 可覆写语义钩子转发 InputTag；v0.3.2 与 v0.8.2 可增量扩展配置。插件依赖 ProjectR 仅存在于 Editor 模块，Runtime/Shipping 不反向依赖 ToolsetRegistry。
+
+**影响版本/合同**：冻结 `/Game/ProjectR/Input/` 下八个基线资产路径、`FPRTaggedInputAction`、`UPRInputConfigDataAsset`、Controller 只读获取入口和 Character native 钩子。不新增 GameplayTag、Save 字段、Ability、QTE、Config 或 Blueprint callable 玩法 API。
+
+**迁移/回滚**：文本/C++/插件只反向撤销本轮准确 diff；Controller CDO 可精确恢复空引用。已保存的八个新 Package 未获逐项删除批准时只隔离并列出 Referencer，不自动删除。禁止硬重置、Git clean、Save All、Resave All 和 Fix Redirectors。
+
+**验证**：TDD RED Build 因缺少 InputConfig 合同退出 6；实现后 Build 成功。插件首次在 `Default` 阶段注册时因 ToolsetRegistrySubsystem 尚未初始化而失败，改用 UE 官方 Toolset 相同的 `PostEngineInit` 后自动显示为第 21 个 Toolset/第 262 个 Tool。首次 PIE 注入暴露 `CreateSimulated` 默认空 Viewport 导致的访问冲突；按 UE5.8 API 传入实际 `FSceneViewport` 与默认 InputDevice 后复验 PASS。首次人工手感发现空中反向只改变 Mesh、实际速度未立即反转；新增 PIE 断言在旧实现上得到 Falling 状态但 `airReverseDeltaX≈0.000005 cm` 的预期 RED。修复后同会话两次及新 PIE 会话一次均 PASS：反向前速度约 `+435～469 cm/s`，下一采样变为 `-445～479 cm/s`，0.1 秒实际反向位移约 `-44～47 cm`，Y 漂移 `0 cm`；用户键鼠复验 PASS。平滑朝向先在旧瞬时实现得到 `leftFacingEarlyYaw=90` 的 RED，0.12 秒实现的诊断序列得到中间角 `-83.06`、最终 `90`，快速反向从 `62.22` 连续过渡到 `90` 的 GREEN。最终标准 PIE 为移动、双输入跳跃、平面、最终左右朝向、Actor/相机稳定 PASS；平滑主观手感仍由用户最终确认。
+
 # ADR 模板
 
 ```text

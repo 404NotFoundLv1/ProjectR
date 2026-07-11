@@ -1,0 +1,32 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "ProjectR Authoring Tools",
+  "Description": "Minimal editor-only automation tools for auditable ProjectR authoring tests.",
+  "Category": "ProjectR",
+  "CreatedBy": "ProjectR",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "Installed": false,
+  "Plugins": [
+    {
+      "Name": "EnhancedInput",
+      "Enabled": true
+    },
+    {
+      "Name": "ToolsetRegistry",
+      "Enabled": true
+    }
+  ],
+  "Modules": [
+    {
+      "Name": "ProjectRAuthoringTools",
+      "Type": "Editor",
+      "LoadingPhase": "PostEngineInit",
+      "PlatformAllowList": [
+        "Win64"
+      ]
+    }
+  ]
+}

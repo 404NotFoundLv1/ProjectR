@@ -21,6 +21,9 @@ date: "2026-07-10"
 | KI-010 | 无 HEAD 的首次基线上，`git diff --cached --check` 报告模板 Source/Config 和既有文档中的尾空格/EOF 空行 | 全量 cached whitespace gate 为 FAIL；不影响 Build/PIE，但阻止把静态门写成通过 | 在允许修改各路径且有兼容审查的独立卫生变更中建立格式基线；v0.0.0 不越权批量改写 | Open |
 | KI-011 | v0.0.5 草案的 World Partition MCP 冒烟 Allowed paths 未覆盖 External Actors/Objects，且“Save All 后重启”与精确 Package 保存合同冲突 | 合同修正前，v0.0.5 不能安全执行模板地图复制或保存/重启门 | v0.0.5 首次 MCP 写入前，任务合同列出准确 External Package roots，改为 Manifest 精确保存且 Dirty=0 后重启，并完成只读启动审计 | Closed |
 | KI-012 | 默认文化下整图 DSL 反编译因本地化 Node Type ID 返回假阴性；node-level 回读证明 Graph 未丢失 | 整图 DSL 结果不能脱离 node-level/PIE 证据单独判定 Graph 持久化 | 默认文化重启后 node-level 连接与 Pin 精确匹配，PIE 输出日志标记并停止成功 | Closed |
+| KI-013 | 官方 20/261 Toolset 没有键鼠/手柄 PIE 输入注入；首版自定义调用未给 `CreateSimulated` 提供实际 Viewport 而崩溃 | 无法自动证明真实 Enhanced Input 路径；错误实现会使 Editor 崩溃 | 用户批准最小 Editor-only Toolset；传入实际 `FSceneViewport`/默认 InputDevice 后键鼠和手柄序列、释放、移动、跳跃、平面、朝向和语义日志全部 PASS | Closed |
+| KI-014 | 首次人工验收发现跳跃中反向输入只改变 Mesh 朝向，实际 X 速度未立即反转 | 2.5D 动作移动在空中换向时不符合已确认手感 | PIE 回归断言在旧实现 RED；同幅翻转 X 速度后自动序列连续三次 PASS；用户键鼠复验 PASS | Closed |
+| KI-015 | 即时 Mesh yaw 切换满足方向正确性，但用户认为视觉转向过于生硬 | 左右快速换向的视觉手感不够自然 | 0.12 秒 Ease-In-Out 的 RED→GREEN 诊断、Build、标准 PIE 与最终用户手感全部 PASS | Closed |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -60,6 +63,16 @@ date: "2026-07-10"
 - 启动实施发现 UE5.8 的 `UPrimaryDataAsset` 为 Abstract：工具可创建内存对象，但 SavePackage 明确拒绝。用户批准只丢弃本轮两个未落盘测试对象；合同改用具体 `UPrimaryAssetLabel`。该失败未删除或覆盖磁盘文件，属于已定位并当期修正的类型选择错误，不新增长期 KI。
 - KI-012 关闭：默认文化下整图 DSL 的空结果是本地化 Type ID 引起的反编译假阴性。经用户批准的一次官方 node-level 复核确认 BeginPlay、PrintString、执行连接和 Pin 值均在重启后存在；warnings-as-errors 编译、精确保存、再次默认文化重载与 PIE 日志标记全部通过。
 - KI-004 保持 Open，KI-006 保持 Accepted Risk；当前 20/261 个官方工具与 Builder 已覆盖本版本，不启用额外 Toolset，也不创建 `ProjectRAuthoringTools`。
+
+# 2026-07-11 - v0.1.0 Known Issues Review（Completed）
+
+- KI-013 关闭：官方 Toolset 的输入注入缺口已由用户批准的单工具 Editor-only 插件补足。首次崩溃根因是 `FInputKeyEventArgs::CreateSimulated` 默认 Viewport 为 null，而 `UGameViewportClient::RemapControllerInput` 在 UE5.8 会解引用 Viewport；修复后真实 PIE 自动序列完整 PASS，崩溃未保存或修改任何 Package。
+- KI-004 保持 Open：Automation、GAS、UMG、Animation 等其他专用 Toolset 仍按相关版本选择性审计；本版本不启用它们。
+- KI-006 保持 Accepted Risk：ProjectR Toolset 使用实际 Schema、`PostEngineInit` 注册、严格参数和重启/PIE 回归约束 Experimental API 风险，不成为 Runtime 依赖。
+- KI-003、KI-008、KI-009、KI-010 状态不变；本版本不提前实现 GAS、Save、Git GC 或全仓格式卫生。
+- KI-014 已关闭：自动化证明空中 D→A 在 0.1 秒内产生约 `-44～47 cm` 实际反向位移且 Y 漂移为 0，用户键鼠复验返回 PASS。
+- KI-015 已关闭：0.12 秒 Timer Ease-In-Out 完成 RED→GREEN 诊断，Build、标准 PIE、最终朝向和相机稳定通过，用户平滑转向手感返回 PASS。
+- v0.1.0 没有未关闭的当前版本阻断；最终 AutomationReport 为 22/22 required PASS、1 optional NOT_RUN。任务页与 VersionIndex 已标记 Completed，`CURRENT_VERSION.md` 不自动推进。
 
 # 记录规则
 

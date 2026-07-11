@@ -92,3 +92,12 @@ GAS/GameplayEffect、完整 UMG Designer Tree、StateTree/BehaviorTree、AnimBlu
 - 当前官方工具覆盖 Blueprint、具体 `PrimaryAssetLabel` DataAsset、Blueprint 组件、Graph、Actor、精确保存、重载和 PIE；地图复制由官方 Builder 覆盖，因此 v0.0.5 不创建 `ProjectRAuthoringTools`。若 compile/restart 后组件或 Graph 丢失，或 Dirty 门不能闭合，立即停止并记录缺口，不在同轮创建插件。
 - v0.0.5 实测 `write_graph_dsl` 在 `-culture=en` 中写入、回读、warnings-as-errors 编译并精确保存成功。默认文化重启后的整图 DSL 反编译曾返回空，随后经用户批准使用现有官方 node-level 只读接口复核，确认 EventGraph 实际完整持久化：一个 BeginPlay 连接一个 PrintString，Pin 值和日志字符串均正确；根因是本地化 Node Type ID 导致整图 DSL 的假阴性，而非 Graph 丢失。默认文化重载与 PIE 均 PASS，因此关闭 KI-012，不创建插件。
 - `AssetTools.find_assets` 会列出非 browsable 的 `__ExternalObjects__`，但 `is_dirty` 对这些路径明确返回 Asset does not exist；External Actor 哈希 Package 同样不能作为普通 browsable asset 查询。Dirty 门因此由可查询 AssetRegistry 条目逐项 `is_dirty`、Manifest 对象精确保存、External Package SHA-256 和关闭 Editor 无 Save Content 提示共同闭合，不能对 Actor object ref 的 `is_dirty=true` 作结论，因为实现会把 object ref 当磁盘 Package path 比较而产生假阳性。
+
+# v0.1.0 Enhanced Input 与 PIE 输入注入
+
+- 官方 DataAsset/Object/Blueprint/Asset Tool 已实际创建、配置、回读、编译和精确保存 InputAction、InputMappingContext、InputConfig 与 Controller CDO；正式 IMC 的嵌套 Mapping、Instanced `InputModifierNegate`、GameplayTag Struct 和对象引用数组均不需要自定义资产 Tool。
+- 现有官方 20/261 Tool 没有键、轴或手柄注入入口。经用户单独批准，`Plugins/ProjectRAuthoringTools` 只注册一个 Editor-only `RunPIEInputSmoke`；重启后为 21 Toolset/262 Tool。该工具不得扩展为资产保存、插件配置或任意代码执行入口。
+- Project Toolset 必须在 `PostEngineInit` 注册；`Default` 阶段 ToolsetRegistrySubsystem 尚不可用。`FInputKeyEventArgs::CreateSimulated` 用于 `UGameViewportClient::InputKey` 时必须显式传入 `UGameViewportClient::GetGameViewport()` 与有效 InputDevice；默认 null Viewport 会在 UE5.8 `RemapControllerInput` 中被解引用。
+- 输入 Runner 使用异步 Ticker 串行执行固定序列，并在成功、失败、PIE 中断和析构路径释放全部键与轴。结果必须分别报告 Context、X 位移、两种跳跃、空中反向窗口的起止速度与位移、Y 漂移、Mesh yaw、Actor yaw 和相机 Transform；空中反向采样起止均须处于 Falling，0.1 秒位移必须进入输入方向。语义钩子次数另由新时间窗日志验证。
+- Editor 低帧率下 CoreTicker 可能在同帧早于 World Timer 采样；不得把固定 0.30 秒的中间 yaw 当成 Timer 失败。标准 Runner 在完整序列结束时检查最终左右朝向；0.12 秒平滑曲线使用单独 RED→GREEN 诊断和人工手感门，避免为通过测试而改变运行时插值。
+- v0.1.0 的保存 Manifest 为八个新输入 Package 加 `BP_PlayerController`；`BP_PlayerCharacter` 只有实际 Dirty 时才能加入。首次保存前完整回读，保存后全量可查询 Dirty=0，再正常重启回载。禁止空列表、Save All、模板/Variant/MCPTest 引用和地图保存。

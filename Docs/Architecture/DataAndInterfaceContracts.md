@@ -83,6 +83,23 @@ date: "2026-07-10"
 - 资产创建、Blueprint compile、精确保存、Dirty=0、重启回载、引用验证和 PIE 是独立验收状态；任一状态不能由其他状态推断。
 - 测试资产隔离在 `/Game/ProjectR/MCPTest/**` 及任务明确批准的两个对应 External roots，不进入五张正式 `MapsToCook`，正式 Framework 和地图不得引用测试根。
 
+# Enhanced Input 与 2.5D 移动合同
+
+**所有者**：Core/Input。
+
+**建立版本**：v0.1.0。
+
+**消费者**：v0.1.1 GAS 基础、v0.1.3 Ability InputTag 路由、v0.3.2 QTE 输入和 v0.8.2 输入重绑定。
+
+- 正式资产根冻结为 `/Game/ProjectR/Input/`；`IA_Move`、`IA_Jump`、`IA_Attack`、`IA_Dodge`、`IA_Interact`、`IA_Execute`、`IMC_Player` 与 `DA_PlayerInputConfig` 是默认基线。
+- `UPRInputConfigDataAsset` 通过 `FPRTaggedInputAction` 把稳定的 `Input.*` GameplayTag 映射到 InputAction；输入层只提交语义 Tag，不绑定具体 GameplayAbility、QTE 或 UI 类型。
+- `APRPlayerController` 的 Blueprint CDO 持有 InputConfig；本地 Controller 幂等添加默认 Mapping Context，并只移除自己拥有的 Context。重复 BeginPlay/OnPossess 不得重复注册。
+- `APRPlayerCharacter` 在每次 `SetupPlayerInputComponent` 从当前 Controller 解析全部必需 Action，解析完整后才绑定；移动只提交世界 X 输入，跳跃使用 CharacterMovement，语义按钮只调用 protected native Pressed/Released 钩子。
+- 空中收到与当前 X 速度反向的有效 Move 输入时，Character 必须立即把 X 速度按原绝对值切换到输入方向；不得改变 Z 速度、生成 Y 平面、地面移动参数、最大速度或跳跃参数。
+- 角色在 BeginPlay 以生成时 Y 为平面原点启用 Y 法线约束；Actor/胶囊和固定相机不随左右朝向旋转。实际 X 移动方向立即响应输入，Mesh 视觉朝向才以 0.12 秒 Ease-In-Out 在 `-90/+90` yaw 之间过渡并保持最后方向；快速反向时必须从当前插值角度重新开始，不能先跳到端点。
+- 正式默认 IMC 包含 v0.1.0 的 13 条基线 Mapping；永久校验只要求基线存在且有效，允许下游增量扩展。重命名或删除正式资产、Tag 或钩子必须提供 ADR、消费者清单和兼容测试。
+- `ProjectRAuthoringTools` 只提供 Editor-only 的真实 PIE 输入注入，不进入 Shipping、不保存 Package，也不成为 ProjectR Runtime 依赖。
+
 # 1. CombatEvent 合同
 
 **所有者**：Combat。  
