@@ -2,6 +2,7 @@
 
 #include "Core/PRPlayerState.h"
 
+#include "Abilities/PRAbilitySetDataAsset.h"
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Characters/PRPlayerCharacter.h"
@@ -70,6 +71,10 @@ bool APRPlayerState::InitializeAbilitySystemForAvatar(APRPlayerCharacter* Avatar
 		return false;
 	}
 	if (HasAuthority() && !EnsureLifeStateForInitializedAvatar())
+	{
+		return false;
+	}
+	if (HasAuthority() && !GrantInitialAbilitySets())
 	{
 		return false;
 	}
@@ -232,4 +237,43 @@ bool APRPlayerState::EnsureLifeStateForInitializedAvatar()
 		AliveTag, 1, EGameplayTagReplicationState::TagOnly);
 	return ProjectRAbilitySystemComponent->GetGameplayTagCount(AliveTag) == 1
 		&& ProjectRAbilitySystemComponent->GetGameplayTagCount(DeadTag) == 0;
+}
+
+bool APRPlayerState::GrantInitialAbilitySets()
+{
+	if (!IsValid(ProjectRAbilitySystemComponent))
+	{
+		return false;
+	}
+
+	for (UPRAbilitySetDataAsset* AbilitySet : InitialAbilitySets)
+	{
+		if (!IsValid(AbilitySet))
+		{
+			UE_LOG(LogProjectR, Error,
+				TEXT("PlayerState %s has an invalid InitialAbilitySet."), *GetPathName());
+			return false;
+		}
+		FPRAbilitySetGrantHandle Handle;
+		const EPRAbilitySetOperationStatus Status = ProjectRAbilitySystemComponent->GrantAbilitySet(
+			AbilitySet, EPRAbilitySetGrantMode::InitializationOnly, Handle);
+		if (Status != EPRAbilitySetOperationStatus::Applied
+			&& Status != EPRAbilitySetOperationStatus::AlreadyApplied)
+		{
+			UE_LOG(LogProjectR, Error,
+				TEXT("PlayerState %s failed to grant InitialAbilitySet %s (status %d)."),
+				*GetPathName(), *AbilitySet->GetPathName(), static_cast<int32>(Status));
+			return false;
+		}
+		const bool bKnownHandle = InitialAbilitySetHandles.ContainsByPredicate(
+			[&Handle](const FPRAbilitySetGrantHandle& Existing)
+			{
+				return Existing.GrantId == Handle.GrantId;
+			});
+		if (!bKnownHandle)
+		{
+			InitialAbilitySetHandles.Add(Handle);
+		}
+	}
+	return true;
 }

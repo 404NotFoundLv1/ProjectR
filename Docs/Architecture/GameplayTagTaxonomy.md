@@ -15,8 +15,10 @@ date: "2026-07-10"
 
 | Root | 所有者/用途 | v0.0.2 标签 |
 |---|---|---|
+| `Ability` | GAS 激活失败分类与隔离验证 Ability ID | `Ability.ActivateFail.CanActivate`, `Ability.ActivateFail.Cooldown`, `Ability.ActivateFail.Cost`, `Ability.ActivateFail.Networking`, `Ability.ActivateFail.TagsBlocked`, `Ability.ActivateFail.TagsMissing`, `Ability.Validation.OnInputTriggered`, `Ability.Validation.Passive`, `Ability.Validation.WhileInputActive` |
 | `Chapter` | Roguelike/章节生命周期 | `Chapter.State.Active`, `Chapter.State.Available`, `Chapter.State.Completed`, `Chapter.State.Locked` |
 | `Companion` | Companion/稳定 AI 身份 | `Companion.Axiom`, `Companion.Kindle`, `Companion.Null` |
+| `Cooldown` | GAS Cooldown 阻断 Tag；当前仅含隔离验证项 | `Cooldown.Validation` |
 | `Input` | Enhanced Input 到系统/能力的语义输入面 | `Input.Attack`, `Input.Dodge`, `Input.Execute`, `Input.Interact`, `Input.Jump`, `Input.Look`, `Input.Move` |
 | `QTE` | QTE 类型和互斥结果 | `QTE.Result.Failure`, `QTE.Result.Rejected`, `QTE.Result.Success`, `QTE.Result.Timeout`, `QTE.Type.Attack`, `QTE.Type.Control`, `QTE.Type.Defense`, `QTE.Type.Emotional`, `QTE.Type.Rescue`, `QTE.Type.RuleCounter` |
 | `Reward` | 奖励类型和稀有度 | `Reward.Rarity.Common`, `Reward.Rarity.Epic`, `Reward.Rarity.Legendary`, `Reward.Rarity.Rare`, `Reward.Type.Memory`, `Reward.Type.Relationship`, `Reward.Type.Resource`, `Reward.Type.SkillPlugin` |
@@ -60,3 +62,11 @@ date: "2026-07-10"
 - `State.Alive`、`State.Dead`、`State.Invulnerable` 继续表达生命周期/拒绝状态，不复制到 `Combat.*`。
 - 本版本不增加 Skill、QTE、Critical、DamageType、Heal 或测试 Tag。后续伤害/Ability 消费者使用现有字段和标签增量扩展，不能建立第二套同义 taxonomy。
 - `UPRTagLibrary` 新增上述 8 个 Combat checked getter，总计 24 个公开 C++ 静态 getter；仍不提供任意字符串查询或 Blueprint API。
+
+# v0.1.3 Ability 增量
+
+- 显式标签总数由 61 增至 71；根命名空间由 10 增至 12。既有 61 个名称和 `DevComment` 不变，仍无 Redirect。
+- 新根 `Ability` 固定包含六个 `Ability.ActivateFail.*` 与三个 `Ability.Validation.*`。失败 Tag 由 GAS DeveloperSettings、ASC 和生命周期事件消费；Validation Tag 只属于隔离验证 GA，不代表 v0.2.0 正式技能。
+- 新根 `Cooldown` 当前只包含 `Cooldown.Validation`，由验证 Cooldown GE 授予；v0.2.0 的正式技能只能增量添加 `Cooldown.Skill.*`，不得复用验证 Tag。
+- 本版本不新增 Input、Skill、QTE 或正式技能 Tag。正式 AbilitySpec 继续使用既有 `Input.Attack`/`Input.Dodge` 做验证路由，正式空 AbilitySet 不授予任何验证 Ability。
+- `UPRTagLibrary` 仅为六个通用激活失败 Tag 新增 checked getter，总计 30 个；Validation/Cooldown 内容 Tag 保持数据驱动。

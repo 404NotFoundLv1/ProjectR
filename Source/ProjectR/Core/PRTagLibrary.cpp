@@ -49,6 +49,42 @@ const FGameplayTag& UPRTagLibrary::GetInputExecuteTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailCanActivateTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.CanActivate"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailCooldownTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.Cooldown"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailCostTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.Cost"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailNetworkingTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.Networking"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailTagsBlockedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.TagsBlocked"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailTagsMissingTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.TagsMissing"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetCombatDataDamageTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Data.Damage"));

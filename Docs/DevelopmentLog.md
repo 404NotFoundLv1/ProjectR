@@ -172,6 +172,21 @@ date: "2026-07-10"
 - GC 未执行。
 - v0.1.2 已正式关闭；版本转换将 `CURRENT_VERSION.md` 推进至 v0.1.3，不在该转换中实现 v0.1.3 功能。
 
+# 2026-07-13 - v0.1.3 AbilitySet、Cooldown、Cost 与 InputTag（Completed）
+
+- 按 TDD 新增四个公共枚举/结构合同、`UPRGameplayAbility`、`UPRAbilitySetDataAsset`，并扩展 PlayerState-owned `UPRAbilitySystemComponent` 的 Authority 授予/移除、GrantId 记录、InputTag 路由、三种激活策略、生命周期事件、Dead/Revive 与 Avatar 替换。RED Build `v013-tdd-red-20260713a` 只因目标 Ability 类型缺失退出 6；生产 Build 转为 GREEN。
+- 资产前 `ProjectR.Ability` 运行结果为 4/5，通过四项原生基础设施测试，唯一 RED 是七个验证 Package 不存在；资产、引用与回载完成后最终为 5/5 PASS。回归分别为 `ProjectR.GAS` 4/4、`ProjectR.Combat` 4/4、`ProjectR.Input` 3/3，无 failure/not-run；Combat 两条 warning 为既有 GameplayCue 路径提示与测试预期的超大伤害 Clamp。
+- 新增 10 个 `Ability.*`/`Cooldown.Validation` Tag，显式总数 71、根 12、checked getter 30；`DefaultGame.ini` 只配置六个 UE5.8 Ability failure Tag。既有 61 个 Tag、正式 Input、Combat、AttributeSet、地图和 `GE_DefaultAttributes`/`GE_Damage` 未改变。
+- 正式 `DA_DefaultAbilitySet` 保持空。隔离验证根创建两个 GE、三个 GA 与一个验证 AbilitySet；`BP_PlayerState.InitialAbilitySets` 只引用正式空 Set。Triggered Graph 为 Activate→Commit→Branch(true)→End，Held/Passive 保持活动以验证释放和生命状态。
+- 官方 ObjectTools 实测不能可靠写入嵌套 `FPRAbilitySetEntry[]`；用户批准固定 `ConfigureAbilityValidationAssets()`，它只配置七个准确路径并回读、不保存。官方 Tool 同样不能触发 C++-only PIE Ability 生命周期，获批 `RunPIEAbilitySmoke()` 后总能力为 26 Toolset/279 Tool；既有 Input/Combat Tool 未修改。
+- 八个 Manifest Package 全部 warnings-as-errors 编译并精确保存；Character/Controller 未 Dirty、未保存。英文文化 Graph DSL 回读意外把 Triggered GA 标脏，报告后仅对该准确 Package复核并单项保存。默认文化重启后七个新资产、Graph、PlayerState CDO 和引用保持，265 个可查询 `/Game` 资产 Dirty=false，54 个 ExternalObjects 按既有复合门排除。
+- CombatGym PIE Ability smoke PASS：生命周期事件 23、验证 Spec 全部移除、Cooldown/ActiveEffect 清空，Energy/Health/Shield 恢复为 100/100/50。Input smoke PASS：D/A `+126.689/-94.123 cm`、跳跃 `89.6/85.56 cm`、Y 漂移 0、Mesh yaw `-90/+90`、Actor/相机稳定。前台 Floating PIE Combat 严格回归 PASS：硬直 0.1041/0.1046 秒、固定七事件、最终 Alive/100/50。
+- 最终 BuildEditor `v013-final-build-20260713a` 包装器与子进程退出 0、目标 up to date；唯一持续 UBT warning 是插件 `.uplugin` 未声明 GameplayAbilities 依赖，因本版本禁止修改该路径记录为 KI-019。截图非黑屏但当前环境报告约 945.8 MiB 显存超预算；新 PIE 时间窗无 ProjectR Error、Ensure 或 Blueprint Runtime Error。
+- 最终 AutomationReport `v013-final-report-20260713a/v013-final-None/result.json` 实际退出 0、总体 PASS：36/36 required PASS；`ProjectRAuthoringToolExtension` optional PASS，`NetworkPIEReplication` optional `NOT_RUN`。
+- 实际计数复核：v0.1.2 后主模块已跟踪 Source 为 123，计划写成 121 是计数笔误；本轮准确新增 6 后为 129。插件 Source 6→8、UE Package 1183→1190、地图/Config 10/6、LFS tracked 仍为 1183，新七个 Package 属性均为 LFS，暂存路径为 0。
+- Future Compatibility Review：v0.1.4 只持久化稳定 PrimaryAssetId/解锁 ID；v0.1.5 只用受控 ASC API；v0.2.0 可直接继承基类并填充正式 Set；v0.2.3 只读生命周期/RuntimeState；v0.3.2 只订阅事件；v0.4.2/v0.4.4 使用 Handle；v0.8.2 只改物理输入映射。未实现正式技能、Save、HUD、QTE、敌人或未来业务。
+- 本版本没有人工手感步骤。NetworkPIEReplication 为 optional `NOT_RUN`；GC、暂存、commit 与 push 均未执行。建议提交名为 `v0.1.3 Add ability set cooldown and input tag binding`。
+
 # 版本记录模板
 
 ```text

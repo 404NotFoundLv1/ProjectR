@@ -139,12 +139,16 @@ date: "2026-07-10"
 **建立版本**：v0.1.3。  
 **消费者**：Enhanced Input、六个玩家技能、QTE、奖励构筑、AI 连携、HUD。
 
-- `UPRGameplayAbility` 统一暴露 AbilityTag、InputTag、Cost、Cooldown、CombatEvent 输出和失败原因。
-- `UPRAbilitySetDataAsset` 只描述授予内容，不承担运行时状态。
-- 输入层只提交 InputTag；不得硬编码具体 Ability 类。
-- 强化通过数据参数、GameplayEffect、Fragment/Modifier 接口扩展，不为每个插件复制 Ability 类。
+- `UPRGameplayAbility` 固定为 `InstancedPerActor` 的抽象 Blueprint 基类，只保存 `AbilityTag`、`ActivationPolicy`、`bCanActivateWhileDead` 和 `bCancelOnDeath`。InputTag 只存在于 `FGameplayAbilitySpec` 动态源 Tag；基类不创建 `FPRDamageRequest`、CombatEvent、位移或具体技能表现。
+- `UPRAbilitySetDataAsset` 是 PrimaryAsset 类型 `ProjectRAbilitySet`，只序列化 `FPRAbilitySetEntry[]`。Entry 冻结 AbilityClass、AbilityLevel、InputTag、初始化授予标记、GrantedSpecTags 与可选 AbilityData；GrantId、SpecHandle、Held、ActiveEffectHandle 和弱 UObject 引用均不得进入 Save。
+- `UPRAbilitySystemComponent` 是授予记录、InputTag 路由和生命周期事件的唯一运行时所有者。Authority 授予以内部 GrantId 为事实源，支持 `InitializationOnly` 到 `AllEntries` 的增量补充、准确移除和本次调用失败回滚；PlayerState-owned Spec 跨 Pawn 替换保留。
+- 输入层只提交合法 `Input.*` Tag。Pressed 上升沿维护 Held 并按 `OnInputTriggered`/`WhileInputActive` 尝试一次激活；重复 Press 无操作；Release 只处理 Held Spec，Held 策略随后准确取消。合法但无匹配 Spec 的输入静默无操作，重复匹配属于错误。Passive 不持有 InputTag，在授予、ActorInfo 可用或 Revive 后按需恢复一次。
+- Dead 进入时 ASC 清 Held，并只取消 `bCancelOnDeath=true` 的 ProjectR Ability；Revive 不重新授予或更换 SpecHandle。Avatar 更换只取消旧 Avatar 的活动实例、清 Held、更新 ActorInfo 并恢复 Passive，不重建 AbilitySet。
+- Energy Cost 与 Cooldown 的唯一权威来源是 Ability 继承的 GameplayEffect Class。Commit 顺序固定为 CheckCooldown、CheckCost、应用并验证 Cooldown、应用并验证 Cost、Notify；Cooldown 失败不扣 Cost，Cost 后半段失败只回滚本次 Cooldown。Instant Cost 使用 `WasSuccessfullyApplied()` 判定。
+- `FPRAbilityLifecycleEventNative` 由 ASC 单向发布 Granted/Removed/Activated/ActivationFailed/Committed/CommitFailed/Ended/Cancelled；未来 HUD、QTE 和统计只能订阅事件并使用只读 RuntimeState 查询，不能创建第二套生命周期事实。
+- 正式 `/Game/ProjectR/Abilities/DA_DefaultAbilitySet` 在 v0.1.3 保持空；验证 GA/GE/AbilitySet 隔离在 `/Game/ProjectR/MCPTest/Abilities/`，不得成为正式技能或正式内容依赖。
 
-冻结项：InputTag、AbilityTag、失败原因 Tag、AbilitySet Schema 和 Blueprint 事件名。
+冻结项：四个公共枚举、四个公共结构字段顺序、InputTag 动态 Spec Tag 语义、AbilityTag、六个失败 Tag、AbilitySet PrimaryAssetId/Schema、GrantId 幂等语义、Commit 顺序和生命周期事件顺序。
 
 # 3. SaveGame 合同
 

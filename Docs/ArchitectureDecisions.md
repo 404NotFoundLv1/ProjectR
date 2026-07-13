@@ -199,6 +199,24 @@ date: "2026-07-10"
 
 **验证**：TDD RED→GREEN；BuildEditor；`ProjectR.Combat` 4/4、`ProjectR.GAS` 4/4、`ProjectR.Input` 3/3；事务化 GE 配置、四 Blueprint warnings-as-errors 编译、两 Package 精确保存、Dirty=0、Editor 重启回载；CombatGym PIE 固定事件序列、Inspector、输入回归与非黑屏截图。最终主观硬直手感由用户独立判断。
 
+# ADR-018 - PlayerState-owned AbilitySet、Spec Tag 输入与可回滚 Commit
+
+**状态**：Accepted。
+
+**上下文**：v0.1.3 需要让 AbilitySpec 跨 Pawn 替换持久存在，并为技能、HUD、QTE、构筑与重绑定提供同一 InputTag、Cooldown、Cost 和生命周期合同。把 InputTag 保存到 Ability CDO、让 Character 持有授予记录或使用默认 GAS `CommitAbility` 的 void Apply 路径，都无法证明唯一映射、失败回滚和一次性资源消费。
+
+**选项**：Character 直接绑定具体 GA；Ability CDO 同时保存 InputTag 与业务输出；由 PlayerState-owned ASC 持有 AbilitySet/Spec/输入状态，并由 ProjectR Ability 基类验证 Commit。
+
+**决策**：`UPRAbilitySetDataAsset` 只序列化授予描述，`UPRAbilitySystemComponent` 以内部 GrantId 管理 Authority 授予、精确移除、Held、激活策略与统一生命周期事件；InputTag 只作为 Spec 动态源 Tag。`UPRGameplayAbility` 固定三种策略与死亡门，并按 Cooldown→Cost 顺序验证实际 GE 应用，Cost 后半段失败只撤销本次 Cooldown。正式 `DA_DefaultAbilitySet` 保持空，验证资产隔离在 MCPTest。官方 ObjectTools 无法可靠写入嵌套 `FPRAbilitySetEntry[]` 后，经单独批准增加只操作七个固定路径、只配置不保存的 Editor-only fallback；运行时 PIE 另用固定无参数 Ability smoke。
+
+**后果**：v0.2.0 可以直接填充正式 AbilitySet，v0.2.3 可只读查询/订阅事件，v0.4.2/v0.4.4 可使用 Handle 幂等授予/移除，v0.8.2 只替换 InputTag 到物理输入的映射。Editor Tool 不进入 Shipping，Runtime 不依赖 ToolsetRegistry。
+
+**影响版本/合同**：冻结四个枚举、四个运行时/序列化结构、AbilitySet PrimaryAssetId、GrantId 语义、动态 Spec Tag 输入、三种激活策略、Commit/回滚顺序、生命周期事件和十个新增 Tag。ASC Owner/Avatar、属性、CombatEvent、正式输入与地图保持不变。
+
+**迁移/回滚**：先把 `BP_PlayerState.InitialAbilitySets` 恢复为空并精确保存，再反向撤销 C++/Config/插件/文档。七个已保存新 Package 未获逐项删除批准时只解除引用、列出哈希和 Referencer并隔离；禁止 Save All、普通文件 IO、硬重置或批量删除。
+
+**验证**：TDD RED Build 只因目标 Ability 类型缺失；资产前自动化仅因七个 Package 缺失 RED。最终 BuildEditor PASS；`ProjectR.Ability` 5/5、`ProjectR.GAS` 4/4、`ProjectR.Combat` 4/4、`ProjectR.Input` 3/3；八个 Package warnings-as-errors 编译与精确保存、Dirty=0、默认文化重启回载。CombatGym PIE 的 Ability/Input/Combat 固定冒烟全部 PASS，验证 Spec/Cooldown/ActiveEffect 无泄漏，最终属性和生命状态恢复。
+
 # ADR 模板
 
 ```text

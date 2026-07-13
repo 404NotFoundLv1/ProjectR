@@ -25,6 +25,10 @@ date: "2026-07-10"
 | KI-014 | 首次人工验收发现跳跃中反向输入只改变 Mesh 朝向，实际 X 速度未立即反转 | 2.5D 动作移动在空中换向时不符合已确认手感 | PIE 回归断言在旧实现 RED；同幅翻转 X 速度后自动序列连续三次 PASS；用户键鼠复验 PASS | Closed |
 | KI-015 | 即时 Mesh yaw 切换满足方向正确性，但用户认为视觉转向过于生硬 | 左右快速换向的视觉手感不够自然 | 0.12 秒 Ease-In-Out 的 RED→GREEN 诊断、Build、标准 PIE 与最终用户手感全部 PASS | Closed |
 | KI-016 | 官方 24/276 Tool 无法在活动 PIE 调用 C++-only CombatSubsystem；后台 Editor 约 3 FPS 会把 Timer 恢复采样量化为约 0.33 秒 | 无法客观执行统一伤害闭环，后台墙钟采样会误判 0.10 秒硬直 | 用户批准窄范围 Combat Toolset；25/277 反射、固定事件序列、World 时间采样和 Editor 前台复验得到 0.115/0.100 秒，PIE/Dirty 门通过 | Closed |
+| KI-017 | 官方 ObjectTools 无法可靠写入嵌套 `FPRAbilitySetEntry[]`，官方工具也不能在 PIE 调用 C++-only AbilitySet/ASC 接口 | 无法仅靠通用 Tool 完成验证 AbilitySet配置和真实生命周期闭环 | 用户分别批准固定无参数资产配置 fallback 与 Ability PIE smoke；七资产回读、精确保存、重启和固定运行时序列全部 PASS | Closed |
+| KI-018 | `-culture=en` 下官方 `read_graph_dsl` 只读调用会把已保存的验证 GA 标为 Dirty | 只读 Graph 审计可能制造意外保存提示或掩盖真实 Dirty 来源 | 引擎/Tool 修复后重审；修复前必须前后检查 Dirty，并仅在完整 node/Pin/连接回读和编译通过后精确单项保存 | Accepted Risk |
+| KI-019 | `ProjectRAuthoringTools.Build.cs` 已依赖 GameplayAbilities/GameplayTags，但 `.uplugin` 因 v0.1.3 Forbidden path 未同步插件依赖声明 | UBT 持续输出插件元数据警告；当前 Editor-only 模块仍能构建和加载 | 后续明确允许 `.uplugin` 时补充准确插件依赖，并通过 Build、Editor 重启、26/279 Tool 反射及 Shipping Runtime 不加载验证 | Open |
+| KI-020 | 既有 Combat PIE smoke 在严格 Timer 失败路径不能完整恢复临时属性/状态，且后台节流会放大采样 | 失败诊断后的同一 PIE 会话不能继续作为可靠 Combat 基线 | 在允许修改既有 Combat Tool 的维护版本补齐所有失败路径回滚；当前必须 StopPIE、新会话、前台/浮动 PIE 后复测 | Open |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -90,6 +94,17 @@ date: "2026-07-10"
 - KI-004 保持 Open；本版本使用既有 GASToolsets 的只读 Inspector，不调用 GameplayCue 写工具，也不启用 UMG/Automation/Animation Toolset。
 - KI-006 保持 Accepted Risk；Schema 回读、事务、精确保存、重启、前台 PIE、日志和 Dirty 门约束 Experimental MCP 风险。
 - 用户在固定伤害序列中完成受击手感验收并返回 PASS；最终 AutomationReport 为 29/29 required PASS。当前没有未关闭的 v0.1.2 阻断，NetworkPIEReplication 保持 optional `NOT_RUN`。
+
+# 2026-07-13 - v0.1.3 Known Issues Review（Completed）
+
+- KI-017 关闭：官方嵌套 AbilitySet 写入与 C++-only PIE 调用缺口由用户逐项批准的两个固定无参数工具补足；工具只操作准确验证路径/固定序列、不保存、不提供任意执行。七个资产回读、八 Package精确保存、默认文化重启和 Ability smoke 均 PASS。
+- KI-018 记录为 Accepted Risk：英文文化 `read_graph_dsl` 意外标脏验证 GA。发现后先报告，再以 node/Pin/连接、warnings-as-errors 和准确单项保存闭合；没有调用 Save All，也没有修改其他 Package。
+- KI-019 保持 Open：为编译 Ability Tool 经批准只修改插件 Build.cs；`.uplugin` 仍是 Forbidden path，最终 Build 成功但保留准确依赖警告。运行时 ProjectR 模块和 Shipping 依赖未改变。
+- KI-020 保持 Open：后台/视口 PIE 的 0.10 秒 Combat Timer 因低至约 3 FPS 出现严格采样失败，失败路径会留下仅限 PIE 的临时状态。停止该会话后，前台 Floating PIE 严格回归为 0.1041/0.1046 秒、固定七事件和最终状态 PASS。
+- KI-004 保持 Open，KI-006 保持 Accepted Risk；本版本没有启用新的官方插件或专用 Toolset。当前 26/279 来自既有 GASToolsets 和三个已批准 ProjectR Toolset。
+- 截图可读且三项 PIE 冒烟通过，但 Editor 显示约 945.8 MiB 显存超预算警告；这是当前机器环境性能风险，不是 Package/玩法合同变化。新时间窗无 ProjectR Error、Ensure 或 Blueprint Runtime Error。
+- 当前没有未关闭的 v0.1.3 功能阻断；KI-018/KI-019/KI-020 均有明确隔离流程，不改变本版本运行时产品合同。NetworkPIEReplication 保持 optional `NOT_RUN`。
+- 最终 AutomationReport `v013-final-report-20260713a` 为 36/36 required PASS；ProjectRAuthoringToolExtension optional PASS，NetworkPIEReplication optional `NOT_RUN`。
 
 # 记录规则
 

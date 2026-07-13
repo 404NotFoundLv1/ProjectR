@@ -22,6 +22,13 @@ public:
 	static const FGameplayTag& GetInputInteractTag();
 	static const FGameplayTag& GetInputExecuteTag();
 
+	static const FGameplayTag& GetAbilityActivateFailCanActivateTag();
+	static const FGameplayTag& GetAbilityActivateFailCooldownTag();
+	static const FGameplayTag& GetAbilityActivateFailCostTag();
+	static const FGameplayTag& GetAbilityActivateFailNetworkingTag();
+	static const FGameplayTag& GetAbilityActivateFailTagsBlockedTag();
+	static const FGameplayTag& GetAbilityActivateFailTagsMissingTag();
+
 	static const FGameplayTag& GetCombatDataDamageTag();
 	static const FGameplayTag& GetCombatEventDamageTag();
 	static const FGameplayTag& GetCombatEventDamageRejectedTag();

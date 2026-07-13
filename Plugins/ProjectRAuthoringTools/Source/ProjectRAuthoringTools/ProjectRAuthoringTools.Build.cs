@@ -19,6 +19,8 @@ public class ProjectRAuthoringTools : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"EnhancedInput",
+			"GameplayAbilities",
+			"GameplayTags",
 			"InputCore",
 			"Json",
 			"ProjectR",

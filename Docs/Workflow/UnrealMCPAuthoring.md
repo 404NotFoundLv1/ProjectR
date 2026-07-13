@@ -8,7 +8,7 @@ date: "2026-07-10"
 # 已验证连接
 ProjectR 的 Codex 配置指向 `http://127.0.0.1:8000/mcp`。v0.0.5 启动审计时该端口由打开 `ProjectR.uproject` 的 UnrealEditor 进程监听，协议协商为 `2025-11-25`，读取调用返回当前关卡 `/Game/ProjectR/Maps/L_MainMenu`、PIE=false、无打开或选中资产且地图未 Dirty。
 ## 当前暴露能力
-Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.1.2 在通用基线、GASToolsets 与两个 ProjectR 窄工具均加载后，实测为 25 个 Toolset、277 个底层 Tool。
+Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.1.3 在通用基线、GASToolsets 与三个 ProjectR 窄工具加载，并加入获批的固定资产 fallback 后，实测为 26 个 Toolset、279 个底层 Tool。
 | Toolset | Tool 数 | 主要能力 |
 |---|---:|---|
 | AgentSkillToolset | 4 | UE AgentSkill 资产查询与创建 |
@@ -20,6 +20,7 @@ Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 
 | GASToolsets.GameplayCueToolset | 8 | Cue/Tag 写入与运行时操作；未经当前 Manifest 禁止调用 |
 | ProjectRAuthoringTools.PRInputAutomationToolset | 1 | 固定 Enhanced Input PIE 注入与回归 |
 | ProjectRAuthoringTools.PRCombatAutomationToolset | 1 | 固定统一伤害/死亡/复活 PIE 序列 |
+| ProjectRAuthoringTools.PRAbilityAutomationToolset | 2 | 固定 Ability 资产配置 fallback 与 PIE 生命周期冒烟 |
 | ActorTools | 17 | Actor/组件、Transform、标签、父子关系 |
 | AssetTools | 21 | 查找、依赖、复制、移动、保存、Dirty、文件读取 |
 | BlueprintTools | 53 | 创建/父类/变量/函数/事件/节点/Pin/Graph DSL/编译 |
@@ -124,3 +125,12 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - PIE Timer 验收必须使用 PIE World 时间。Windows/Editor 在非前台时可能节流到约 3 FPS，使 0.10 秒 Timer 的首次可见恢复被量化为约 0.33 秒；运行硬直时长验收前必须将正确的 ProjectR Editor 置前台。前台实测两次恢复为 0.115 秒与 0.100 秒。
 - `PossessedBy` 后 UE5.8 仍会执行 `DispatchRestart`；死亡 Pawn 替换验收必须检查 `Restart` 后 MovementMode 仍为 None，不能只检查 ASC 的 `State.Dead`。
 - `CaptureViewport` 的 `captureTransform` 和 `annotations` 虽在 Schema 中可选，实测必须显式传 `null`。日志验收使用新 PIE 时间窗，忽略启动时引擎 UnifiedError 自测、旧 session-id 和已记录驱动/字体警告。
+
+# v0.1.3 AbilitySet、验证资产与 PIE 验收
+
+- 官方 Blueprint/Object/DataAsset Tool 能创建 GA、GE 与 DataAsset，并能配置普通 CDO、GE Modifier 和 TargetTags GEComponent；但实测 `ObjectTools.set_properties` 不能可靠写入嵌套 `FPRAbilitySetEntry[]`。在未保存事务失败后，经用户单独批准增加固定、无参数的 `ConfigureAbilityValidationAssets()`：它只配置任务 Manifest 的七个准确路径、返回结构化回读且不保存，不成为通用资产执行入口。
+- 官方工具同样不能在活动 PIE 调用 C++-only AbilitySet/ASC 接口。获批的 `RunPIEAbilitySmoke()` 只执行固定授予、Triggered/Held/Passive、Energy Cost、Cooldown、Dead/Revive、准确移除和状态恢复序列；不接受任意资产、Target、数值或代码，不保存 Package。实际总能力为 26 Toolset/279 Tool，既有 Input/Combat Tool Schema 未改变。
+- `ProjectRAuthoringTools.Build.cs` 为编译 Ability 工具经单独批准增加 `GameplayAbilities` 与 `GameplayTags`；任务禁止修改 `.uplugin`，因此 UBT 仍报告该插件描述文件未声明 GameplayAbilities 依赖。该警告记录为 KI-019，不以修改 Forbidden path 绕过。
+- 验证 GA Graph 必须在 `-culture=en` 会话读取完整 DSL。实测 `read_graph_dsl` 虽为只读调用，却会把 `GA_AbilityValidation_Triggered` 标为 Dirty；只有在 node/Pin/连接回读与 warnings-as-errors 编译匹配后，才能把该准确单一 Package 加入 Manifest并重新保存。不得因此调用 Save All；此工具副作用记录为 KI-018。
+- v0.1.3 的准确保存清单为七个新 Package 与 `BP_PlayerState`；Character/Controller 仅编译且未 Dirty、未保存。默认文化重启后回读 AbilitySet、GA/GE CDO、Graph 和 PlayerState 引用；最终 `/Game` inventory 319 项中 265 个可查询资产 Dirty=false，54 个 `__ExternalObjects__` 仍按既有复合门排除。
+- Windows 后台节流和当前约 946 MiB 的显存超预算警告会放大 0.10 秒 Combat Timer 采样。最终 Combat 回归使用前台 Floating PIE，严格恢复时间为 0.1041/0.1046 秒并 PASS；失败的旧 Combat smoke 必须 StopPIE 后从新会话重测，不能把其临时属性状态当作持久 Package 状态。

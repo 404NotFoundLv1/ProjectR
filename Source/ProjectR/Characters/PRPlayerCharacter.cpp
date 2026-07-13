@@ -220,12 +220,18 @@ void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 void APRPlayerCharacter::HandleInputTagPressed(FGameplayTag InputTag)
 {
-	UE_LOG(LogProjectR, Display, TEXT("ProjectR semantic input Pressed: %s"), *InputTag.ToString());
+	if (UPRAbilitySystemComponent* ASC = Cast<UPRAbilitySystemComponent>(GetAbilitySystemComponent()))
+	{
+		ASC->AbilityInputTagPressed(InputTag);
+	}
 }
 
 void APRPlayerCharacter::HandleInputTagReleased(FGameplayTag InputTag)
 {
-	UE_LOG(LogProjectR, Display, TEXT("ProjectR semantic input Released: %s"), *InputTag.ToString());
+	if (UPRAbilitySystemComponent* ASC = Cast<UPRAbilitySystemComponent>(GetAbilitySystemComponent()))
+	{
+		ASC->AbilityInputTagReleased(InputTag);
+	}
 }
 
 void APRPlayerCharacter::HandleMoveInput(const FInputActionValue& Value)

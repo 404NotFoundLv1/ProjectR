@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Abilities/PRAbilityTypes.h"
 #include "Abilities/PRAttributeTypes.h"
 #include "AbilitySystemInterface.h"
 #include "Core/PRCombatantInterface.h"
@@ -12,6 +13,7 @@
 class APRPlayerCharacter;
 class UGameplayEffect;
 class UPRAbilitySystemComponent;
+class UPRAbilitySetDataAsset;
 class UPRAttributeSet;
 struct FOnAttributeChangeData;
 struct FGameplayEffectSpecHandle;
@@ -47,6 +49,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="ProjectR|Combat")
 	TSubclassOf<UGameplayEffect> DamageEffect;
 
+	UPROPERTY(EditDefaultsOnly, Category="ProjectR|Abilities")
+	TArray<TObjectPtr<UPRAbilitySetDataAsset>> InitialAbilitySets;
+
 private:
 	void BindAttributeDelegates();
 	void UnbindAttributeDelegates();
@@ -54,6 +59,7 @@ private:
 	bool TryApplyDefaultAttributes();
 	bool ApplyDefaultAttributesSpec(const FGameplayEffectSpecHandle& SpecHandle);
 	bool EnsureLifeStateForInitializedAvatar();
+	bool GrantInitialAbilitySets();
 
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Abilities", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UPRAbilitySystemComponent> ProjectRAbilitySystemComponent;
@@ -63,6 +69,7 @@ private:
 
 	TArray<TPair<FGameplayAttribute, FDelegateHandle>> AttributeDelegateHandles;
 	FPRAttributeChangedNative AttributeChanged;
+	TArray<FPRAbilitySetGrantHandle> InitialAbilitySetHandles;
 	bool bDefaultAttributesApplied = false;
 
 	friend class FPRGASLifecycleTest;
