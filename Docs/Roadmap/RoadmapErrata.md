@@ -42,6 +42,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-015 | v0.1.1 同时要求伤害/恢复测试和 HUD 委托，基础 ASC 类型却延后到 v0.1.3；属性 `Crit` 语义含糊，默认 GameplayEffect 资产创建仍转交人工 | v0.1.1 立即冻结薄 `UPRAbilitySystemComponent`、11 项属性 Schema 和统一原生属性变化事件，只验证初始化、通用 Clamp、Max 调整、复制元数据与重复初始化；`Crit` 明确为 0–1 的 `CritChance`，默认 GE 由 Codex 通过 Unreal MCP 创建。伤害语义延期至 v0.1.2，Ability 业务延期至 v0.1.3，HUD 消费延期至 v0.2.3 | 避免后续替换 ASC 类型、跨版本职责混入和不必要的人工资产操作，同时为伤害、技能与 HUD 冻结稳定数据合同 | Resolved by v0.1.1 task contract |
 
+# v0.1.4 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-016 | v0.1.4 一次性要求 SaveVersion、关系、解锁、账号墓园、任务、设置、统计、主菜单 New/Continue 与开发清档，但这些业务模型和消费者尚未建立 | v0.1.4 只建立原生版本化 SaveGame、最小 `ProfileId` 分区、严格迁移框架和 A/B 双代 `PRSV` 物理存储；关系数据延后至 v0.3.0，受控开发清档延后至 v0.1.5，Account/Run/Graveyard 延后至 v0.4.3，Meta 解锁与货币延后至 v0.4.4，主菜单 New/Continue 延后至 v0.5.0，Memory/RunSummary 延后至 v0.5.2，设置延后至 v0.8.2，Steam Cloud 延后至 v0.8.4。未来分区只能通过递增 Schema 迁移加入 | 避免在所有者、数据范围和消费者尚未冻结时制造虚假持久化字段、UI 和删除语义，同时从第一版就保证损坏恢复、未来版本拒绝和云存档复用同一格式 | Resolved by v0.1.4 task contract |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

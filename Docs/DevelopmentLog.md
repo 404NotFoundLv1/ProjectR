@@ -185,7 +185,9 @@ date: "2026-07-10"
 - 最终 AutomationReport `v013-final-report-20260713a/v013-final-None/result.json` 实际退出 0、总体 PASS：36/36 required PASS；`ProjectRAuthoringToolExtension` optional PASS，`NetworkPIEReplication` optional `NOT_RUN`。
 - 实际计数复核：v0.1.2 后主模块已跟踪 Source 为 123，计划写成 121 是计数笔误；本轮准确新增 6 后为 129。插件 Source 6→8、UE Package 1183→1190、地图/Config 10/6、LFS tracked 仍为 1183，新七个 Package 属性均为 LFS，暂存路径为 0。
 - Future Compatibility Review：v0.1.4 只持久化稳定 PrimaryAssetId/解锁 ID；v0.1.5 只用受控 ASC API；v0.2.0 可直接继承基类并填充正式 Set；v0.2.3 只读生命周期/RuntimeState；v0.3.2 只订阅事件；v0.4.2/v0.4.4 使用 Handle；v0.8.2 只改物理输入映射。未实现正式技能、Save、HUD、QTE、敌人或未来业务。
-- 本版本没有人工手感步骤。NetworkPIEReplication 为 optional `NOT_RUN`；GC、暂存、commit 与 push 均未执行。建议提交名为 `v0.1.3 Add ability set cooldown and input tag binding`。
+- v0.1.3 正式实施提交为 `f19b2a6d7ebe9dd99ae481f22026aff855bbe1ca`，提交信息为 `v0.1.3 Add ability set cooldown and input tag binding`；该提交已同时位于 `main` 与 `origin/main`。
+- 本版本没有必需人工验收；`ProjectRAuthoringToolExtension` 保持 optional PASS，`NetworkPIEReplication` 保持 optional `NOT_RUN`，GC 未执行。
+- v0.1.3 已正式关闭；版本转换将 `CURRENT_VERSION.md` 推进至 v0.1.4，不在该转换中实现 v0.1.4 功能。
 
 # 版本记录模板
 

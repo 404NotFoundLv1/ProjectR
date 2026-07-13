@@ -33,7 +33,7 @@ date: "2026-07-10"
 - `Skill.*` 是稳定技能 ID，并可由未来 GAS 消费为 AbilityTag。
 - `Companion.*`、`QTE.*`、`Rule.*` 分别冻结伙伴身份、QTE 类型/结果和本地法令 ID。
 - `Chapter.*`、`Room.*`、`Reward.*` 是数据驱动内容分类，本版本不创建对应业务对象或资产。
-- 公共 C++ 只通过 `UPRTagLibrary` 的显式 checked getter 读取 24 个高频基础标签；不得添加任意字符串查询或 Blueprint 暴露。
+- 公共 C++ 只通过 `UPRTagLibrary` 的显式 checked getter 读取 30 个高频基础标签；不得添加任意字符串查询或 Blueprint 暴露。
 - 后续只能增量添加子标签；重命名或删除必须提供 Redirect、ADR、消费者清单和兼容测试。
 
 # Game Framework 与正式地图旅行合同
@@ -155,24 +155,14 @@ date: "2026-07-10"
 **所有者**：Save。  
 **建立版本**：v0.1.4。  
 **消费者**：关系、账号墓园、任务、Meta、设置、本地化选择、Steam Cloud。
+**当前状态**：v0.1.4 任务合同已冻结目标 Schema；运行时 API 和实现状态必须以该版本的实际实施证据更新，不能在实施前宣称完成。
 
-根结构至少包含：
-
-```text
-SaveVersion
-ProfileId
-CompanionRelationships
-UnlocksAndProgression
-AccountGraveyard
-QuestProgress
-Settings
-AggregateStats
-```
-
-- 所有读取先执行 `MigrateSaveIfNeeded`。
-- 新字段必须有安全默认值；删除/重命名字段必须保留迁移路径。
-- 运行时 UObject、临时 Actor、原始 LLM 响应和 API Key 不进入存档。
-- Steam Cloud 包装同一个本地 Save 数据，不创建第二套业务 Schema。
+- Schema 1 的根目标只包含 `SchemaVersion`、`SaveRevision` 和 `Profile`；`Profile` 当前只包含稳定 `ProfileId`。不存在真实业务模型的未来分区不得以空结构或占位字段提前进入 Schema。
+- 未来关系、Account/Run/Graveyard、MetaProgression、Settings 与有界 Memory/RunSummary 分区只能在各自业务版本通过递增 Schema 和准确 `N -> N+1` 迁移加入。
+- 所有读取必须先验证物理封装、Save 类和 Schema，再在临时副本上顺序迁移；任一步失败不得替换当前运行时对象或自动覆盖磁盘数据。
+- 新字段必须有安全默认值；删除或重命名字段必须保留迁移路径、ADR、消费者清单和兼容测试。
+- 运行时 UObject、ASC/AttributeSet、Actor、AbilitySpec/ActiveEffect/GrantId/Input Held、CombatEvent 弱引用、原始 LLM 响应和 API Key 不进入存档；未来 GAS 数据只保存稳定 ID、PrimaryAssetId、GameplayTag 或解锁 ID。
+- Steam Cloud 包装同一份 A/B 本地物理槽、`PRSV` 封装和业务 Schema，不创建第二套云端业务格式。
 
 # 4. Companion 与 Relationship 合同
 
