@@ -148,7 +148,9 @@ date: "2026-07-10"
 - 最终 BuildEditor `v011-final-build-20260713` 为 PASS，子进程退出 0、`Result: Succeeded`。最终 Source/Package/地图/Config 为 115/1182/10/6；GameplayTag 仍为 53，暂存路径为 0。
 - 最终 AutomationReport `v011-final-20260713/v011-final-None/result.json` 实际退出 0，24/24 required checks 为 PASS；`NetworkPIEReplication` 为 optional `NOT_RUN`。
 - Future Compatibility Review：v0.1.2 可在同一 ASC/AttributeSet 上增加伤害与死亡；v0.1.3 可在薄 ASC 上增加 AbilitySet/InputTag；v0.2.3 可只读属性并订阅统一事件。未新增 Ability、Damage、CombatEvent、HUD、Save、Tag 或正式地图依赖。
-- 本轮未提交、未 push、未运行 GC；`CURRENT_VERSION.md` 保持 v0.1.1。
+- v0.1.1 正式实施提交为 `3daedada51b19e389c9d590b606ae421e62f093c`，提交信息为 `v0.1.1 Add GAS ASC attributes and initialization`；该提交已同时位于 `main` 与 `origin/main`。
+- `NetworkPIEReplication` 保持 optional `NOT_RUN`；本版本没有必需人工步骤，GC 未执行。
+- v0.1.1 已正式关闭；版本转换将 `CURRENT_VERSION.md` 推进至 v0.1.2，不在该转换中实现 v0.1.2 功能。
 
 # 版本记录模板
 
