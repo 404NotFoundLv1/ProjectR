@@ -155,14 +155,19 @@ date: "2026-07-10"
 **所有者**：Save。  
 **建立版本**：v0.1.4。  
 **消费者**：关系、账号墓园、任务、Meta、设置、本地化选择、Steam Cloud。
-**当前状态**：v0.1.4 任务合同已冻结目标 Schema；运行时 API 和实现状态必须以该版本的实际实施证据更新，不能在实施前宣称完成。
+**当前状态**：v0.1.4 已建立并验证原生 Schema 1、`PRSV` Envelope、A/B 平台槽、严格迁移注册表和单 active/single trailing 异步保存队列。
 
-- Schema 1 的根目标只包含 `SchemaVersion`、`SaveRevision` 和 `Profile`；`Profile` 当前只包含稳定 `ProfileId`。不存在真实业务模型的未来分区不得以空结构或占位字段提前进入 Schema。
-- 未来关系、Account/Run/Graveyard、MetaProgression、Settings 与有界 Memory/RunSummary 分区只能在各自业务版本通过递增 Schema 和准确 `N -> N+1` 迁移加入。
-- 所有读取必须先验证物理封装、Save 类和 Schema，再在临时副本上顺序迁移；任一步失败不得替换当前运行时对象或自动覆盖磁盘数据。
-- 新字段必须有安全默认值；删除或重命名字段必须保留迁移路径、ADR、消费者清单和兼容测试。
-- 运行时 UObject、ASC/AttributeSet、Actor、AbilitySpec/ActiveEffect/GrantId/Input Held、CombatEvent 弱引用、原始 LLM 响应和 API Key 不进入存档；未来 GAS 数据只保存稳定 ID、PrimaryAssetId、GameplayTag 或解锁 ID。
-- Steam Cloud 包装同一份 A/B 本地物理槽、`PRSV` 封装和业务 Schema，不创建第二套云端业务格式。
+- `UPRSaveGame : USaveGame` 只序列化三个 `SaveGame` 属性，顺序为 `SchemaVersion`、`SaveRevision`、`Profile`；`FPRProfileSaveData` 当前只含稳定 `ProfileId`。`CurrentSchemaVersion=1`、`MinimumMigratableVersion=1`，新建内存对象允许 Revision 0，成功落盘对象必须 Revision > 0。
+- `UPRSaveSubsystem : UGameInstanceSubsystem` 的唯一产品入口为 `LoadDefaultProfile`、`CreateNewDefaultProfile`、`RequestSaveCurrentProfile`、`GetSaveRuntimeState` 和 `OnSaveOperation`。入口只接受 Game Thread；Initialize/PIE/退出不会自动 Create、Load、Save 或 Delete。
+- `FPRSaveRuntimeState` 与 `FPRSaveOperationEvent` 只承载当前进程的只读状态和结果，不被保存或复制。非 Game Thread、Busy、ShuttingDown、合并、失败与取消均有显式枚举结果；所有对外事件只在 Game Thread 广播。
+- 物理数据为 `SaveGameToMemory` 产生的 UE Payload 外包固定 16 字节小端 `PRSV` Header：Magic、EnvelopeVersion 1、HeaderSize 16、PayloadSize、CRC32；Payload 上限 16 MiB，长度必须精确，无尾随数据。未来 Envelope/Schema 必须阻断旧客户端覆盖。
+- 生产存储只通过 `ISaveGameSystem`；Editor/Development/Shipping 的 Profile 0 使用各自固定 Base 和 `_A`/`_B` 后缀。首次保存写 A，后续写非当前代；写前重验观察快照，写后异步回读并逐项验证 Envelope、CRC、Class、Profile、Schema、Revision 和原始字节，验证通过前不发布新 Revision。
+- 加载对 A/B 独立诊断并按 Future barrier、Profile/Revision 冲突、最高 Revision、相同 Payload 确定性选 A 的顺序选择；单代有效可从损坏备用代恢复并设置 `bNeedsResave`，但 Load 不自动写回。无有效代按冻结的错误优先级返回，不静默 Create。
+- 保存队列最多一个 active 物理操作和一个 trailing 逻辑请求；trailing 为 last-write-wins 并复用同一 RequestId。active 失败先发布自身失败，再取消 trailing；Deinitialize 拒绝新请求、取消未启动 trailing，active Weak 回调在对象销毁后静默丢弃。
+- `FPRSaveMigrationRegistry` 只允许准确 `N -> N+1` 且每个 From 唯一；迁移在副本上顺序执行，任一步失败或版本未精确加一都不替换原对象。v0.1.4 生产注册表为空，不伪造 Schema 0 存档，也不使用 Project CustomVersion 作为业务迁移版本。
+- Automation 后端只接受 `ProjectR_Automation_<32位小写十六进制 GUID>`，每次访问写入内存 Ledger；物理测试只能查询、写入、回读并通过平台 API 精确删除当前 GUID 的 `_A`/`_B`，禁止枚举或探测生产槽。
+- 未来关系、Account/Run/Graveyard、Meta、Settings 与有界 Memory/RunSummary 只能在对应版本通过新 Schema 和逐版本迁移加入。运行时 UObject、ASC/AttributeSet、Actor、Spec/Effect/Grant Handle、Held Input、Delegate、CombatEvent、原始 LLM 响应和 API Key 永不进入存档。
+- Steam Cloud 复用同一 A/B 槽字节、`PRSV` 和业务 Schema，不创建第二套云端格式；任何破坏性格式变化必须新增 ADR、迁移、消费者清单与兼容测试。
 
 # 4. Companion 与 Relationship 合同
 

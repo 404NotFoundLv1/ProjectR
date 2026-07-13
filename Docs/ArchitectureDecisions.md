@@ -217,6 +217,28 @@ date: "2026-07-10"
 
 **验证**：TDD RED Build 只因目标 Ability 类型缺失；资产前自动化仅因七个 Package 缺失 RED。最终 BuildEditor PASS；`ProjectR.Ability` 5/5、`ProjectR.GAS` 4/4、`ProjectR.Combat` 4/4、`ProjectR.Input` 3/3；八个 Package warnings-as-errors 编译与精确保存、Dirty=0、默认文化重启回载。CombatGym PIE 的 Ability/Input/Combat 固定冒烟全部 PASS，验证 Spec/Cooldown/ActiveEffect 无泄漏，最终属性和生命状态恢复。
 
+# ADR-019 - GameInstance Save Subsystem、PRSV A/B 与隔离平台存储
+
+**状态**：Accepted。
+
+**上下文**：v0.1.4 必须从第一次引入开始建立可迁移存档，并在平台异步写入失败、截断、损坏、外部并发修改或未来版本存在时保留上一有效代。UE SaveGame Header 包含引擎兼容信息，但不适合作为业务 Schema；`AsyncSaveGameToSlot` 也无法包裹 ProjectR 自有 Envelope。
+
+**选项**：直接使用单 Slot `AsyncSaveGameToSlot`；以 CustomVersion GUID 承担业务迁移；普通文件 IO 自建格式；由 GameInstanceSubsystem 通过 `ISaveGameSystem` 管理带 `PRSV` Envelope 的 A/B 平台槽。
+
+**决策**：`UPRSaveSubsystem` 绑定 GameInstance 生命周期，只在显式产品入口执行 I/O。业务版本由 `UPRSaveGame.SchemaVersion` 管理，Schema 1 只保存 ProfileId、SchemaVersion 和 SaveRevision；不创建 Project CustomVersion GUID。UE Payload 外包 16 字节小端 `PRSV` Header、精确长度、CRC32 与 16 MiB 上限。生产存储只使用 `ISaveGameSystem`，同步探测/加载、异步写入和异步写后回读；A/B 选择、Future barrier、观察快照冲突和严格错误优先级由 ProjectR 状态机统一处理。
+
+**并发与生命周期**：Subsystem 最多保持一个 active 物理保存和一个 last-write-wins trailing 请求；完成事件均在 Game Thread 依序广播。active 失败取消 trailing，Deinitialize 不等待、不自动保存，只取消尚未启动的 trailing；平台回调只持有 Weak Subsystem，并防御性转发 Game Thread。
+
+**测试与用户数据隔离**：Codec、Backend 和 Storage 具有受控注入缝。生产 Factory 不接受任意 Slot且不持有测试清理能力；Automation Factory 只接受 `ProjectR_Automation_<GUID>`。测试删除在调用 Backend 前再次校验 automation-only capability 与准确 generation Slot 命名，Access Ledger 验证仅访问当前 `_A`/`_B`。真实平台测试使用 `ISaveGameSystem` 精确清理，禁止目录枚举、普通文件 IO、生产槽探测或把真实用户槽作为前提。
+
+**后果**：v0.3.0、v0.4.3、v0.4.4、v0.5.2 与 v0.8.2 可通过严格 `N -> N+1` 迁移增加业务字段，不改写 ProfileId、Envelope 或 A/B。v0.8.4 Steam Cloud 可以同步同一物理字节；未来客户端遇到新 Envelope/Schema 必须阻断覆盖。代价是保存发布需要额外一次异步回读，并维护独立的代诊断与观察快照。
+
+**影响版本/合同**：冻结五个 Save 枚举、`FPRProfileSaveData`、`FPRSaveRuntimeState`、`FPRSaveOperationEvent` 字段顺序、Schema 1、`PRSV` Header、固定生产 Base、A/B 后缀、结果优先级、single active/single trailing 和 Game Thread 事件语义。不得持久化 UObject、GAS Handle、Held Input、Delegate 或 CombatEvent。
+
+**迁移/回滚**：本版本生产 Migration Registry 为空，不制造旧 Schema。回滚只反向撤销 Save C++ 和文档；物理自动化仅通过平台 API 删除当前测试 GUID 的两代，不触碰生产/用户槽。禁止普通文件 IO、通配符清理、Git hard reset/clean、Save All、Resave All 或 GC。
+
+**验证**：TDD RED Build 只因目标 Save 类型缺失；独立审查后的 deletion-guard RED 只因新安全谓词尚不存在。最终 BuildEditor `v014-delete-guard-final-build-20260713a` 退出 0。`ProjectR.Save` 5/5 覆盖 Schema、迁移、Envelope、A/B、并发、退出、真实平台槽隔离/清理及生产槽删除前拒绝；Ability 5/5、GAS 4/4、Combat 4/4、Input 3/3 回归成功。新鲜 Editor 反射 `UPRSaveSubsystem`，PIE 初始化日志明确为无存储访问；Ability/Input 及前台 Floating Combat 固定冒烟 PASS，截图非黑屏、265 个可查询资产 Dirty=0，原 1190 个 Package 哈希/长度不变。
+
 # ADR 模板
 
 ```text

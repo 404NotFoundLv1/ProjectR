@@ -16,7 +16,7 @@ date: "2026-07-10"
 | KI-005 | 通用 MCP 没有直接创建空白关卡 Tool；官方 World Partition Builder 已完成受控复制、External Package 枚举、重载和 PIE | 已有安全模板复制路径，不阻断资产生产基线 | v0.0.5 Builder、精确保存、重启回载与 PIE 全部通过 | Closed |
 | KI-006 | UE MCP 为 Experimental | Tool Schema/API 可能变化 | 每次引擎升级重新审计；不作为运行时依赖 | Accepted Risk |
 | KI-007 | 首次 Build、自动 PIE 与移动/镜头/跳跃人工验收均已记录 | 主观操作门已有可审计结果 | Build 退出 0；自动 PIE 无新增阻断日志；ManualOperationsRunbook 第 6 节三项 PASS | Closed |
-| KI-008 | 当前没有版本化 SaveGame | 后续关系/墓园易返工 | v0.1.4 建立合同与迁移测试 | Planned |
+| KI-008 | 版本化 SaveGame、PRSV、A/B 平台槽和迁移基础已建立 | 后续关系/墓园可以增量扩展同一 Schema，不再需要重建物理格式 | v0.1.4 Build、五项 Save 自动化、平台测试槽隔离/清理、历史回归和 PIE 全部通过 | Closed |
 | KI-009 | 误暂存的生成物仍作为不可达 loose objects 占用 `.git`，审计时约 1.34 GiB | 本地仓库占用偏大，但不影响工作树或正确索引 | 首次基线提交后另行批准并验证安全 GC；本版本禁止主动清理 | Open |
 | KI-010 | 无 HEAD 的首次基线上，`git diff --cached --check` 报告模板 Source/Config 和既有文档中的尾空格/EOF 空行 | 全量 cached whitespace gate 为 FAIL；不影响 Build/PIE，但阻止把静态门写成通过 | 在允许修改各路径且有兼容审查的独立卫生变更中建立格式基线；v0.0.0 不越权批量改写 | Open |
 | KI-011 | v0.0.5 草案的 World Partition MCP 冒烟 Allowed paths 未覆盖 External Actors/Objects，且“Save All 后重启”与精确 Package 保存合同冲突 | 合同修正前，v0.0.5 不能安全执行模板地图复制或保存/重启门 | v0.0.5 首次 MCP 写入前，任务合同列出准确 External Package roots，改为 Manifest 精确保存且 Dirty=0 后重启，并完成只读启动审计 | Closed |
@@ -105,6 +105,16 @@ date: "2026-07-10"
 - 截图可读且三项 PIE 冒烟通过，但 Editor 显示约 945.8 MiB 显存超预算警告；这是当前机器环境性能风险，不是 Package/玩法合同变化。新时间窗无 ProjectR Error、Ensure 或 Blueprint Runtime Error。
 - 当前没有未关闭的 v0.1.3 功能阻断；KI-018/KI-019/KI-020 均有明确隔离流程，不改变本版本运行时产品合同。NetworkPIEReplication 保持 optional `NOT_RUN`。
 - 最终 AutomationReport `v013-final-report-20260713a` 为 36/36 required PASS；ProjectRAuthoringToolExtension optional PASS，NetworkPIEReplication optional `NOT_RUN`。
+
+# 2026-07-13 - v0.1.4 Known Issues Review（Completed）
+
+- KI-008 关闭：Schema 1、严格迁移注册表、16 字节 `PRSV`/CRC、A/B 加载与异步保存、写前冲突、写后回读、active/trailing、退出弱回调和平台测试槽白名单均已实现；`ProjectR.Save` 5/5，唯一物理测试 GUID 的 `_A/_B` 已由平台 API 精确清理，Access Ledger 未出现生产槽。独立审查发现并修复了测试宏下 Production Storage 与删除入口可组合误用的风险：Production Storage 现在无清理能力，删除前还会二次匹配准确 automation generation Slot，回归证明在平台访问前拒绝生产槽，因此不保留为 Open KI。
+- `ProjectR.Build.cs` 计划中的 `PlatformFeatures` 私有模块依赖在 UE5.8 首次 GREEN Build 被 UBT 以 RulesError 8 拒绝。源码核对确认 `IPlatformFeaturesModule` 位于既有 `Engine` 模块公开头，移除无效依赖后 Build 成功；最终 Build.cs 无 diff，不登记为持续 KI。
+- KI-019 保持 Open：最终 Build 成功但仍输出既有 `.uplugin` 未声明 GameplayAbilities 依赖警告，本版本没有修改插件。
+- KI-020 保持 Open：首次后台 In-Viewport Combat smoke 按既有模式得到 `0.3333s` 严格采样失败，已立即 StopPIE 且未沿用受污染会话。新前台 Floating PIE 为 `0.1049s/0.1004s`、固定七事件和最终 100/50/Alive PASS；该事实再次验证既有隔离流程，不修改 Combat Tool。
+- KI-018 保持 Accepted Risk，KI-004 保持 Open，KI-006 保持 Accepted Risk；本轮未调用 Graph DSL、未修改或启用插件、未新增 Toolset。
+- 没有创建或修改 UE Package；265 个可查询资产 Dirty=0，1190 个 Package 的路径、长度和基线 SHA-256 不变。新鲜 PIE 只记录 Save Subsystem “initialized without storage access”，未调用产品 Save API，也未访问真实用户槽。
+- 本版本没有新增未关闭功能阻断；NetworkPIEReplication 与 ProjectRAuthoringToolExtension 均为 optional `NOT_RUN`。
 
 # 记录规则
 

@@ -189,6 +189,23 @@ date: "2026-07-10"
 - 本版本没有必需人工验收；`ProjectRAuthoringToolExtension` 保持 optional PASS，`NetworkPIEReplication` 保持 optional `NOT_RUN`，GC 未执行。
 - v0.1.3 已正式关闭；版本转换将 `CURRENT_VERSION.md` 推进至 v0.1.4，不在该转换中实现 v0.1.4 功能。
 
+# 2026-07-13 - v0.1.4 版本化 SaveGame、PRSV 与 A/B 存储（Completed）
+
+- 按 TDD 新增五个 Save 枚举、最小 `UPRSaveGame`、逐版本 Migration Registry、`PRSV` Codec、受控 `ISaveGameSystem` Backend/Storage 和 `UPRSaveSubsystem`。RED Build `v014-tdd-red-20260713a` 只因目标 Save Header 不存在退出 6；实现后转为 GREEN。
+- 计划中的 `PlatformFeatures` 私有模块依赖在 UE5.8 被 UBT 以 RulesError 8 拒绝。引擎源码核对证明 `IPlatformFeaturesModule` 位于既有 Engine 模块公开头；删除无效依赖后构建成功，最终 `ProjectR.Build.cs` 无 diff，未增加不必要模块。
+- Schema 1 只保存 `SchemaVersion`、`SaveRevision` 和含 `ProfileId` 的 Profile。固定 16 字节 little-endian `PRSV` Header、CRC32、16 MiB 上限、严格长度/未来版本/错误 Save 类分类，以及副本式 `N -> N+1` 迁移均完成。
+- A/B 状态机覆盖 Future barrier、损坏备用恢复、Profile/Revision/字节冲突、首次 A 与后续 B/A、写前观察快照、异步写后回读和失败保留上一有效代；保存队列为 single active + single trailing、last-write-wins，退出只取消未启动 trailing并使用 Weak callback。
+- `ProjectR.Save` 最终 5/5 PASS：Schema、Migration、Envelope、Fake Runtime 与真实平台 Slot 五项均为 success，failure/not-run 为 0。真实平台测试只访问随机 `ProjectR_Automation_<GUID>` 的 `_A/_B`，Access Ledger 无生产槽，结束时通过平台 API 精确删除并复核两代不存在。最终独立审查又发现开发测试构建中的删除入口需二次防误用；补充 RED→GREEN 后，Production Storage 无清理能力，且删除前必须再次匹配准确 automation generation 命名，回归证明生产槽在平台访问前被拒绝。
+- 独立历史回归实际 PASS：`ProjectR.Ability` 5/5、`ProjectR.GAS` 4/4、`ProjectR.Input` 3/3；`ProjectR.Combat` 4/4 全部状态 Success，其两条 warning 为既有 GameplayCue 路径提示和测试预期的超大伤害 Clamp。
+- 唯一 ProjectR Editor PID 37308 持有 8000，反射 `/Script/ProjectR.PRSaveSubsystem`。两个 PIE GameInstance 均只记录 `ProjectR Save subsystem initialized without storage access.`，没有调用产品 Save API、访问生产槽或产生用户存档。
+- 首个后台 In-Viewport Combat smoke 按 KI-020 得到 `0.3333s` 采样失败，已立即 StopPIE 且未复用会话；新前台 Floating PIE 严格回归为 `0.1049s/0.1004s`、七事件和最终 Health/Shield 100/50、Alive。Ability smoke 为 23 事件并清零验证 Spec/Cooldown，Input smoke 为 D/A `+126.761/-94.123 cm`、双跳跃 `85.556 cm`、Y 漂移 0、Actor/相机稳定。
+- 截图非黑屏，新日志时间窗无 ProjectR Error、Ensure 或 Blueprint Runtime Error；StopPIE 后恢复 MainMenu。265 个可查询 `/Game` 资产 Dirty=false，Editor 无打开资产并正常关闭，无 Package 保存提示。
+- 最终 BuildEditor `v014-delete-guard-final-build-20260713a` 包装器/子进程退出 0、`Result: Succeeded`；唯一持续 warning 为 KI-019 的插件 GameplayAbilities 元数据声明缺口。
+- 原 1190 个 UE Package 的路径、长度和 SHA-256 全部不变，Package/地图/Config/Tag 为 1190/10/6/71；主模块 Source 从基线 127 增加十个 Save 文件为 137，插件 Source 保持 8。没有新增或修改 `.uasset/.umap`，暂存路径为 0。
+- 最终 AutomationReport `v014-final-report3-20260713a/v014-final-None/result.json` 退出 0、总体 PASS：34/34 required PASS；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 为 optional `NOT_RUN`。
+- Future Compatibility Review：v0.1.5 只读 RuntimeState/Event；关系、Account/Run/Graveyard、Meta、Settings 与 Memory 通过严格 Schema 迁移加入；Steam Cloud 复用同一 A/B/PRSV 字节。没有持久化 UObject、ASC/Spec/Effect/Grant Handle、Held Input、Delegate 或 CombatEvent。
+- 本版本无人工步骤，未运行 GC，未暂存、commit 或 push；`CURRENT_VERSION.md` 保持 v0.1.4。
+
 # 版本记录模板
 
 ```text
