@@ -131,8 +131,9 @@ date: "2026-07-10"
 - 新增 PIE 回归断言先在旧实现得到 `airReverseDeltaX≈0.000005 cm` 的预期 RED；修复后连续三次 PASS，0.1 秒反向位移约 `-44～47 cm`、Y 漂移 `0 cm`、相机/Actor 稳定；用户键鼠复验返回 PASS，KI-014 关闭。
 - 用户追加要求 Mesh 转向不瞬切并批准 0.12 秒方案。实现以 Timer 驱动 Ease-In-Out，不启用永久 Tick，实际移动仍即时反向；快速 A/D 从当前 yaw 重启插值。旧实现的早期样本为端点 `90`（RED），新实现诊断得到早期 `-83.06`、最终 `90`，快速反向从当前 `62.22` 连续收敛（GREEN）。
 - 最终 BuildEditor `v010-smooth-facing-final2-20260711` 退出 0；标准 PIE PASS：D/A 位移 `+126.69/-94.12 cm`、键鼠/手柄跳跃约 `85.56 cm`、Y 漂移 `0`、最终 Mesh yaw `-90/+90`、Actor/相机稳定。原生自动化报告 `v010-smooth-facing-final-20260711/Automation-Editor/index.json` 为 3/3 PASS；全 `/Game` 310 条记录中 256 个可查询资产 Dirty=0，54 条 ExternalObjects 按工具限制排除。用户平滑转向手感返回 PASS，KI-015 关闭。
-- 最终 AutomationReport `v010-final-20260711/v010-final-None/result.json` 实际退出 0，22/22 required checks PASS；`PhysicalGamepadHandfeel` 为 optional `NOT_RUN`。v0.1.0 任务页和 VersionIndex 标记 Completed，`CURRENT_VERSION.md` 保持 v0.1.0，未暂存、未提交、未推送。
+- 最终 AutomationReport `v010-final-20260711/v010-final-None/result.json` 实际退出 0，22/22 required checks PASS；`PhysicalGamepadHandfeel` 为 optional `NOT_RUN`。v0.1.0 任务页和 VersionIndex 已标记 Completed。
 - Future Compatibility Review（自动部分）：v0.1.1 可增量接入 ASC/AttributeSet；v0.1.3 可覆写 native Tag 钩子；v0.3.2 可增加 QTE Action/Tag/Mapping；v0.8.2 可替换玩家 Mapping。未引入未来具体类型、Save/Tag/API/正式地图破坏。
+- v0.1.0 正式提交已创建：`2a71fd85a065085da48747f783ffe70cc22e1010`（`v0.1.0 Add Enhanced Input and 2.5D movement`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
 # 版本记录模板
 

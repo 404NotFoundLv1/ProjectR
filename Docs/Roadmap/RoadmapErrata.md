@@ -36,6 +36,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-014 | v0.1.0 仍以 v0.0.4 为直接前置，并同时要求技能/QTE 输入绑定和输入调试显示 | 直接前置改为 v0.0.5；v0.1.0 只建立稳定 InputAction→InputTag 语义、2.5D 移动和固定侧视相机；技能输入延期至 v0.1.3，QTE 输入延期至 v0.3.2，调试证据使用日志、Enhanced Input 内置能力和 AutomationReport，不创建 v0.1.5 Debug UI | 避免输入层硬编码未来 Ability/QTE 类，并确保正式资产生产遵守 v0.0.5 MCP 安全合同 | Resolved by v0.1.0 task contract |
 
+# v0.1.1 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-015 | v0.1.1 同时要求伤害/恢复测试和 HUD 委托，基础 ASC 类型却延后到 v0.1.3；属性 `Crit` 语义含糊，默认 GameplayEffect 资产创建仍转交人工 | v0.1.1 立即冻结薄 `UPRAbilitySystemComponent`、11 项属性 Schema 和统一原生属性变化事件，只验证初始化、通用 Clamp、Max 调整、复制元数据与重复初始化；`Crit` 明确为 0–1 的 `CritChance`，默认 GE 由 Codex 通过 Unreal MCP 创建。伤害语义延期至 v0.1.2，Ability 业务延期至 v0.1.3，HUD 消费延期至 v0.2.3 | 避免后续替换 ASC 类型、跨版本职责混入和不必要的人工资产操作，同时为伤害、技能与 HUD 冻结稳定数据合同 | Resolved by v0.1.1 task contract |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。
