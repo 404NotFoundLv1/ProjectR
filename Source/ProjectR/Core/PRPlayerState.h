@@ -4,6 +4,7 @@
 
 #include "Abilities/PRAttributeTypes.h"
 #include "AbilitySystemInterface.h"
+#include "Core/PRCombatantInterface.h"
 #include "GameFramework/PlayerState.h"
 
 #include "PRPlayerState.generated.h"
@@ -17,7 +18,10 @@ struct FGameplayEffectSpecHandle;
 
 /** Player-owned persistent GAS state shared by successive player pawns. */
 UCLASS(Abstract)
-class PROJECTR_API APRPlayerState : public APlayerState, public IAbilitySystemInterface
+class PROJECTR_API APRPlayerState
+	: public APlayerState
+	, public IAbilitySystemInterface
+	, public IPRCombatantInterface
 {
 	GENERATED_BODY()
 
@@ -25,6 +29,8 @@ public:
 	APRPlayerState();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual FName GetCombatantId() const override;
+	virtual TSubclassOf<UGameplayEffect> GetDamageEffectClass() const override;
 	UPRAbilitySystemComponent* GetProjectRAbilitySystemComponent() const;
 	const UPRAttributeSet* GetAttributeSet() const;
 	bool InitializeAbilitySystemForAvatar(APRPlayerCharacter* Avatar);
@@ -38,12 +44,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="ProjectR|Abilities")
 	TSubclassOf<UGameplayEffect> DefaultAttributesEffect;
 
+	UPROPERTY(EditDefaultsOnly, Category="ProjectR|Combat")
+	TSubclassOf<UGameplayEffect> DamageEffect;
+
 private:
 	void BindAttributeDelegates();
 	void UnbindAttributeDelegates();
 	void HandleAttributeChanged(const FOnAttributeChangeData& ChangeData);
 	bool TryApplyDefaultAttributes();
 	bool ApplyDefaultAttributesSpec(const FGameplayEffectSpecHandle& SpecHandle);
+	bool EnsureLifeStateForInitializedAvatar();
 
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Abilities", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UPRAbilitySystemComponent> ProjectRAbilitySystemComponent;

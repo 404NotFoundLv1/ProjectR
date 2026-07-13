@@ -37,6 +37,7 @@ public:
 	ATTRIBUTE_ACCESSORS_BASIC(UPRAttributeSet, CritChance)
 	ATTRIBUTE_ACCESSORS_BASIC(UPRAttributeSet, Permission)
 	ATTRIBUTE_ACCESSORS_BASIC(UPRAttributeSet, Resonance)
+	ATTRIBUTE_ACCESSORS_BASIC(UPRAttributeSet, IncomingDamage)
 
 protected:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing=OnRep_MaxHealth, Category="ProjectR|Attributes")
@@ -71,6 +72,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing=OnRep_Resonance, Category="ProjectR|Attributes")
 	FGameplayAttributeData Resonance;
+
+	/** Transient GAS meta attribute consumed once by PostGameplayEffectExecute. */
+	UPROPERTY(BlueprintReadOnly, Transient, Category="ProjectR|Attributes")
+	FGameplayAttributeData IncomingDamage;
 
 private:
 	void AdjustAttributeForMaxChange(

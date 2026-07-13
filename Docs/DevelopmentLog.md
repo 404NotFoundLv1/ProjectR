@@ -152,6 +152,24 @@ date: "2026-07-10"
 - `NetworkPIEReplication` 保持 optional `NOT_RUN`；本版本没有必需人工步骤，GC 未执行。
 - v0.1.1 已正式关闭；版本转换将 `CURRENT_VERSION.md` 推进至 v0.1.2，不在该转换中实现 v0.1.2 功能。
 
+# 2026-07-13 - v0.1.2 统一伤害、死亡、复活与受击反馈（Completed）
+
+- 按 TDD 新增 DamageRequest/ReviveRequest/CombatEvent、两个窄接口、`UPRCombatSubsystem`、`UPRDamageExecutionCalculation` 与非复制 `IncomingDamage`。RED Build 仅因目标 Combat Header 缺失退出 6，生产实现后 BuildEditor 转为 PASS；资产 RED 仅因 GE/引用缺失失败。
+- 伤害唯一沿 Subsystem→`GE_Damage`→Execution→IncomingDamage→AttributeSet 结算；Shield spill-over、Health Clamp、非法/超大值、Invulnerable、幂等死亡、可回滚 Revive 与七事件固定顺序由 `ProjectR.Combat` 覆盖。
+- 新增 8 个 `Combat.*` Tag，显式总数 61；既有 53 个名称/注释不变，没有 Skill/QTE/测试 Tag。
+- 官方工具在单次事务中创建并精确回读零 Modifier/单 Execution 的 `GE_Damage`；设置 `BP_PlayerState.DamageEffect` 后，GE 与三个 Player Blueprint warnings-as-errors 编译通过。精确保存仅包含 GE 与 PlayerState；Character/Controller 未 Dirty、未保存。重启回载与可查询资产 Dirty=0 PASS。
+- 官方 24/276 Tool 无法调用 C++-only CombatSubsystem；用户批准新增一个固定 Combat PIE Tool，重启后为 25/277。工具固定 SourceId、阶段、数值与事件序列，不保存 Package或暴露任意执行能力。
+- Pawn 替换测试发现 UE `DispatchRestart` 会覆盖 PossessedBy 中的死亡 MovementMode；在 Character `Restart` 后依据持续 Dead Tag 重应用死亡锁，失败用例转为 GREEN。
+- `ProjectR.Combat` 最终 4/4（0 failure）、`ProjectR.GAS` 4/4、`ProjectR.Input` 3/3；BuildEditor `v012-restartfix-20260713a` 与 `v012-worldtimefix-20260713a` 均退出 0。
+- CombatGym 客观 PIE PASS：硬直前台世界时间 0.115/0.100 秒；事件顺序 Damage, Damage, DamageRejected, Damage, Death, DamageRejected, Revive；最终 Health/Shield=100/50、Alive=true、IncomingDamage=0、ActiveEffects/GrantedAbilities=0。
+- v0.1.0 Input smoke PASS：D/A 方向、双输入跳跃、Y 漂移 0、Mesh yaw -90/+90、Actor/相机稳定；截图非黑屏，StopPIE 后五个相关 Package Dirty=false。
+- 启动日志已有 UE UnifiedError 自测、旧 MCP session-id、字体/驱动和 GameplayCue 路径警告；本轮 PIE 新时间窗没有 ProjectR Error、Ensure 或 Blueprint Runtime Error。
+- 最终人工序列以 1.5 秒步进执行，短硬直实测 0.110/0.121 秒；用户持续/交替输入 A/D 后明确返回“受击手感：PASS”，死亡锁止与复活控制恢复验收通过。
+- 最终 BuildEditor `v012-final-build-20260713` 的包装器与子进程退出码均为 0、`Result: Succeeded`。最终快照重新运行 `ProjectR.Combat` 4/4、`ProjectR.GAS` 4/4、`ProjectR.Input` 3/3 后，AutomationReport `v012-final-verified-20260713/v012-final-None/result.json` 退出 0，29/29 required checks PASS；`NetworkPIEReplication` 为 optional `NOT_RUN`，获批 Editor-only 工具扩展为 optional PASS。
+- 最终计数复核区分主模块与 Editor 插件：`Source/ProjectR` 的 HEAD 基线实际为 113，本版本准确新增 8 项后为 121；插件 Source 从 4 增至 6。此前计划中的 115→123 混用了计数口径，不代表缺少实现文件；Package/地图/Config/Tag 最终为 1183/10/6/61。
+- Future Compatibility Review：v0.1.3、v0.2.0、v0.2.1、v0.2.3 与 v0.3.2 可复用冻结的 DamageRequest/CombatEvent、接口、Tag 和唯一结算路径；未引入 Ability、敌人、HUD、QTE、Save 或具体下游消费者依赖。
+- v0.1.2 已按合同关闭；`CURRENT_VERSION.md` 不推进，暂存区、commit、push 和 GC 均未修改或执行。
+
 # 版本记录模板
 
 ```text

@@ -49,3 +49,14 @@ date: "2026-07-10"
 - `FastReplication=False`、`bDynamicReplication=False`。
 - 无 Redirect；完整名称按字典序存储。
 - `UPRTagLibrary` 暴露 16 个 C++ 静态 getter，不暴露 Blueprint API。
+
+# v0.1.2 Combat 增量
+
+- 显式标签总数由 53 增至 61；根命名空间由 9 增至 10。既有 53 个名称和 `DevComment` 不变，仍无 Redirect。
+- 新根 `Combat` 由 Combat 所有，固定包含：
+  - `Combat.Data.Damage`：`GE_Damage` 的唯一 SetByCaller 数值键。
+  - `Combat.Event.Damage`、`Combat.Event.DamageRejected`、`Combat.Event.Death`、`Combat.Event.Revive`：统一事件类型。
+  - `Combat.Response.HealthDamaged`、`Combat.Response.ShieldAbsorbed`、`Combat.Response.ShieldBroken`：单次事件的响应事实。
+- `State.Alive`、`State.Dead`、`State.Invulnerable` 继续表达生命周期/拒绝状态，不复制到 `Combat.*`。
+- 本版本不增加 Skill、QTE、Critical、DamageType、Heal 或测试 Tag。后续伤害/Ability 消费者使用现有字段和标签增量扩展，不能建立第二套同义 taxonomy。
+- `UPRTagLibrary` 新增上述 8 个 Combat checked getter，总计 24 个公开 C++ 静态 getter；仍不提供任意字符串查询或 Blueprint API。

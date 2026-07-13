@@ -5,6 +5,7 @@
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Characters/PRPlayerCharacter.h"
+#include "Core/PRTagLibrary.h"
 #include "GameplayEffect.h"
 #include "ProjectR.h"
 
@@ -24,6 +25,16 @@ APRPlayerState::APRPlayerState()
 UAbilitySystemComponent* APRPlayerState::GetAbilitySystemComponent() const
 {
 	return ProjectRAbilitySystemComponent;
+}
+
+FName APRPlayerState::GetCombatantId() const
+{
+	return TEXT("Player");
+}
+
+TSubclassOf<UGameplayEffect> APRPlayerState::GetDamageEffectClass() const
+{
+	return DamageEffect;
 }
 
 UPRAbilitySystemComponent* APRPlayerState::GetProjectRAbilitySystemComponent() const
@@ -55,6 +66,10 @@ bool APRPlayerState::InitializeAbilitySystemForAvatar(APRPlayerCharacter* Avatar
 
 	BindAttributeDelegates();
 	if (HasAuthority() && !bDefaultAttributesApplied && !TryApplyDefaultAttributes())
+	{
+		return false;
+	}
+	if (HasAuthority() && !EnsureLifeStateForInitializedAvatar())
 	{
 		return false;
 	}
@@ -184,4 +199,37 @@ bool APRPlayerState::ApplyDefaultAttributesSpec(const FGameplayEffectSpecHandle&
 	bDefaultAttributesApplied = true;
 	UE_LOG(LogProjectR, Display, TEXT("ProjectR default attributes applied once to %s."), *GetPathName());
 	return true;
+}
+
+bool APRPlayerState::EnsureLifeStateForInitializedAvatar()
+{
+	if (!IsValid(ProjectRAbilitySystemComponent) || !IsValid(ProjectRAttributeSet))
+	{
+		return false;
+	}
+
+	const FGameplayTag& AliveTag = UPRTagLibrary::GetStateAliveTag();
+	const FGameplayTag& DeadTag = UPRTagLibrary::GetStateDeadTag();
+	if (ProjectRAbilitySystemComponent->HasMatchingGameplayTag(DeadTag))
+	{
+		ProjectRAbilitySystemComponent->SetLooseGameplayTagCount(
+			AliveTag, 0, EGameplayTagReplicationState::TagOnly);
+		return ProjectRAbilitySystemComponent->GetGameplayTagCount(AliveTag) == 0
+			&& ProjectRAbilitySystemComponent->GetGameplayTagCount(DeadTag) > 0;
+	}
+
+	if (ProjectRAttributeSet->GetHealth() <= 0.0f)
+	{
+		UE_LOG(LogProjectR, Error,
+			TEXT("PlayerState %s has zero Health without State.Dead during GAS initialization."),
+			*GetPathName());
+		return false;
+	}
+
+	ProjectRAbilitySystemComponent->SetLooseGameplayTagCount(
+		DeadTag, 0, EGameplayTagReplicationState::TagOnly);
+	ProjectRAbilitySystemComponent->SetLooseGameplayTagCount(
+		AliveTag, 1, EGameplayTagReplicationState::TagOnly);
+	return ProjectRAbilitySystemComponent->GetGameplayTagCount(AliveTag) == 1
+		&& ProjectRAbilitySystemComponent->GetGameplayTagCount(DeadTag) == 0;
 }

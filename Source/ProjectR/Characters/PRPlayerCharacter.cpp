@@ -21,6 +21,7 @@ namespace
 constexpr float FacingTurnDurationSeconds = 0.12f;
 constexpr float FacingTurnTimerIntervalSeconds = 1.0f / 120.0f;
 constexpr float FacingTurnEaseExponent = 2.0f;
+constexpr float HitReactionDurationSeconds = 0.10f;
 }
 
 APRPlayerCharacter::APRPlayerCharacter()
@@ -43,6 +44,54 @@ UAbilitySystemComponent* APRPlayerCharacter::GetAbilitySystemComponent() const
 	return ProjectRPlayerState ? ProjectRPlayerState->GetAbilitySystemComponent() : nullptr;
 }
 
+void APRPlayerCharacter::HandleCombatHitReaction()
+{
+	UPRAbilitySystemComponent* ASC = BoundAbilitySystemComponent.Get();
+	if (bCombatDeathLocked
+		|| (IsValid(ASC) && ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag())))
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!bHitReactionActive)
+	{
+		SavedMovementMode = Movement->MovementMode;
+		SavedCustomMovementMode = Movement->CustomMovementMode;
+		bHitReactionActive = true;
+	}
+	StopJumping();
+	ConsumeMovementInputVector();
+	Movement->StopMovementImmediately();
+	Movement->DisableMovement();
+	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		HitReactionTimerHandle,
+		this,
+		&APRPlayerCharacter::RestoreMovementAfterHitReaction,
+		HitReactionDurationSeconds,
+		false);
+}
+
+void APRPlayerCharacter::HandleCombatLifeStateChanged(const bool bIsDead)
+{
+	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
+	bHitReactionActive = false;
+	bCombatDeathLocked = bIsDead;
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	StopJumping();
+	ConsumeMovementInputVector();
+	Movement->StopMovementImmediately();
+	if (bIsDead)
+	{
+		Movement->DisableMovement();
+	}
+	else
+	{
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+}
+
 void APRPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -61,6 +110,7 @@ void APRPlayerCharacter::BeginPlay()
 void APRPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(FacingTurnTimerHandle);
+	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
 	CleanupAbilitySystem();
 	Super::EndPlay(EndPlayReason);
 }
@@ -69,6 +119,17 @@ void APRPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	InitializeAbilitySystem();
+}
+
+void APRPlayerCharacter::Restart()
+{
+	Super::Restart();
+
+	UPRAbilitySystemComponent* ASC = BoundAbilitySystemComponent.Get();
+	if (IsValid(ASC) && ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag()))
+	{
+		HandleCombatLifeStateChanged(true);
+	}
 }
 
 void APRPlayerCharacter::OnRep_PlayerState()
@@ -169,6 +230,10 @@ void APRPlayerCharacter::HandleInputTagReleased(FGameplayTag InputTag)
 
 void APRPlayerCharacter::HandleMoveInput(const FInputActionValue& Value)
 {
+	if (bCombatDeathLocked || bHitReactionActive)
+	{
+		return;
+	}
 	const float MoveAxis = Value.Get<float>();
 	if (FMath::IsNearlyZero(MoveAxis))
 	{
@@ -199,6 +264,10 @@ void APRPlayerCharacter::HandleMoveCompleted(const FInputActionValue& Value)
 
 void APRPlayerCharacter::HandleJumpStarted()
 {
+	if (bCombatDeathLocked || bHitReactionActive)
+	{
+		return;
+	}
 	Jump();
 }
 
@@ -272,6 +341,10 @@ bool APRPlayerCharacter::InitializeAbilitySystem()
 	UPRAbilitySystemComponent* ASC = ProjectRPlayerState->GetProjectRAbilitySystemComponent();
 	BindMoveSpeed(ASC);
 	BoundPlayerState = ProjectRPlayerState;
+	if (ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag()))
+	{
+		HandleCombatLifeStateChanged(true);
+	}
 	return true;
 }
 
@@ -330,6 +403,19 @@ void APRPlayerCharacter::HandleMoveSpeedChanged(const FOnAttributeChangeData& Ch
 void APRPlayerCharacter::SyncMoveSpeed(float NewMoveSpeed)
 {
 	GetCharacterMovement()->MaxWalkSpeed = FMath::Clamp(NewMoveSpeed, 0.0f, 2000.0f);
+}
+
+void APRPlayerCharacter::RestoreMovementAfterHitReaction()
+{
+	if (!bHitReactionActive)
+	{
+		return;
+	}
+	bHitReactionActive = false;
+	if (!bCombatDeathLocked)
+	{
+		GetCharacterMovement()->SetMovementMode(SavedMovementMode, SavedCustomMovementMode);
+	}
 }
 
 bool APRPlayerCharacter::ResolveRequiredInputActions(

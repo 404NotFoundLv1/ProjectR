@@ -181,6 +181,24 @@ date: "2026-07-10"
 
 **验证**：v0.1.1 的 TDD RED 因目标 GAS Header 不存在按预期失败；生产实现后 BuildEditor 通过。`ProjectR.GAS` 四项原生自动化全部成功，覆盖属性 Schema/复制元数据、Clamp/Max 比例、默认 GE 及 Owner/Avatar/Pawn 替换生命周期。GASToolsets 重启后实测为 24 Toolset/276 Tool，11 项 Attribute 可回读。`GE_DefaultAttributes` 在单次 ProgrammaticToolset 事务中配置并断言 11 项 Modifier，随后只精确保存 GE 与 `BP_PlayerState`；三个 Player Blueprint 与 GE 均 warnings-as-errors 编译通过。Editor 重启回载、CombatGym PIE 属性检查、默认 GE 仅应用一次、v0.1.0 输入回归、截图、日志和 PIE 后 Dirty=0 全部取得实际 PASS。
 
+# ADR-017 - 单一 GAS 伤害路由、PlayerState 生死状态与单向 CombatEvent
+
+**状态**：Accepted。
+
+**上下文**：v0.1.2 必须在 v0.1.1 的 PlayerState-owned ASC/AttributeSet 上增加伤害、死亡和复活，同时让 Ability、敌人、HUD 与 QTE 复用而不形成反向依赖。伤害若同时在 Execution、AttributeSet 与 Subsystem 扣减会重复结算；死亡状态若归 Pawn 会在替换时丢失。
+
+**选项**：每个技能直接修改属性；Execution 直接扣 Shield/Health 并发布事件；以 World Subsystem 统一校验、GAS Meta 属性统一结算、PlayerState 持有状态并发布稳定事件。
+
+**决策**：`UPRCombatSubsystem` 是唯一请求入口；`GE_Damage` 的单一 `UPRDamageExecutionCalculation` 只把 `Combat.Data.Damage` 输出为非复制 `IncomingDamage`，`UPRAttributeSet` 唯一执行 Shield spill-over 与 Health Clamp，Subsystem 根据实际差值切换 `State.Alive/Dead` 并发布冻结的 `FPRCombatEvent`。Owner 通过 `IPRCombatantInterface` 提供 ID/GE，Avatar 通过 `IPRCombatFeedbackInterface` 接受占位反馈。Dead 状态跨 Pawn 替换保留，`Restart` 后重新应用死亡移动锁，复活采用可回滚快照。
+
+**后果**：v0.1.3/v0.2.0 只构造 DamageRequest；v0.2.1 的敌人实现两个窄接口；v0.2.3/v0.3.2 只订阅属性/CombatEvent。Combat 不依赖任何具体消费者，实时路径不等待网络或 LLM。
+
+**影响版本/合同**：新增 8 个 `Combat.*` Tag、`GE_Damage`、`IncomingDamage` Meta 属性、请求/事件/复活结构、Subsystem 与两个接口。既有 11 项 replicated 属性、ASC 类型、默认 GE、正式地图、Input、Save 与 Blueprint callable API 不变。
+
+**迁移/回滚**：先解除 `BP_PlayerState.DamageEffect`，再反向撤销准确 C++/Tag/文档 diff；新 GE 未获逐项删除批准时只隔离。禁止 Save All、普通文件 IO、硬重置或批量删除 Package。
+
+**验证**：TDD RED→GREEN；BuildEditor；`ProjectR.Combat` 4/4、`ProjectR.GAS` 4/4、`ProjectR.Input` 3/3；事务化 GE 配置、四 Blueprint warnings-as-errors 编译、两 Package 精确保存、Dirty=0、Editor 重启回载；CombatGym PIE 固定事件序列、Inspector、输入回归与非黑屏截图。最终主观硬直手感由用户独立判断。
+
 # ADR 模板
 
 ```text

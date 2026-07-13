@@ -18,6 +18,7 @@ UPRAttributeSet::UPRAttributeSet()
 	InitCritChance(0.05f);
 	InitPermission(0.0f);
 	InitResonance(0.0f);
+	InitIncomingDamage(0.0f);
 }
 
 void UPRAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -76,6 +77,21 @@ void UPRAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, fl
 void UPRAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
+	if (Data.EvaluatedData.Attribute == GetIncomingDamageAttribute())
+	{
+		const float Damage = GetIncomingDamage();
+		SetIncomingDamage(0.0f);
+		if (!FMath::IsFinite(Damage) || Damage <= 0.0f)
+		{
+			return;
+		}
+
+		const float ShieldAbsorbed = FMath::Min(GetShield(), Damage);
+		const float RemainingDamage = FMath::Max(0.0f, Damage - ShieldAbsorbed);
+		SetShield(FMath::Clamp(GetShield() - ShieldAbsorbed, 0.0f, GetMaxShield()));
+		SetHealth(FMath::Clamp(GetHealth() - RemainingDamage, 0.0f, GetMaxHealth()));
+		return;
+	}
 	ClampEvaluatedAttribute(Data.EvaluatedData.Attribute);
 }
 

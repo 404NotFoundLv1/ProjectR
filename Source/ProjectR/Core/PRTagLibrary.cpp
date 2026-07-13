@@ -49,6 +49,54 @@ const FGameplayTag& UPRTagLibrary::GetInputExecuteTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetCombatDataDamageTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Data.Damage"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatEventDamageTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Event.Damage"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatEventDamageRejectedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Event.DamageRejected"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatEventDeathTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Event.Death"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatEventReviveTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Event.Revive"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseHealthDamagedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.HealthDamaged"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseShieldAbsorbedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.ShieldAbsorbed"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseShieldBrokenTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.ShieldBroken"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetStateAliveTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("State.Alive"));

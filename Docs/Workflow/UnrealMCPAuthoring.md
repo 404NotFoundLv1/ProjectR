@@ -8,13 +8,18 @@ date: "2026-07-10"
 # 已验证连接
 ProjectR 的 Codex 配置指向 `http://127.0.0.1:8000/mcp`。v0.0.5 启动审计时该端口由打开 `ProjectR.uproject` 的 UnrealEditor 进程监听，协议协商为 `2025-11-25`，读取调用返回当前关卡 `/Game/ProjectR/Maps/L_MainMenu`、PIE=false、无打开或选中资产且地图未 Dirty。
 ## 当前暴露能力
-Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.0.5 再次逐 Toolset 审计，实测其后仍为 20 个 Toolset、261 个底层 Tool。
+Tool Search 模式对 Codex 暴露 list_toolsets、describe_toolset、call_tool 三个元工具；v0.1.2 在通用基线、GASToolsets 与两个 ProjectR 窄工具均加载后，实测为 25 个 Toolset、277 个底层 Tool。
 | Toolset | Tool 数 | 主要能力 |
 |---|---:|---|
 | AgentSkillToolset | 4 | UE AgentSkill 资产查询与创建 |
 | EditorAppToolset | 21 | 视口、选择、截图、PIE、Content Browser |
 | LogsToolset | 4 | 日志类别、过滤和详细度 |
 | GameplayTagsToolset | 6 | 标签列表、详情、引用查询以及受控增删改；v0.0.2 仅使用只读工具 |
+| GASToolsets.AttributeSetToolset | 2 | AttributeSet 类与属性 Schema 只读审计 |
+| GASToolsets.AbilitySystemInspectorToolset | 4 | PIE 属性、Tag、ActiveEffect、GrantedAbility 只读审计 |
+| GASToolsets.GameplayCueToolset | 8 | Cue/Tag 写入与运行时操作；未经当前 Manifest 禁止调用 |
+| ProjectRAuthoringTools.PRInputAutomationToolset | 1 | 固定 Enhanced Input PIE 注入与回归 |
+| ProjectRAuthoringTools.PRCombatAutomationToolset | 1 | 固定统一伤害/死亡/复活 PIE 序列 |
 | ActorTools | 17 | Actor/组件、Transform、标签、父子关系 |
 | AssetTools | 21 | 查找、依赖、复制、移动、保存、Dirty、文件读取 |
 | BlueprintTools | 53 | 创建/父类/变量/函数/事件/节点/Pin/Graph DSL/编译 |
@@ -110,3 +115,12 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - `GE_DefaultAttributes` 的默认精确保存清单只包含自身和 `BP_PlayerState`；`BP_PlayerCharacter` 仅在原生父类变化导致实际 Dirty 时追加，`BP_PlayerController` 永不保存。禁止空列表、Save All 和扩大到整个 Effects/Blueprints 目录。
 - Editor 重启前必须完成 GE/三个 Player Blueprint warnings-as-errors 编译、Manifest 精确保存和全量可查询资产 Dirty=0。重启后再用 AttributeSetToolset、AbilitySystemInspectorToolset、ObjectTools 和 BlueprintTools 分别验证 Schema、运行时值、CDO、父类与引用。
 - UE5.8 Instant GE 的成功 Handle `IsValid()` 为 false、`WasSuccessfullyApplied()` 为 true；自动化和运行时代码必须使用后者，避免默认 GE 被重复应用。
+
+# v0.1.2 Combat GameplayEffect 与 PIE 验收
+
+- 官方工具可以用 `BlueprintTools.create` 创建 `GE_Damage`，并在一次 ProgrammaticToolset 事务中设置/回读 `DurationPolicy=Instant`、零 Modifier、单一 `UPRDamageExecutionCalculation`、零 Period/GrantedAbility/GameplayCue/Stacking/额外 GEComponent；失败必须抛错撤销且禁止保存。
+- `BP_PlayerState.DamageEffect` 与 GE 完整回读后，GE、PlayerState、Character、Controller 必须 warnings-as-errors 编译。默认保存 Manifest 只包含 GE 与 PlayerState；本次 Character/Controller 均未 Dirty，未加入保存列表。
+- 官方 24/276 Tool 无法在活动 PIE 调用 C++-only `UPRCombatSubsystem`。经批准新增的 Combat Toolset 只运行固定 20/40/Invulnerable/致死/Dead 拒绝/100% Revive 序列，重启后总能力为 25/277；工具不保存、不提供任意参数化目标或代码执行。
+- PIE Timer 验收必须使用 PIE World 时间。Windows/Editor 在非前台时可能节流到约 3 FPS，使 0.10 秒 Timer 的首次可见恢复被量化为约 0.33 秒；运行硬直时长验收前必须将正确的 ProjectR Editor 置前台。前台实测两次恢复为 0.115 秒与 0.100 秒。
+- `PossessedBy` 后 UE5.8 仍会执行 `DispatchRestart`；死亡 Pawn 替换验收必须检查 `Restart` 后 MovementMode 仍为 None，不能只检查 ASC 的 `State.Dead`。
+- `CaptureViewport` 的 `captureTransform` 和 `annotations` 虽在 Schema 中可选，实测必须显式传 `null`。日志验收使用新 PIE 时间窗，忽略启动时引擎 UnifiedError 自测、旧 session-id 和已记录驱动/字体警告。

@@ -117,25 +117,21 @@ date: "2026-07-10"
 - `APRPlayerCharacter` 在 PossessedBy/OnRep_PlayerState 重新初始化 ActorInfo，幂等绑定 MoveSpeed 并立即同步 CharacterMovement；旧 Pawn 只有仍是 ASC 当前 Avatar 时才可清除 ActorInfo。
 - v0.1.0 的输入、空中反向、0.12 秒 Mesh 转向、Y 平面和固定侧视相机继续作为强制回归合同。
 
-# 1. CombatEvent 合同
+# 1. 统一伤害与 CombatEvent 合同
 
 **所有者**：Combat。  
 **建立版本**：v0.1.2。  
-**消费者**：HUD、QTE、PlayerProfile、Companion Dialogue、统计、Boss 和自动化测试。
+**消费者**：v0.1.3 Ability、v0.2.0 玩家技能、v0.2.1 敌人、v0.2.3 HUD、v0.3.2 QTE，以及画像、对话、统计和 Boss。
 
-建议负载 `FPRCombatEvent`：
-
-| 字段 | 类型 | 语义 |
-|---|---|---|
-| EventId | FGuid | 本次事件唯一标识 |
-| EventTag | FGameplayTag | Hit、Damage、Death、ShieldBreak、Dodge、Ability 等 |
-| SourceId/TargetId | FName | 稳定实体 ID，不用于持久化 UObject |
-| AbilityTag | FGameplayTag | 可空；触发能力 |
-| Magnitude | float | 已在本地确定的数值 |
-| WorldTimeSeconds | double | 本世界内排序时间 |
-| Flags | FGameplayTagContainer | Critical、Perfect、Boss、Companion 等 |
-
-兼容要求：新增事件类型使用新 Tag；不得让 QTE、UI 或画像反向调用 Combat 私有实现。
+- `UPRCombatSubsystem::ApplyDamage(FPRDamageRequest)` 与 `Revive(FPRReviveRequest)` 是唯一公共 C++ 入口；不暴露 Blueprint API。
+- 伤害只沿 `DamageRequest -> GE_Damage -> UPRDamageExecutionCalculation -> IncomingDamage -> UPRAttributeSet` 结算一次。Execution 只输出 Meta 属性，AttributeSet 是唯一 Shield/Health 扣减点，Subsystem 只读取结算前后差值并发布事实。
+- `FPRDamageRequest` 冻结 `SourceId`、`DamageSource`、`Instigator`、`Target`、`AbilityTag`、`RawDamage`、`bCritical` 和 `DamageTags`。零、负数、NaN、Inf 或缺失必需引用为 `Invalid`；有限值超过 200000 Clamp 并记录 Warning。
+- `FPRCombatEvent` 冻结 `EventId`、`EventTag`、`SourceId`、`TargetId`、`DamageSource`、`Instigator`、`Target`、`AbilityTag`、`RawDamage`、`ShieldAbsorbed`、`HealthDamage`、`RemainingHealth`、`RemainingShield`、`bCritical`、`DamageTags`、`ResponseTags`、`bFatal` 和 `WorldTimeSeconds`。稳定 ID/Tag/数值可持久化；弱 UObject 引用不可持久化。
+- 成功伤害广播 `Combat.Event.Damage`；致死顺序严格为 `Damage -> State.Dead -> Combat.Event.Death`。Dead/Invulnerable 拒绝广播 `Combat.Event.DamageRejected`，不会修改属性；Dead 优先于 Invulnerable。
+- Shield 吸收、破盾与 Health 扣减只通过 `Combat.Response.*` 写入 `ResponseTags`，不额外创建第二套伤害事件。
+- `State.Alive` 与 `State.Dead` 互斥并以 TagOnly loose tag 复制；死亡状态、ASC 与属性归 PlayerState，跨 Pawn 替换保留。复活以快照回滚保证属性和 Tag 原子切换，不重放默认属性 GE。
+- `IPRCombatantInterface` 由 ASC Owner 提供稳定 ID 与 DamageEffect；`IPRCombatFeedbackInterface` 由 Avatar 提供受击/生死反馈。Combat 不依赖具体敌人、HUD、QTE、画像、对话或统计类型。
+- 新事件类型只能增量增加新的 `Combat.Event.*` Tag；现有字段或 Tag 的重命名/删除必须提供 ADR、消费者清单与兼容迁移。
 
 # 2. Ability、AbilitySet 与 InputTag 合同
 

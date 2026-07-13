@@ -24,6 +24,7 @@ date: "2026-07-10"
 | KI-013 | 官方 20/261 Toolset 没有键鼠/手柄 PIE 输入注入；首版自定义调用未给 `CreateSimulated` 提供实际 Viewport 而崩溃 | 无法自动证明真实 Enhanced Input 路径；错误实现会使 Editor 崩溃 | 用户批准最小 Editor-only Toolset；传入实际 `FSceneViewport`/默认 InputDevice 后键鼠和手柄序列、释放、移动、跳跃、平面、朝向和语义日志全部 PASS | Closed |
 | KI-014 | 首次人工验收发现跳跃中反向输入只改变 Mesh 朝向，实际 X 速度未立即反转 | 2.5D 动作移动在空中换向时不符合已确认手感 | PIE 回归断言在旧实现 RED；同幅翻转 X 速度后自动序列连续三次 PASS；用户键鼠复验 PASS | Closed |
 | KI-015 | 即时 Mesh yaw 切换满足方向正确性，但用户认为视觉转向过于生硬 | 左右快速换向的视觉手感不够自然 | 0.12 秒 Ease-In-Out 的 RED→GREEN 诊断、Build、标准 PIE 与最终用户手感全部 PASS | Closed |
+| KI-016 | 官方 24/276 Tool 无法在活动 PIE 调用 C++-only CombatSubsystem；后台 Editor 约 3 FPS 会把 Timer 恢复采样量化为约 0.33 秒 | 无法客观执行统一伤害闭环，后台墙钟采样会误判 0.10 秒硬直 | 用户批准窄范围 Combat Toolset；25/277 反射、固定事件序列、World 时间采样和 Editor 前台复验得到 0.115/0.100 秒，PIE/Dirty 门通过 | Closed |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -81,6 +82,14 @@ date: "2026-07-10"
 - KI-006 保持 Accepted Risk：本轮通过 Tool Schema、事务化 GE 配置、完整回读、精确保存、重启回载与 Dirty 门约束 Experimental MCP 风险。
 - UE5.8 在禁止修改 Config 的测试环境会输出既有 `No GameplayCueNotifyPaths were specified` 警告；原生 Clamp 测试对这一条准确已知引擎警告设置预期匹配，PIE 新时间窗没有 ProjectR/GAS 阻断错误。不新增 KI，也不降低其他错误校验。
 - 本版本没有新增未关闭阻断；NetworkPIEReplication 按单机版本合同记录为 optional `NOT_RUN`。
+
+# 2026-07-13 - v0.1.2 Known Issues Review（Completed）
+
+- KI-016 关闭：官方能力缺口由用户批准的独立 `UPRCombatAutomationToolset` 补足；工具不保存 Package、不接受任意 Target/数值/Tag/代码。Editor 后台节流造成首次 0.33 秒采样假失败，改用 PIE World 时间并将 Editor 置前台后，两次受击恢复分别为 0.115 秒和 0.100 秒，固定七事件序列 PASS。
+- Pawn 替换自动化首次发现死亡锁在 `PossessedBy` 后被 UE5.8 `DispatchRestart -> ACharacter::Restart` 恢复默认 MovementMode。正式 Character 在 `Restart` 完成后依据持续存在的 `State.Dead` 重应用锁定，原失败测试转为 GREEN；未新增第二套状态。
+- KI-004 保持 Open；本版本使用既有 GASToolsets 的只读 Inspector，不调用 GameplayCue 写工具，也不启用 UMG/Automation/Animation Toolset。
+- KI-006 保持 Accepted Risk；Schema 回读、事务、精确保存、重启、前台 PIE、日志和 Dirty 门约束 Experimental MCP 风险。
+- 用户在固定伤害序列中完成受击手感验收并返回 PASS；最终 AutomationReport 为 29/29 required PASS。当前没有未关闭的 v0.1.2 阻断，NetworkPIEReplication 保持 optional `NOT_RUN`。
 
 # 记录规则
 

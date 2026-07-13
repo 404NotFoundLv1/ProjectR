@@ -3,7 +3,9 @@
 #pragma once
 
 #include "AbilitySystemInterface.h"
+#include "Core/PRCombatFeedbackInterface.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "TimerManager.h"
 
@@ -19,18 +21,24 @@ struct FInputActionValue;
 
 /** Formal player character with a fixed side-view camera scaffold. */
 UCLASS(Abstract)
-class PROJECTR_API APRPlayerCharacter : public ACharacter, public IAbilitySystemInterface
+class PROJECTR_API APRPlayerCharacter
+	: public ACharacter
+	, public IAbilitySystemInterface
+	, public IPRCombatFeedbackInterface
 {
 	GENERATED_BODY()
 
 public:
 	APRPlayerCharacter();
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void HandleCombatHitReaction() override;
+	virtual void HandleCombatLifeStateChanged(bool bIsDead) override;
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void Restart() override;
 	virtual void OnRep_PlayerState() override;
 	virtual void UnPossessed() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -56,6 +64,7 @@ private:
 	void UnbindMoveSpeed();
 	void HandleMoveSpeedChanged(const FOnAttributeChangeData& ChangeData);
 	void SyncMoveSpeed(float NewMoveSpeed);
+	void RestoreMovementAfterHitReaction();
 	bool ResolveRequiredInputActions(
 		const UInputAction*& MoveAction,
 		const UInputAction*& JumpAction,
@@ -74,6 +83,11 @@ private:
 	TWeakObjectPtr<UPRAbilitySystemComponent> BoundAbilitySystemComponent;
 	TWeakObjectPtr<APRPlayerState> BoundPlayerState;
 	FDelegateHandle MoveSpeedDelegateHandle;
+	FTimerHandle HitReactionTimerHandle;
+	TEnumAsByte<EMovementMode> SavedMovementMode = MOVE_Walking;
+	uint8 SavedCustomMovementMode = 0;
+	bool bHitReactionActive = false;
+	bool bCombatDeathLocked = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UCameraComponent> SideViewCameraComponent;
