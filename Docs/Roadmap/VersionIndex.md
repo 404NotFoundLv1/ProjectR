@@ -16,7 +16,7 @@ date: "2026-07-10"
 | v0.0.4 | 生产工程初始化 | 建立自动化构建脚本和日志目录 | Completed | v0.0.3 | Versions/v0.0.4.md |
 | v0.0.5 | 生产工程初始化 | 建立 Unreal MCP 安全资产生产基线 | Completed | v0.0.4 | Versions/v0.0.5.md |
 | v0.1.0 | 核心基础设施 | 实现 Enhanced Input 和 2.5D 移动 | Completed | v0.0.5 | Versions/v0.1.0.md |
-| v0.1.1 | 核心基础设施 | 接入 GAS：ASC、AttributeSet、默认属性 | In Progress | v0.1.0 | Versions/v0.1.1.md |
+| v0.1.1 | 核心基础设施 | 接入 GAS：ASC、AttributeSet、默认属性 | Completed | v0.1.0 | Versions/v0.1.1.md |
 | v0.1.2 | 核心基础设施 | 统一伤害、死亡、复活和受击表现 | Planned | v0.1.1 | 进入阶段前生成 |
 | v0.1.3 | 核心基础设施 | 技能授予、冷却、资源消耗和输入 Tag | Planned | v0.1.2 | 进入阶段前生成 |
 | v0.1.4 | 核心基础设施 | 本地 SaveGame 与版本化存档结构 | Planned | v0.1.3 | 进入阶段前生成 |

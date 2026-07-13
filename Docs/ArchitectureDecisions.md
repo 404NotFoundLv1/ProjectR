@@ -163,6 +163,24 @@ date: "2026-07-10"
 
 **验证**：TDD RED Build 因缺少 InputConfig 合同退出 6；实现后 Build 成功。插件首次在 `Default` 阶段注册时因 ToolsetRegistrySubsystem 尚未初始化而失败，改用 UE 官方 Toolset 相同的 `PostEngineInit` 后自动显示为第 21 个 Toolset/第 262 个 Tool。首次 PIE 注入暴露 `CreateSimulated` 默认空 Viewport 导致的访问冲突；按 UE5.8 API 传入实际 `FSceneViewport` 与默认 InputDevice 后复验 PASS。首次人工手感发现空中反向只改变 Mesh、实际速度未立即反转；新增 PIE 断言在旧实现上得到 Falling 状态但 `airReverseDeltaX≈0.000005 cm` 的预期 RED。修复后同会话两次及新 PIE 会话一次均 PASS：反向前速度约 `+435～469 cm/s`，下一采样变为 `-445～479 cm/s`，0.1 秒实际反向位移约 `-44～47 cm`，Y 漂移 `0 cm`；用户键鼠复验 PASS。平滑朝向先在旧瞬时实现得到 `leftFacingEarlyYaw=90` 的 RED，0.12 秒实现的诊断序列得到中间角 `-83.06`、最终 `90`，快速反向从 `62.22` 连续过渡到 `90` 的 GREEN。最终标准 PIE 为移动、双输入跳跃、平面、最终左右朝向、Actor/相机稳定 PASS；平滑主观手感仍由用户最终确认。
 
+# ADR-016 - PlayerState-owned GAS、一次性默认属性与受控 GE Authoring
+
+**状态**：Accepted。
+
+**上下文**：v0.1.1 需要在 Pawn 替换和重新占有后保留战斗数值，同时为 v0.1.2、v0.1.3 和 v0.2.3 冻结稳定 ASC/AttributeSet 接口。UE5.8 的 Instant GameplayEffect 成功 Handle 不属于 Active Effect，`IsValid()` 为 false；通用 ObjectTools 支持嵌套 Modifier，但普通多次属性写入不具备整体原子性。
+
+**选项**：ASC 由 Character 持有；PlayerState 持有 ASC 但每次 Pawn 初始化重放默认 GE；PlayerState 持有持久 ASC，并仅在 Authority 上成功应用默认 GE 一次。
+
+**决策**：`APRPlayerState` 持有 replicated、Mixed-mode `UPRAbilitySystemComponent` 和 `UPRAttributeSet`，Owner 固定为 PlayerState、Avatar 指向当前 Character。默认 Instant GE 只在 Authority 成功执行一次，并以 `WasSuccessfullyApplied()` 判定；失败保留重试。11 项属性使用 RepNotify Always、统一原生事件、比例式 Max 调整和无业务语义 Clamp。GE 创建、嵌套 Modifier 设置和完整回读在单个 ProgrammaticToolset 事务内执行，之后才允许精确保存。
+
+**后果**：Pawn 替换不丢失当前属性；v0.1.2 可增加 Damage/Death，v0.1.3 可在薄 ASC 上增加 AbilitySet/InputTag，v0.2.3 可单向订阅属性事件。GameplayEffect Authoring 失败不会留下猜测性已保存资产。
+
+**影响版本/合同**：冻结 ASC 具体类型、11 项属性名、Owner/Avatar 生命周期、默认 GE 路径和统一属性事件。本版本不新增 Ability、Damage、CombatEvent、HUD、Save 或 GameplayTag。
+
+**迁移/回滚**：先解除 BP PlayerState 的 GE 引用，再反向撤销 C++/uproject/文档。新 GE 未获逐项删除批准时只隔离并报告 Referencer；禁止硬重置、Git clean、Save All、Resave All 或普通文件 IO。
+
+**验证**：v0.1.1 的 TDD RED 因目标 GAS Header 不存在按预期失败；生产实现后 BuildEditor 通过。`ProjectR.GAS` 四项原生自动化全部成功，覆盖属性 Schema/复制元数据、Clamp/Max 比例、默认 GE 及 Owner/Avatar/Pawn 替换生命周期。GASToolsets 重启后实测为 24 Toolset/276 Tool，11 项 Attribute 可回读。`GE_DefaultAttributes` 在单次 ProgrammaticToolset 事务中配置并断言 11 项 Modifier，随后只精确保存 GE 与 `BP_PlayerState`；三个 Player Blueprint 与 GE 均 warnings-as-errors 编译通过。Editor 重启回载、CombatGym PIE 属性检查、默认 GE 仅应用一次、v0.1.0 输入回归、截图、日志和 PIE 后 Dirty=0 全部取得实际 PASS。
+
 # ADR 模板
 
 ```text

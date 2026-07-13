@@ -11,8 +11,8 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | KI-001 | v0.0.0 首次基线提交已创建 | 正式、可共享的回滚边界已经建立 | 提交 `2bad8adb7fc2a38d27453bb07a4c91bac76e1726` 存在且版本转换前工作区干净 | Closed |
 | KI-002 | 正式 APR/UPR Framework 已建立；模板与 Variant 仅保留为参考 | 正式系统不再依赖模板 Framework，后续仍需避免重新引入 | v0.0.3 父类、地图依赖和 Source 审计均无模板/Variant Framework 引用 | Closed |
-| KI-003 | GAS 基础模块下限已接入；ASC、AttributeSet、GameplayAbility/Effect 尚未实现 | GAS 运行时玩法仍不可用 | v0.1.1 实现 ASC/AttributeSet/默认属性并构建通过 | Open |
-| KI-004 | GameplayTagsToolset 已启用并验证；专用 GAS/UMG/Automation/Animation 等 Toolset 仍未启用 | Tag 自动化可用，其他对应 Editor 自动化能力未承诺 | 相关版本前选择性启用并重审计 | Open |
+| KI-003 | GAS 基础模块、PlayerState-owned ASC、AttributeSet 与默认属性 GE 已接入 | v0.1.1 基础合同已可供后续伤害和 Ability 系统消费 | v0.1.1 Build、自动化、资产回载和 PIE 全部通过 | Closed |
+| KI-004 | GameplayTagsToolset 与 GASToolsets 已启用并验证；UMG/Automation/Animation 等其他专用 Toolset 尚未启用 | Tag/GAS 审计可用，其他对应 Editor 自动化能力未承诺 | 相关版本前选择性启用并重审计 | Open |
 | KI-005 | 通用 MCP 没有直接创建空白关卡 Tool；官方 World Partition Builder 已完成受控复制、External Package 枚举、重载和 PIE | 已有安全模板复制路径，不阻断资产生产基线 | v0.0.5 Builder、精确保存、重启回载与 PIE 全部通过 | Closed |
 | KI-006 | UE MCP 为 Experimental | Tool Schema/API 可能变化 | 每次引擎升级重新审计；不作为运行时依赖 | Accepted Risk |
 | KI-007 | 首次 Build、自动 PIE 与移动/镜头/跳跃人工验收均已记录 | 主观操作门已有可审计结果 | Build 退出 0；自动 PIE 无新增阻断日志；ManualOperationsRunbook 第 6 节三项 PASS | Closed |
@@ -73,6 +73,14 @@ date: "2026-07-10"
 - KI-014 已关闭：自动化证明空中 D→A 在 0.1 秒内产生约 `-44～47 cm` 实际反向位移且 Y 漂移为 0，用户键鼠复验返回 PASS。
 - KI-015 已关闭：0.12 秒 Timer Ease-In-Out 完成 RED→GREEN 诊断，Build、标准 PIE、最终朝向和相机稳定通过，用户平滑转向手感返回 PASS。
 - v0.1.0 没有未关闭的当前版本阻断；最终 AutomationReport 为 22/22 required PASS、1 optional NOT_RUN。任务页与 VersionIndex 已标记 Completed，`CURRENT_VERSION.md` 不自动推进。
+
+# 2026-07-13 - v0.1.1 Known Issues Review（Completed）
+
+- KI-003 关闭：`UPRAbilitySystemComponent`、11 项 replicated Attribute、默认属性 GE、PlayerState Owner/Character Avatar 生命周期和 Pawn 替换持久性均经 Build、原生自动化、重启回载与 PIE 验证。
+- KI-004 保持 Open，但范围更新为 GASToolsets 已启用并审计：AttributeSetToolset 与 AbilitySystemInspectorToolset 的 6 个只读工具用于本版本；GameplayCueToolset 的 8 个写入/运行时工具未调用。UMG、Automation 和 Animation 等能力继续按版本启用。
+- KI-006 保持 Accepted Risk：本轮通过 Tool Schema、事务化 GE 配置、完整回读、精确保存、重启回载与 Dirty 门约束 Experimental MCP 风险。
+- UE5.8 在禁止修改 Config 的测试环境会输出既有 `No GameplayCueNotifyPaths were specified` 警告；原生 Clamp 测试对这一条准确已知引擎警告设置预期匹配，PIE 新时间窗没有 ProjectR/GAS 阻断错误。不新增 KI，也不降低其他错误校验。
+- 本版本没有新增未关闭阻断；NetworkPIEReplication 按单机版本合同记录为 optional `NOT_RUN`。
 
 # 记录规则
 

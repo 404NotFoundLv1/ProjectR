@@ -3,8 +3,11 @@
 #include "Characters/PRPlayerCharacter.h"
 
 #include "Camera/CameraComponent.h"
+#include "Abilities/PRAbilitySystemComponent.h"
+#include "Abilities/PRAttributeSet.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/PRPlayerController.h"
+#include "Core/PRPlayerState.h"
 #include "Core/PRTagLibrary.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -34,6 +37,12 @@ APRPlayerCharacter::APRPlayerCharacter()
 	SideViewCameraComponent->bUsePawnControlRotation = false;
 }
 
+UAbilitySystemComponent* APRPlayerCharacter::GetAbilitySystemComponent() const
+{
+	const APRPlayerState* ProjectRPlayerState = GetPlayerState<APRPlayerState>();
+	return ProjectRPlayerState ? ProjectRPlayerState->GetAbilitySystemComponent() : nullptr;
+}
+
 void APRPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -46,12 +55,32 @@ void APRPlayerCharacter::BeginPlay()
 	Movement->SetPlaneConstraintNormal(FVector::YAxisVector);
 	Movement->SetPlaneConstraintEnabled(true);
 	Movement->SnapUpdatedComponentToPlane();
+	InitializeAbilitySystem();
 }
 
 void APRPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(FacingTurnTimerHandle);
+	CleanupAbilitySystem();
 	Super::EndPlay(EndPlayReason);
+}
+
+void APRPlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	InitializeAbilitySystem();
+}
+
+void APRPlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	InitializeAbilitySystem();
+}
+
+void APRPlayerCharacter::UnPossessed()
+{
+	CleanupAbilitySystem();
+	Super::UnPossessed();
 }
 
 void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -226,6 +255,81 @@ void APRPlayerCharacter::UpdateFacingTurn()
 	{
 		GetWorldTimerManager().ClearTimer(FacingTurnTimerHandle);
 	}
+}
+
+bool APRPlayerCharacter::InitializeAbilitySystem()
+{
+	APRPlayerState* ProjectRPlayerState = GetPlayerState<APRPlayerState>();
+	if (!IsValid(ProjectRPlayerState))
+	{
+		return false;
+	}
+	if (!ProjectRPlayerState->InitializeAbilitySystemForAvatar(this))
+	{
+		return false;
+	}
+
+	UPRAbilitySystemComponent* ASC = ProjectRPlayerState->GetProjectRAbilitySystemComponent();
+	BindMoveSpeed(ASC);
+	BoundPlayerState = ProjectRPlayerState;
+	return true;
+}
+
+void APRPlayerCharacter::CleanupAbilitySystem()
+{
+	UnbindMoveSpeed();
+	APRPlayerState* ProjectRPlayerState = BoundPlayerState.Get();
+	if (!ProjectRPlayerState)
+	{
+		ProjectRPlayerState = GetPlayerState<APRPlayerState>();
+	}
+	if (ProjectRPlayerState)
+	{
+		ProjectRPlayerState->ClearAbilityAvatar(this);
+	}
+	BoundPlayerState.Reset();
+}
+
+void APRPlayerCharacter::BindMoveSpeed(UPRAbilitySystemComponent* AbilitySystemComponent)
+{
+	if (!IsValid(AbilitySystemComponent))
+	{
+		return;
+	}
+	if (BoundAbilitySystemComponent.Get() != AbilitySystemComponent)
+	{
+		UnbindMoveSpeed();
+		BoundAbilitySystemComponent = AbilitySystemComponent;
+	}
+	if (!MoveSpeedDelegateHandle.IsValid())
+	{
+		MoveSpeedDelegateHandle = AbilitySystemComponent
+			->GetGameplayAttributeValueChangeDelegate(UPRAttributeSet::GetMoveSpeedAttribute())
+			.AddUObject(this, &APRPlayerCharacter::HandleMoveSpeedChanged);
+	}
+	SyncMoveSpeed(AbilitySystemComponent->GetNumericAttribute(UPRAttributeSet::GetMoveSpeedAttribute()));
+}
+
+void APRPlayerCharacter::UnbindMoveSpeed()
+{
+	if (UPRAbilitySystemComponent* ASC = BoundAbilitySystemComponent.Get();
+		ASC && MoveSpeedDelegateHandle.IsValid())
+	{
+		ASC->GetGameplayAttributeValueChangeDelegate(UPRAttributeSet::GetMoveSpeedAttribute())
+			.Remove(MoveSpeedDelegateHandle);
+	}
+	MoveSpeedDelegateHandle.Reset();
+	BoundAbilitySystemComponent.Reset();
+}
+
+void APRPlayerCharacter::HandleMoveSpeedChanged(const FOnAttributeChangeData& ChangeData)
+{
+	SyncMoveSpeed(ChangeData.NewValue);
+}
+
+void APRPlayerCharacter::SyncMoveSpeed(float NewMoveSpeed)
+{
+	GetCharacterMovement()->MaxWalkSpeed = FMath::Clamp(NewMoveSpeed, 0.0f, 2000.0f);
 }
 
 bool APRPlayerCharacter::ResolveRequiredInputActions(

@@ -21,6 +21,13 @@
 			"Enabled": true
 		},
 		{
+			"Name": "GASToolsets",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
 			"Name": "GameplayTagsToolset",
 			"Enabled": true
 		},

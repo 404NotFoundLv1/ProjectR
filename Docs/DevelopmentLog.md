@@ -135,6 +135,21 @@ date: "2026-07-10"
 - Future Compatibility Review（自动部分）：v0.1.1 可增量接入 ASC/AttributeSet；v0.1.3 可覆写 native Tag 钩子；v0.3.2 可增加 QTE Action/Tag/Mapping；v0.8.2 可替换玩家 Mapping。未引入未来具体类型、Save/Tag/API/正式地图破坏。
 - v0.1.0 正式提交已创建：`2a71fd85a065085da48747f783ffe70cc22e1010`（`v0.1.0 Add Enhanced Input and 2.5D movement`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
+# 2026-07-13 - v0.1.1 GAS ASC、AttributeSet 与默认属性（Completed）
+
+- 按 TDD 新增薄 `UPRAbilitySystemComponent`、11 项 replicated `UPRAttributeSet`、统一原生属性事件，以及 PlayerState-owned ASC/Character Avatar 生命周期；RED Build 因目标 Header 不存在退出 6，生产实现后 BuildEditor 转为成功。
+- `APRPlayerState` 持有 replicated Mixed-mode ASC 与 AttributeSet，Authority 只在 `WasSuccessfullyApplied()` 成功后记录默认 Instant GE 已应用；重复初始化、重新占有与 Pawn 替换不会重放默认值，旧 Pawn 不能清除新 Avatar。
+- Attribute 默认值、Clamp、RepNotify Always、Max 比例调整和 MoveSpeed→CharacterMovement 同步均由 `ProjectR.GAS` 自动化覆盖；最终报告为 4 succeeded、0 warning、0 failure。
+- 启用 Editor-only GASToolsets 后 MCP 实测为 24 Toolset/276 Tool；只调用 AttributeSet/AbilitySystemInspector 的 6 个只读工具，GameplayCueToolset 未调用。AttributeSetToolset 精确回读 11 项属性。
+- Unreal MCP 在单次 ProgrammaticToolset 事务中创建并完整回读 `GE_DefaultAttributes` 的 11 项 Override Modifier；设置 `BP_PlayerState.DefaultAttributesEffect` 与 `NetUpdateFrequency=100` 后，GE、PlayerState、Character、Controller 四个 Blueprint warnings-as-errors 编译通过。
+- 非空精确保存 Manifest 仅包含 `GE_DefaultAttributes` 与 `BP_PlayerState`；`BP_PlayerCharacter` 和 `BP_PlayerController` 未 Dirty、未保存。重启回载后引用、父类、Controller InputConfig 与 GE 配置保持正确。
+- CombatGym PIE 中 Character/PlayerState Inspector 返回相同 11 项值；ActiveEffects、GrantedAbilities 和 ActiveTags 均为空。日志证明默认属性仅应用一次，Owner=PlayerState、Avatar=Character；有效非空 PNG 截图和新时间窗无阻断错误。
+- v0.1.0 `RunPIEInputSmoke` 回归 PASS：D/A、键鼠/手柄跳跃、Y 漂移、空中反向、最终朝向和固定相机保持合同；StopPIE 后 257 个可查询资产 Dirty=0。
+- 最终 BuildEditor `v011-final-build-20260713` 为 PASS，子进程退出 0、`Result: Succeeded`。最终 Source/Package/地图/Config 为 115/1182/10/6；GameplayTag 仍为 53，暂存路径为 0。
+- 最终 AutomationReport `v011-final-20260713/v011-final-None/result.json` 实际退出 0，24/24 required checks 为 PASS；`NetworkPIEReplication` 为 optional `NOT_RUN`。
+- Future Compatibility Review：v0.1.2 可在同一 ASC/AttributeSet 上增加伤害与死亡；v0.1.3 可在薄 ASC 上增加 AbilitySet/InputTag；v0.2.3 可只读属性并订阅统一事件。未新增 Ability、Damage、CombatEvent、HUD、Save、Tag 或正式地图依赖。
+- 本轮未提交、未 push、未运行 GC；`CURRENT_VERSION.md` 保持 v0.1.1。
+
 # 版本记录模板
 
 ```text

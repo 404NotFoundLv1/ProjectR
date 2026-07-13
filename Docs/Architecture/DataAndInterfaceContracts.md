@@ -100,6 +100,23 @@ date: "2026-07-10"
 - 正式默认 IMC 包含 v0.1.0 的 13 条基线 Mapping；永久校验只要求基线存在且有效，允许下游增量扩展。重命名或删除正式资产、Tag 或钩子必须提供 ADR、消费者清单和兼容测试。
 - `ProjectRAuthoringTools` 只提供 Editor-only 的真实 PIE 输入注入，不进入 Shipping、不保存 Package，也不成为 ProjectR Runtime 依赖。
 
+# GAS ASC、属性与默认初始化合同
+
+**所有者**：Core/Abilities。
+
+**建立版本**：v0.1.1。
+
+**消费者**：v0.1.2 Damage/Death、v0.1.3 AbilitySet/InputTag、v0.2.3 HUD。
+
+- `APRPlayerState` 永久持有 replicated `UPRAbilitySystemComponent` 与 `UPRAttributeSet`；ASC Owner 固定为 PlayerState，Avatar 为当前 `APRPlayerCharacter`。Pawn 替换只更新 Avatar，不重建 ASC 或 AttributeSet。
+- `UPRAbilitySystemComponent` 在本版本保持薄类型，使用 Mixed replication；Ability 授予、Cooldown、Cost 和 InputTag 路由属于 v0.1.3。
+- 11 项属性名、类型、范围和 `REPNOTIFY_Always` 复制合同冻结。当前值变化通过统一的 `FPRAttributeChangedNative` 原生事件发布，Abilities 不依赖 HUD。
+- MaxHealth、MaxShield、MaxEnergy 变化时保持对应当前值比例；旧 Max 为 0 时只 Clamp、不补满。Clamp 不产生伤害、死亡、恢复或 CombatEvent 语义。
+- `/Game/ProjectR/Effects/GE_DefaultAttributes` 是默认值的正式 GameplayEffect。它为 Instant、11 个 Override Modifier；C++ 安全默认值必须与 GE 保持一致，并由自动化防止漂移。
+- 默认 GE 只在 Authority 上成功应用一次，成功状态归 PlayerState。缺失 Class、无效 Spec 或应用失败不消费重试；UE5.8 Instant GE 必须用 `FActiveGameplayEffectHandle::WasSuccessfullyApplied()` 判定成功，不能使用 `IsValid()`。
+- `APRPlayerCharacter` 在 PossessedBy/OnRep_PlayerState 重新初始化 ActorInfo，幂等绑定 MoveSpeed 并立即同步 CharacterMovement；旧 Pawn 只有仍是 ASC 当前 Avatar 时才可清除 ActorInfo。
+- v0.1.0 的输入、空中反向、0.12 秒 Mesh 转向、Y 平面和固定侧视相机继续作为强制回归合同。
+
 # 1. CombatEvent 合同
 
 **所有者**：Combat。  
