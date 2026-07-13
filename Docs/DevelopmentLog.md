@@ -168,7 +168,9 @@ date: "2026-07-10"
 - 最终 BuildEditor `v012-final-build-20260713` 的包装器与子进程退出码均为 0、`Result: Succeeded`。最终快照重新运行 `ProjectR.Combat` 4/4、`ProjectR.GAS` 4/4、`ProjectR.Input` 3/3 后，AutomationReport `v012-final-verified-20260713/v012-final-None/result.json` 退出 0，29/29 required checks PASS；`NetworkPIEReplication` 为 optional `NOT_RUN`，获批 Editor-only 工具扩展为 optional PASS。
 - 最终计数复核区分主模块与 Editor 插件：`Source/ProjectR` 的 HEAD 基线实际为 113，本版本准确新增 8 项后为 121；插件 Source 从 4 增至 6。此前计划中的 115→123 混用了计数口径，不代表缺少实现文件；Package/地图/Config/Tag 最终为 1183/10/6/61。
 - Future Compatibility Review：v0.1.3、v0.2.0、v0.2.1、v0.2.3 与 v0.3.2 可复用冻结的 DamageRequest/CombatEvent、接口、Tag 和唯一结算路径；未引入 Ability、敌人、HUD、QTE、Save 或具体下游消费者依赖。
-- v0.1.2 已按合同关闭；`CURRENT_VERSION.md` 不推进，暂存区、commit、push 和 GC 均未修改或执行。
+- v0.1.2 正式实施提交为 `785cc2247eaad9cfc3ebb2b2b768018b3cd52a5a`，提交信息为 `v0.1.2 Add unified damage death and hit reactions`；该提交已同时位于 `main` 与 `origin/main`。
+- GC 未执行。
+- v0.1.2 已正式关闭；版本转换将 `CURRENT_VERSION.md` 推进至 v0.1.3，不在该转换中实现 v0.1.3 功能。
 
 # 版本记录模板
 

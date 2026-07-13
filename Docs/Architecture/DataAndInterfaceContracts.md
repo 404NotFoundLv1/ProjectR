@@ -33,7 +33,7 @@ date: "2026-07-10"
 - `Skill.*` 是稳定技能 ID，并可由未来 GAS 消费为 AbilityTag。
 - `Companion.*`、`QTE.*`、`Rule.*` 分别冻结伙伴身份、QTE 类型/结果和本地法令 ID。
 - `Chapter.*`、`Room.*`、`Reward.*` 是数据驱动内容分类，本版本不创建对应业务对象或资产。
-- 公共 C++ 只通过 `UPRTagLibrary` 的显式 checked getter 读取 16 个高频基础标签；不得添加任意字符串查询或 Blueprint 暴露。
+- 公共 C++ 只通过 `UPRTagLibrary` 的显式 checked getter 读取 24 个高频基础标签；不得添加任意字符串查询或 Blueprint 暴露。
 - 后续只能增量添加子标签；重命名或删除必须提供 Redirect、ADR、消费者清单和兼容测试。
 
 # Game Framework 与正式地图旅行合同
