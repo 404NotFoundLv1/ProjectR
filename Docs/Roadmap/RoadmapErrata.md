@@ -48,6 +48,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-016 | v0.1.4 一次性要求 SaveVersion、关系、解锁、账号墓园、任务、设置、统计、主菜单 New/Continue 与开发清档，但这些业务模型和消费者尚未建立 | v0.1.4 只建立原生版本化 SaveGame、最小 `ProfileId` 分区、严格迁移框架和 A/B 双代 `PRSV` 物理存储；关系数据延后至 v0.3.0，受控开发清档延后至 v0.1.5，Account/Run/Graveyard 延后至 v0.4.3，Meta 解锁与货币延后至 v0.4.4，主菜单 New/Continue 延后至 v0.5.0，Memory/RunSummary 延后至 v0.5.2，设置延后至 v0.8.2，Steam Cloud 延后至 v0.8.4。未来分区只能通过递增 Schema 迁移加入 | 避免在所有者、数据范围和消费者尚未冻结时制造虚假持久化字段、UI 和删除语义，同时从第一版就保证损坏恢复、未来版本拒绝和云存档复用同一格式 | Resolved by v0.1.4 task contract |
 
+# v0.1.5 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-017 | v0.1.5 将手工 `WBP_DebugMenu`、加资源、清 Cooldown、法令/QTE/AI/Boss 命令和开发清档混在同一版本，并只以“Shipping 不显示”描述隔离边界 | 采用用户批准的无 Content `ProjectRDebug` Runtime 插件和原生 Slate 面板；插件引用与模块描述双重 `TargetConfigurationDenyList=[Shipping]`。Save Debug 仅查询脱敏 RuntimeState；资源、Cooldown、Director、QTE、Companion 与 Boss 命令先返回结构化 `NotAvailable`，直到所属版本提供受控 API。现有 `LogProjectR` 保持兼容，只冻结 Core/Input/GAS/Ability/Combat/Save/Debug 类别，不提前创建 Director/Companion 业务或日志类别 | 使 Debug 不能成为第二套 Gameplay/Save 实现，并从 Shipping 构建、收据、模块、资产和快捷键行为上真实隔离；同时避免手工作业和未来类型占位 | Resolved by v0.1.5 task contract |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

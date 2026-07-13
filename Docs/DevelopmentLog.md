@@ -204,7 +204,7 @@ date: "2026-07-10"
 - 原 1190 个 UE Package 的路径、长度和 SHA-256 全部不变，Package/地图/Config/Tag 为 1190/10/6/71；主模块 Source 从基线 127 增加十个 Save 文件为 137，插件 Source 保持 8。没有新增或修改 `.uasset/.umap`，暂存路径为 0。
 - 最终 AutomationReport `v014-final-report3-20260713a/v014-final-None/result.json` 退出 0、总体 PASS：34/34 required PASS；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 为 optional `NOT_RUN`。
 - Future Compatibility Review：v0.1.5 只读 RuntimeState/Event；关系、Account/Run/Graveyard、Meta、Settings 与 Memory 通过严格 Schema 迁移加入；Steam Cloud 复用同一 A/B/PRSV 字节。没有持久化 UObject、ASC/Spec/Effect/Grant Handle、Held Input、Delegate 或 CombatEvent。
-- 本版本无人工步骤，未运行 GC，未暂存、commit 或 push；`CURRENT_VERSION.md` 保持 v0.1.4。
+- 本版本无人工步骤，UE Package Manifest 为空；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 保持 optional `NOT_RUN`。v0.1.4 正式提交已创建：`d746de9e56ab8ec8af657c01b9100315fbff45be`（`v0.1.4 Add versioned SaveGame subsystem`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
 # 版本记录模板
 
