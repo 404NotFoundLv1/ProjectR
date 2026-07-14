@@ -4,9 +4,12 @@
 
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
+#include "Abilities/Player/PRPlayerSkillTypes.h"
 #include "AbilitySystemInterface.h"
 #include "Core/PRCombatantInterface.h"
 #include "Core/PRCombatFeedbackInterface.h"
+#include "Core/PRCombatEventSubjectInterface.h"
+#include "Core/PRCombatMitigationInterface.h"
 #include "Core/PRTagLibrary.h"
 #include "GameplayEffect.h"
 #include "ProjectR.h"
@@ -103,6 +106,22 @@ bool SetLifeState(UPRAbilitySystemComponent* ASC, const bool bDead)
 	return bSucceeded;
 }
 
+bool AreResponseTagsValid(const FGameplayTagContainer& Tags)
+{
+	if (Tags.IsEmpty())
+	{
+		return false;
+	}
+	for (const FGameplayTag& Tag : Tags)
+	{
+		if (!Tag.IsValid() || !Tag.ToString().StartsWith(TEXT("Combat.Response.")))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 FPRCombatEvent MakeDamageEvent(
 	const UWorld* World,
 	const FPRDamageRequest& Request,
@@ -151,40 +170,50 @@ FPRCombatEvent MakeReviveEvent(
 
 EPRCombatRequestStatus UPRCombatSubsystem::ApplyDamage(const FPRDamageRequest& Request)
 {
-	if (!FMath::IsFinite(Request.RawDamage) || Request.RawDamage <= 0.0f)
+	if (!FMath::IsFinite(Request.RawDamage) || Request.RawDamage <= 0.0f
+		|| Request.ImpactOrigin.ContainsNaN() || Request.IncomingDirection.ContainsNaN())
 	{
 		UE_LOG(LogProjectR, Error,
 			TEXT("Combat received an invalid damage request from %s: RawDamage %.9g is not finite and positive."),
 			*Request.SourceId.ToString(), Request.RawDamage);
 		return EPRCombatRequestStatus::Invalid;
 	}
+	FPRDamageRequest ValidatedRequest = Request;
+	if (!ValidatedRequest.IncomingDirection.IsNearlyZero())
+	{
+		ValidatedRequest.IncomingDirection.Normalize();
+	}
+	else if (ValidatedRequest.AbilityTag.IsValid()
+		&& ValidatedRequest.AbilityTag.ToString().StartsWith(TEXT("Skill.")))
+	{
+		UE_LOG(LogProjectR, Error,
+			TEXT("Combat rejected player-skill damage with zero IncomingDirection from %s."),
+			*ValidatedRequest.SourceId.ToString());
+		return EPRCombatRequestStatus::Invalid;
+	}
 
 	FResolvedCombatTarget Target;
-	if (!ResolveCombatTarget(Request.SourceId, Request.Target.Get(), true, Target))
+	if (!ResolveCombatTarget(ValidatedRequest.SourceId, ValidatedRequest.Target.Get(), true, Target))
 	{
 		return EPRCombatRequestStatus::Invalid;
 	}
 
-	const float NormalizedDamage = FMath::Min(Request.RawDamage, MaxNormalizedDamage);
-	if (Request.RawDamage > MaxNormalizedDamage)
+	const float NormalizedDamage = FMath::Min(ValidatedRequest.RawDamage, MaxNormalizedDamage);
+	if (ValidatedRequest.RawDamage > MaxNormalizedDamage)
 	{
 		UE_LOG(LogProjectR, Warning,
 			TEXT("Combat clamped damage from %.9g to %.9g for SourceId %s."),
-			Request.RawDamage, NormalizedDamage, *Request.SourceId.ToString());
+			ValidatedRequest.RawDamage, NormalizedDamage, *ValidatedRequest.SourceId.ToString());
 	}
 
 	const bool bDead = Target.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag());
-	const bool bInvulnerable = Target.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag());
-	if (bDead || bInvulnerable)
+	if (bDead)
 	{
 		FPRCombatEvent Rejected = MakeDamageEvent(
-			GetWorld(), Request, Target, UPRTagLibrary::GetCombatEventDamageRejectedTag(), NormalizedDamage);
-		Rejected.ResponseTags.AddTag(
-			bDead ? UPRTagLibrary::GetStateDeadTag() : UPRTagLibrary::GetStateInvulnerableTag());
+			GetWorld(), ValidatedRequest, Target, UPRTagLibrary::GetCombatEventDamageRejectedTag(), NormalizedDamage);
+		Rejected.ResponseTags.AddTag(UPRTagLibrary::GetStateDeadTag());
 		BroadcastCombatEvent(Rejected);
-		return bDead
-			? EPRCombatRequestStatus::RejectedDead
-			: EPRCombatRequestStatus::RejectedInvulnerable;
+		return EPRCombatRequestStatus::RejectedDead;
 	}
 
 	if (Target.Attributes->GetHealth() <= 0.0f)
@@ -195,8 +224,44 @@ EPRCombatRequestStatus UPRCombatSubsystem::ApplyDamage(const FPRDamageRequest& R
 		return EPRCombatRequestStatus::Invalid;
 	}
 
+	if (const IPRCombatMitigationInterface* Mitigation = Cast<IPRCombatMitigationInterface>(Target.Target))
+	{
+		FGameplayTagContainer MitigationTags;
+		const EPRCombatMitigationResult MitigationResult = Mitigation->EvaluateIncomingDamage(
+			ValidatedRequest,
+			MitigationTags);
+		if (MitigationResult == EPRCombatMitigationResult::Blocked)
+		{
+			if (!AreResponseTagsValid(MitigationTags))
+			{
+				UE_LOG(LogProjectR, Error,
+					TEXT("Combat mitigation for %s returned Blocked without valid Combat.Response tags."),
+					*Target.TargetId.ToString());
+				return EPRCombatRequestStatus::Invalid;
+			}
+			FPRCombatEvent Rejected = MakeDamageEvent(
+				GetWorld(),
+				ValidatedRequest,
+				Target,
+				UPRTagLibrary::GetCombatEventDamageRejectedTag(),
+				NormalizedDamage);
+			Rejected.ResponseTags.AppendTags(MitigationTags);
+			BroadcastCombatEvent(Rejected);
+			return EPRCombatRequestStatus::RejectedBlocked;
+		}
+	}
+
+	if (Target.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag()))
+	{
+		FPRCombatEvent Rejected = MakeDamageEvent(
+			GetWorld(), ValidatedRequest, Target, UPRTagLibrary::GetCombatEventDamageRejectedTag(), NormalizedDamage);
+		Rejected.ResponseTags.AddTag(UPRTagLibrary::GetStateInvulnerableTag());
+		BroadcastCombatEvent(Rejected);
+		return EPRCombatRequestStatus::RejectedInvulnerable;
+	}
+
 	UPRAbilitySystemComponent* SourceASC = nullptr;
-	if (AActor* Instigator = Request.Instigator.Get())
+	if (AActor* Instigator = ValidatedRequest.Instigator.Get())
 	{
 		if (IAbilitySystemInterface* SourceInterface = Cast<IAbilitySystemInterface>(Instigator))
 		{
@@ -209,9 +274,10 @@ EPRCombatRequestStatus UPRCombatSubsystem::ApplyDamage(const FPRDamageRequest& R
 	}
 
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	AActor* EffectCauser = Cast<AActor>(Request.DamageSource.Get());
-	Context.AddInstigator(Request.Instigator.Get(), EffectCauser ? EffectCauser : Request.Instigator.Get());
-	if (UObject* DamageSource = Request.DamageSource.Get())
+	AActor* EffectCauser = Cast<AActor>(ValidatedRequest.DamageSource.Get());
+	Context.AddInstigator(ValidatedRequest.Instigator.Get(),
+		EffectCauser ? EffectCauser : ValidatedRequest.Instigator.Get());
+	if (UObject* DamageSource = ValidatedRequest.DamageSource.Get())
 	{
 		Context.AddSourceObject(DamageSource);
 	}
@@ -240,7 +306,7 @@ EPRCombatRequestStatus UPRCombatSubsystem::ApplyDamage(const FPRDamageRequest& R
 	const float AfterHealth = Target.Attributes->GetHealth();
 	const float AfterShield = Target.Attributes->GetShield();
 	FPRCombatEvent DamageEvent = MakeDamageEvent(
-		GetWorld(), Request, Target, UPRTagLibrary::GetCombatEventDamageTag(), NormalizedDamage);
+		GetWorld(), ValidatedRequest, Target, UPRTagLibrary::GetCombatEventDamageTag(), NormalizedDamage);
 	DamageEvent.ShieldAbsorbed = FMath::Max(0.0f, BeforeShield - AfterShield);
 	DamageEvent.HealthDamage = FMath::Max(0.0f, BeforeHealth - AfterHealth);
 	DamageEvent.RemainingHealth = AfterHealth;
@@ -345,6 +411,48 @@ EPRCombatRequestStatus UPRCombatSubsystem::Revive(const FPRReviveRequest& Reques
 	}
 	BroadcastCombatEvent(MakeReviveEvent(GetWorld(), Request, Target));
 	return EPRCombatRequestStatus::Applied;
+}
+
+bool UPRCombatSubsystem::PublishAbilityOutcome(const FPRCombatOutcomeRequest& Request)
+{
+	AActor* Instigator = Request.Instigator.Get();
+	if (Request.SourceId.IsNone() || !IsValid(Instigator) || !Instigator->HasAuthority()
+		|| !Request.AbilityTag.IsValid() || !AreResponseTagsValid(Request.ResponseTags))
+	{
+		UE_LOG(LogProjectR, Error, TEXT("Combat rejected an invalid AbilityOutcome request."));
+		return false;
+	}
+
+	FPRCombatEvent Event;
+	Event.EventId = FGuid::NewGuid();
+	Event.EventTag = UPRTagLibrary::GetCombatEventAbilityOutcomeTag();
+	Event.SourceId = Request.SourceId;
+	Event.DamageSource = Request.AbilitySource;
+	Event.Instigator = Instigator;
+	Event.AbilityTag = Request.AbilityTag;
+	Event.ResponseTags = Request.ResponseTags;
+	Event.WorldTimeSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+
+	AActor* RequestedTarget = Request.Target.Get();
+	FName TargetId;
+	if (const IPRCombatantInterface* Combatant = Cast<IPRCombatantInterface>(RequestedTarget))
+	{
+		TargetId = Combatant->GetCombatantId();
+	}
+	if (TargetId.IsNone())
+	{
+		if (const IPRCombatEventSubjectInterface* Subject = Cast<IPRCombatEventSubjectInterface>(RequestedTarget))
+		{
+			TargetId = Subject->GetCombatEventSubjectId();
+		}
+	}
+	if (!TargetId.IsNone())
+	{
+		Event.Target = RequestedTarget;
+		Event.TargetId = TargetId;
+	}
+	BroadcastCombatEvent(Event);
+	return true;
 }
 
 FPRCombatEventNative& UPRCombatSubsystem::OnCombatEvent()

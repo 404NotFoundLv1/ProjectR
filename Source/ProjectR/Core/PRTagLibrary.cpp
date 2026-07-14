@@ -49,6 +49,36 @@ const FGameplayTag& UPRTagLibrary::GetInputExecuteTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetInputSkillShadowThrustTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.Skill.ShadowThrust"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetInputSkillFireSlashTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.Skill.FireSlash"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetInputSkillThunderDropTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.Skill.ThunderDrop"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetInputSkillVectorHookTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.Skill.VectorHook"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetInputSkillCounterProofWallTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.Skill.CounterProofWall"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailCanActivateTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.CanActivate"));
@@ -85,6 +115,30 @@ const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailTagsMissingTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailNoTargetTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.NoTarget"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailObstructedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.Obstructed"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.InvalidMovement"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetAbilityStatePlayerSkillActiveTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.State.PlayerSkillActive"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetCombatDataDamageTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Data.Damage"));
@@ -112,6 +166,42 @@ const FGameplayTag& UPRTagLibrary::GetCombatEventDeathTag()
 const FGameplayTag& UPRTagLibrary::GetCombatEventReviveTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Event.Revive"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatEventAbilityOutcomeTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Event.AbilityOutcome"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseDisplacementAppliedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.DisplacementApplied"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseDecoyCreatedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.DecoyCreated"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseDecoyConsumedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.DecoyConsumed"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponseGuardBlockedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.GuardBlocked"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCombatResponsePerfectTimingTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.PerfectTiming"));
 	return Tag;
 }
 
@@ -160,6 +250,18 @@ const FGameplayTag& UPRTagLibrary::GetStateInvulnerableTag()
 const FGameplayTag& UPRTagLibrary::GetStateStunnedTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("State.Stunned"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetStateBurningTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("State.Burning"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetStateGuardingTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("State.Guarding"));
 	return Tag;
 }
 

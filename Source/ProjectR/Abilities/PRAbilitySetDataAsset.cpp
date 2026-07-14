@@ -4,6 +4,8 @@
 
 #include "Abilities/PRAttributeSet.h"
 #include "Abilities/PRGameplayAbility.h"
+#include "Abilities/Player/PRPlayerSkillDataAsset.h"
+#include "Abilities/Player/PRPlayerSkillGameplayAbility.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectComponents/AbilitiesGameplayEffectComponent.h"
 #include "Misc/DataValidation.h"
@@ -56,6 +58,21 @@ EDataValidationResult UPRAbilitySetDataAsset::IsDataValid(FDataValidationContext
 			Context.AddError(FText::FromString(Prefix + TEXT(" has no ProjectR AbilityClass.")));
 			Result = EDataValidationResult::Invalid;
 			continue;
+		}
+		const UPRPlayerSkillGameplayAbility* PlayerSkillAbility = Cast<UPRPlayerSkillGameplayAbility>(AbilityCDO);
+		const UPRPlayerSkillDataAsset* PlayerSkillData = Cast<UPRPlayerSkillDataAsset>(Entry.AbilityData);
+		if ((PlayerSkillAbility != nullptr) != (PlayerSkillData != nullptr))
+		{
+			PRAbilitySetValidation::AddError(
+				Context, Result, Prefix + TEXT(" must pair a player-skill GA with a Skill DataAsset."));
+		}
+		else if (PlayerSkillAbility && PlayerSkillData
+			&& (PlayerSkillData->AbilityClass != Entry.AbilityClass
+				|| PlayerSkillData->AbilityTag != AbilityCDO->GetProjectRAbilityTag()
+				|| PlayerSkillData->InputTag != Entry.InputTag))
+		{
+			PRAbilitySetValidation::AddError(
+				Context, Result, Prefix + TEXT(" does not match its Skill DataAsset class/tag/input contract."));
 		}
 		if (Entry.AbilityLevel < 1)
 		{

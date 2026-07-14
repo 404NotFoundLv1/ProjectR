@@ -65,6 +65,7 @@ date: "2026-07-10"
 - 每次入口调用写入 `Saved/AutomationReports/<RunId>/<EntryPoint>-<Configuration>/`，至少包含脱敏 `command.txt`、完整 `run.log` 和 SchemaVersion 1 `result.json`；创建任何文件前必须验证目标严格位于报告根下、既有路径链无 reparse point、Git ignored/untracked 且目标目录不碰撞。
 - 自动化状态只允许 `PASS`、`FAIL`、`NOT_RUN`；WhatIf、预览和未执行门不得冒充真实 Build、Package、Clean Apply、Editor restart、Blueprint compile 或 PIE 通过。
 - `AutomationReport.bat` 只汇总调用者提交的独立 checks，不执行或推断 MCP 写入；v0.0.5 必须分别记录资产创建、Blueprint compile、精确保存、重启回载和 PIE 的实际状态。
+- v0.2.0-A 使用独立 `EntryPoint=v020A`：37 个 required check 必须来自本轮新鲜 Build、Automation、MCP 与静态审计证据；PIE、Network PIE、物理手柄、人工技能手感和 Authoring Tool 扩展为 optional `NOT_RUN`，不得借用 v0.2.0-E 的完整 58 项报告。
 - `CleanGenerated.bat` 默认只预览。实际删除必须通过精确项目根确认、项目内包含关系、Git ignore/untracked、从项目根到候选的祖先链及候选全部后代无 reparse point、删除前重验、活动进程和保护路径检查；`Source`、`Content`、`Config`、`Docs`、`BuildScripts`、`.git`、uproject、AutomationReports、Packages、Autosaves、SaveGames、Logs 和 Screenshots 永久不在清理集合中。
 - 公共 CLI、退出码、报告 Schema、磁盘门禁和人工例外的规范说明位于 `Docs/Workflow/BuildGuide.md`；破坏性更改必须新增 ADR、消费者清单和兼容回归。
 
@@ -81,6 +82,7 @@ date: "2026-07-10"
 - `AssetTools.save_assets` 必须传非空准确列表；空列表、Save All、Resave All、普通文件 IO 和未批准删除/移动/重命名永久禁止。
 - 重启前必须满足 Blueprint warnings-as-errors 编译通过、Manifest 目标逐项保存成功、可查询 AssetRegistry inventory 的逐项 `is_dirty=false`；不可浏览的 External Package 通过冻结清单、SHA-256 和无保存提示的正常关闭门补足，不得把 object ref 当作磁盘 Package path 解释。
 - 资产创建、Blueprint compile、精确保存、Dirty=0、重启回载、引用验证和 PIE 是独立验收状态；任一状态不能由其他状态推断。
+- v0.2.0-A 的冻结子 Manifest 为 29 个 Create、2 个 Modify、31 个精确保存 Package；`DA_DefaultAbilitySet` 与三个 Player Blueprint 仅回读/编译，不保存。UE5.8 的 IMC 序列化事实源为 `DefaultKeyMappings.mappings`；inline Fragment 和 GEComponent 必须逐对象回读，官方工具不能可靠表达时停止而不是保存猜测值。
 - 测试资产隔离在 `/Game/ProjectR/MCPTest/**` 及任务明确批准的两个对应 External roots，不进入五张正式 `MapsToCook`，正式 Framework 和地图不得引用测试根。
 
 # Enhanced Input 与 2.5D 移动合同
@@ -98,6 +100,7 @@ date: "2026-07-10"
 - 空中收到与当前 X 速度反向的有效 Move 输入时，Character 必须立即把 X 速度按原绝对值切换到输入方向；不得改变 Z 速度、生成 Y 平面、地面移动参数、最大速度或跳跃参数。
 - 角色在 BeginPlay 以生成时 Y 为平面原点启用 Y 法线约束；Actor/胶囊和固定相机不随左右朝向旋转。实际 X 移动方向立即响应输入，Mesh 视觉朝向才以 0.12 秒 Ease-In-Out 在 `-90/+90` yaw 之间过渡并保持最后方向；快速反向时必须从当前插值角度重新开始，不能先跳到端点。
 - 正式默认 IMC 包含 v0.1.0 的 13 条基线 Mapping；永久校验只要求基线存在且有效，允许下游增量扩展。重命名或删除正式资产、Tag 或钩子必须提供 ADR、消费者清单和兼容测试。
+- v0.2.0-A 在六项 InputConfig 基线之后追加 ShadowThrust、FireSlash、ThunderDrop、VectorHook、CounterProofWall 五项，在 IMC 索引 13–25 追加 J/K/L 与五组技能键鼠/手柄映射；旧六项配置和旧 13 条 Mapping 的 Action、Key、Modifier、顺序必须逐项不变。AfterimageDodge 继续复用 `Input.Dodge`/`IA_Dodge`；Character 只向 ASC 转发 Pressed/Released Tag，不授予未完成技能。
 - `ProjectRAuthoringTools` 只提供 Editor-only 的真实 PIE 输入注入，不进入 Shipping、不保存 Package，也不成为 ProjectR Runtime 依赖。
 
 # GAS ASC、属性与默认初始化合同
@@ -116,6 +119,7 @@ date: "2026-07-10"
 - 默认 GE 只在 Authority 上成功应用一次，成功状态归 PlayerState。缺失 Class、无效 Spec 或应用失败不消费重试；UE5.8 Instant GE 必须用 `FActiveGameplayEffectHandle::WasSuccessfullyApplied()` 判定成功，不能使用 `IsValid()`。
 - `APRPlayerCharacter` 在 PossessedBy/OnRep_PlayerState 重新初始化 ActorInfo，幂等绑定 MoveSpeed 并立即同步 CharacterMovement；旧 Pawn 只有仍是 ASC 当前 Avatar 时才可清除 ActorInfo。
 - v0.1.0 的输入、空中反向、0.12 秒 Mesh 转向、Y 平面和固定侧视相机继续作为强制回归合同。
+- v0.2.0-A 只为 `State.Stunned` 增加 PlayerSkill 活动 Ability 的释放/取消门；Dead、Revive、Passive、Avatar 替换、Mixed replication、11 项复制属性和 transient `IncomingDamage` 合同不变。
 
 # 1. 统一伤害与 CombatEvent 合同
 
@@ -132,6 +136,9 @@ date: "2026-07-10"
 - `State.Alive` 与 `State.Dead` 互斥并以 TagOnly loose tag 复制；死亡状态、ASC 与属性归 PlayerState，跨 Pawn 替换保留。复活以快照回滚保证属性和 Tag 原子切换，不重放默认属性 GE。
 - `IPRCombatantInterface` 由 ASC Owner 提供稳定 ID 与 DamageEffect；`IPRCombatFeedbackInterface` 由 Avatar 提供受击/生死反馈。Combat 不依赖具体敌人、HUD、QTE、画像、对话或统计类型。
 - 新事件类型只能增量增加新的 `Combat.Event.*` Tag；现有字段或 Tag 的重命名/删除必须提供 ADR、消费者清单与兼容迁移。
+- v0.2.0-A 在 `FPRDamageRequest` 末尾追加 `ImpactOrigin` 与 `IncomingDirection`；方向约定为伤害传播方向（ImpactOrigin/Source → Target）。旧非技能调用允许零方向，Skill 请求要求 finite 非零方向，进入 Mitigation 前归一化。
+- `EPRCombatRequestStatus` 的旧值 `Applied=0` 至 `Invalid=4` 保持不变，只在末尾追加 `RejectedBlocked=5`。伤害检查顺序冻结为结构/Authority/finite → Target → Dead → `IPRCombatMitigationInterface` → Invulnerable → GAS；合法 Blocked 只接受非空 `Combat.Response.*`，不改属性/Effect/死亡状态，并恰好广播一次 `DamageRejected`。
+- `FPRCombatOutcomeRequest` 与 `PublishAbilityOutcome` 只发布零数值 `Combat.Event.AbilityOutcome`；要求 Authority、SourceId、AbilityTag、Instigator及非空纯 `Combat.Response.*`。TargetId 依次由 Combatant、CombatEventSubject 解析；Combat 不 include 具体技能、敌人、Boss、QTE、HUD 或 Director。
 
 # 2. Ability、AbilitySet 与 InputTag 合同
 
@@ -147,6 +154,10 @@ date: "2026-07-10"
 - Energy Cost 与 Cooldown 的唯一权威来源是 Ability 继承的 GameplayEffect Class。Commit 顺序固定为 CheckCooldown、CheckCost、应用并验证 Cooldown、应用并验证 Cost、Notify；Cooldown 失败不扣 Cost，Cost 后半段失败只回滚本次 Cooldown。Instant Cost 使用 `WasSuccessfullyApplied()` 判定。
 - `FPRAbilityLifecycleEventNative` 由 ASC 单向发布 Granted/Removed/Activated/ActivationFailed/Committed/CommitFailed/Ended/Cancelled；未来 HUD、QTE 和统计只能订阅事件并使用只读 RuntimeState 查询，不能创建第二套生命周期事实。
 - 正式 `/Game/ProjectR/Abilities/DA_DefaultAbilitySet` 在 v0.1.3 保持空；验证 GA/GE/AbilitySet 隔离在 `/Game/ProjectR/MCPTest/Abilities/`，不得成为正式技能或正式内容依赖。
+- v0.2.0-A 新增 `UPRPlayerSkillDataAsset`（PrimaryAsset 类型 `ProjectRPlayerSkill`）、只含数据的 inline Fragment、`UPRPlayerSkillGameplayAbility`、Avatar 局部 `UPRPlayerSkillComponent` 与 World 级 `UPRPlayerSkillSubsystem`。依赖方向固定为 Skill DA → GA Blueprint → Cost/Cooldown GE；GA 从 AbilitySpec SourceObject 读取 DA，禁止 GA → DA 硬引用环。
+- ASC 继续独占 Spec、AbilitySet、Held Input、Commit、Cost/Cooldown 与 Ability 生命周期；Component 只持有 Phase/Timer/当前位移，Subsystem 只做确定性目标查询、RootMotionSource 位移注册/清理并把 Outcome 转发 Combat。两者不得形成第二套授予、扣属性、输入或事件事实源。
+- 目标资格只通过 native `IPRAbilityTargetInterface::CanBeTargetedByAbility(AbilityTag)`；v0.2.0 不新增 Faction enum/Team Tag。查询和位移使用 Source 当前 Y 平面的 X/Z 投影、1 cm 容差、固定 LOS/排序/重复 TargetId 失败合同；World Cleanup、Subsystem Deinitialize、Avatar 失效、Dead/Stunned 和 EndPlay 必须幂等清理 Timer、delegate 与 RootMotionSource。
+- 六个正式 GA/DA/Cost/Cooldown GE 在 A 仅为空壳；六个 GA BP 无业务 Graph，`DA_DefaultAbilitySet` 仍为空。Shadow/Fire/Thunder/Afterimage/Hook/Wall 的具体逻辑、状态 GE、VFX/SFX 与授予均留给 B–E。
 
 冻结项：四个公共枚举、四个公共结构字段顺序、InputTag 动态 Spec Tag 语义、AbilityTag、六个失败 Tag、AbilitySet PrimaryAssetId/Schema、GrantId 幂等语义、Commit 顺序和生命周期事件顺序。
 

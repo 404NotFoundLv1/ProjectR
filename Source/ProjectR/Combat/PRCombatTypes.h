@@ -19,6 +19,8 @@ struct PROJECTR_API FPRDamageRequest
 	float RawDamage = 0.0f;
 	bool bCritical = false;
 	FGameplayTagContainer DamageTags;
+	FVector ImpactOrigin = FVector::ZeroVector;
+	FVector IncomingDirection = FVector::ZeroVector;
 };
 
 /** Immutable combat fact published to downstream runtime consumers. */
@@ -55,13 +57,25 @@ struct PROJECTR_API FPRReviveRequest
 	float ShieldFraction = 1.0f;
 };
 
+/** Validated request for a stable non-damage ability fact. */
+struct PROJECTR_API FPRCombatOutcomeRequest
+{
+	FName SourceId;
+	TWeakObjectPtr<UObject> AbilitySource;
+	TWeakObjectPtr<AActor> Instigator;
+	TWeakObjectPtr<AActor> Target;
+	FGameplayTag AbilityTag;
+	FGameplayTagContainer ResponseTags;
+};
+
 enum class EPRCombatRequestStatus : uint8
 {
-	Applied,
-	RejectedInvulnerable,
-	RejectedDead,
-	RejectedAlive,
-	Invalid
+	Applied = 0,
+	RejectedInvulnerable = 1,
+	RejectedDead = 2,
+	RejectedAlive = 3,
+	Invalid = 4,
+	RejectedBlocked = 5
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FPRCombatEventNative, const FPRCombatEvent&);

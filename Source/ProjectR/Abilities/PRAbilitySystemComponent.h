@@ -61,8 +61,11 @@ private:
 	void RollBackGrantedSpecs(const TArray<FGameplayAbilitySpecHandle>& Handles);
 	void ActivatePassiveAbilities();
 	void ReleaseHeldAbilities();
+	void ReleaseHeldPlayerSkillAbilities();
 	void CancelProjectRAbilities(bool bOnlyCancelOnDeath);
+	void CancelPlayerSkillAbilities();
 	void HandleProjectRLifeStateChanged(FGameplayTag Tag, int32 NewCount);
+	void HandleProjectRStunStateChanged(FGameplayTag Tag, int32 NewCount);
 	void HandleAbilityEnded(const FAbilityEndedData& EndedData);
 	void NotifyProjectRCommitFailed(
 		UPRGameplayAbility* Ability,
@@ -80,6 +83,7 @@ private:
 	TSet<FGameplayAbilitySpecHandle> HeldAbilityHandles;
 	FPRAbilityLifecycleEventNative AbilityLifecycleEvent;
 	FDelegateHandle DeadTagEventHandle;
+	FDelegateHandle StunnedTagEventHandle;
 	FDelegateHandle AbilityEndedHandle;
 
 	friend class UPRGameplayAbility;

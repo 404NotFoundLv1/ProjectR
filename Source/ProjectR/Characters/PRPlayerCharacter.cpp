@@ -5,6 +5,7 @@
 #include "Camera/CameraComponent.h"
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
+#include "Abilities/Player/PRPlayerSkillComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/PRPlayerController.h"
 #include "Core/PRPlayerState.h"
@@ -36,12 +37,28 @@ APRPlayerCharacter::APRPlayerCharacter()
 	SideViewCameraComponent->SetRelativeRotation(FRotator(0.0, -90.0, 0.0));
 	SideViewCameraComponent->SetFieldOfView(60.0f);
 	SideViewCameraComponent->bUsePawnControlRotation = false;
+
+	PlayerSkillComponent = CreateDefaultSubobject<UPRPlayerSkillComponent>(TEXT("PlayerSkill"));
 }
 
 UAbilitySystemComponent* APRPlayerCharacter::GetAbilitySystemComponent() const
 {
 	const APRPlayerState* ProjectRPlayerState = GetPlayerState<APRPlayerState>();
 	return ProjectRPlayerState ? ProjectRPlayerState->GetAbilitySystemComponent() : nullptr;
+}
+
+EPRCombatMitigationResult APRPlayerCharacter::EvaluateIncomingDamage(
+	const FPRDamageRequest& Request,
+	FGameplayTagContainer& OutResponseTags) const
+{
+	return PlayerSkillComponent
+		? PlayerSkillComponent->EvaluateIncomingDamage(Request, OutResponseTags)
+		: EPRCombatMitigationResult::NotHandled;
+}
+
+UPRPlayerSkillComponent* APRPlayerCharacter::GetPlayerSkillComponent() const
+{
+	return PlayerSkillComponent;
 }
 
 void APRPlayerCharacter::HandleCombatHitReaction()
@@ -166,13 +183,23 @@ void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	const UInputAction* DodgeAction = nullptr;
 	const UInputAction* InteractAction = nullptr;
 	const UInputAction* ExecuteAction = nullptr;
+	const UInputAction* ShadowThrustAction = nullptr;
+	const UInputAction* FireSlashAction = nullptr;
+	const UInputAction* ThunderDropAction = nullptr;
+	const UInputAction* VectorHookAction = nullptr;
+	const UInputAction* CounterProofWallAction = nullptr;
 	if (!ResolveRequiredInputActions(
 		MoveAction,
 		JumpAction,
 		AttackAction,
 		DodgeAction,
 		InteractAction,
-		ExecuteAction))
+		ExecuteAction,
+		ShadowThrustAction,
+		FireSlashAction,
+		ThunderDropAction,
+		VectorHookAction,
+		CounterProofWallAction))
 	{
 		return;
 	}
@@ -192,7 +219,12 @@ void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		{AttackAction, UPRTagLibrary::GetInputAttackTag()},
 		{DodgeAction, UPRTagLibrary::GetInputDodgeTag()},
 		{InteractAction, UPRTagLibrary::GetInputInteractTag()},
-		{ExecuteAction, UPRTagLibrary::GetInputExecuteTag()}};
+		{ExecuteAction, UPRTagLibrary::GetInputExecuteTag()},
+		{ShadowThrustAction, UPRTagLibrary::GetInputSkillShadowThrustTag()},
+		{FireSlashAction, UPRTagLibrary::GetInputSkillFireSlashTag()},
+		{ThunderDropAction, UPRTagLibrary::GetInputSkillThunderDropTag()},
+		{VectorHookAction, UPRTagLibrary::GetInputSkillVectorHookTag()},
+		{CounterProofWallAction, UPRTagLibrary::GetInputSkillCounterProofWallTag()}};
 	for (const TPair<const UInputAction*, FGameplayTag>& Entry : SemanticActions)
 	{
 		EnhancedInputComponent->BindAction(
@@ -430,7 +462,12 @@ bool APRPlayerCharacter::ResolveRequiredInputActions(
 	const UInputAction*& AttackAction,
 	const UInputAction*& DodgeAction,
 	const UInputAction*& InteractAction,
-	const UInputAction*& ExecuteAction) const
+	const UInputAction*& ExecuteAction,
+	const UInputAction*& ShadowThrustAction,
+	const UInputAction*& FireSlashAction,
+	const UInputAction*& ThunderDropAction,
+	const UInputAction*& VectorHookAction,
+	const UInputAction*& CounterProofWallAction) const
 {
 	const APRPlayerController* ProjectRController = Cast<APRPlayerController>(GetController());
 	if (!IsValid(ProjectRController))
@@ -452,5 +489,13 @@ bool APRPlayerCharacter::ResolveRequiredInputActions(
 	DodgeAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputDodgeTag());
 	InteractAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputInteractTag());
 	ExecuteAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputExecuteTag());
-	return MoveAction && JumpAction && AttackAction && DodgeAction && InteractAction && ExecuteAction;
+	ShadowThrustAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillShadowThrustTag());
+	FireSlashAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillFireSlashTag());
+	ThunderDropAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillThunderDropTag());
+	VectorHookAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillVectorHookTag());
+	CounterProofWallAction = InputConfig->FindInputActionForTag(
+		UPRTagLibrary::GetInputSkillCounterProofWallTag());
+	return MoveAction && JumpAction && AttackAction && DodgeAction && InteractAction && ExecuteAction
+		&& ShadowThrustAction && FireSlashAction && ThunderDropAction && VectorHookAction
+		&& CounterProofWallAction;
 }

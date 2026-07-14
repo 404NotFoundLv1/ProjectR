@@ -21,6 +21,11 @@ public:
 	static const FGameplayTag& GetInputDodgeTag();
 	static const FGameplayTag& GetInputInteractTag();
 	static const FGameplayTag& GetInputExecuteTag();
+	static const FGameplayTag& GetInputSkillShadowThrustTag();
+	static const FGameplayTag& GetInputSkillFireSlashTag();
+	static const FGameplayTag& GetInputSkillThunderDropTag();
+	static const FGameplayTag& GetInputSkillVectorHookTag();
+	static const FGameplayTag& GetInputSkillCounterProofWallTag();
 
 	static const FGameplayTag& GetAbilityActivateFailCanActivateTag();
 	static const FGameplayTag& GetAbilityActivateFailCooldownTag();
@@ -28,12 +33,22 @@ public:
 	static const FGameplayTag& GetAbilityActivateFailNetworkingTag();
 	static const FGameplayTag& GetAbilityActivateFailTagsBlockedTag();
 	static const FGameplayTag& GetAbilityActivateFailTagsMissingTag();
+	static const FGameplayTag& GetAbilityActivateFailNoTargetTag();
+	static const FGameplayTag& GetAbilityActivateFailObstructedTag();
+	static const FGameplayTag& GetAbilityActivateFailInvalidMovementTag();
+	static const FGameplayTag& GetAbilityStatePlayerSkillActiveTag();
 
 	static const FGameplayTag& GetCombatDataDamageTag();
 	static const FGameplayTag& GetCombatEventDamageTag();
 	static const FGameplayTag& GetCombatEventDamageRejectedTag();
 	static const FGameplayTag& GetCombatEventDeathTag();
 	static const FGameplayTag& GetCombatEventReviveTag();
+	static const FGameplayTag& GetCombatEventAbilityOutcomeTag();
+	static const FGameplayTag& GetCombatResponseDisplacementAppliedTag();
+	static const FGameplayTag& GetCombatResponseDecoyCreatedTag();
+	static const FGameplayTag& GetCombatResponseDecoyConsumedTag();
+	static const FGameplayTag& GetCombatResponseGuardBlockedTag();
+	static const FGameplayTag& GetCombatResponsePerfectTimingTag();
 	static const FGameplayTag& GetCombatResponseHealthDamagedTag();
 	static const FGameplayTag& GetCombatResponseShieldAbsorbedTag();
 	static const FGameplayTag& GetCombatResponseShieldBrokenTag();
@@ -43,6 +58,8 @@ public:
 	static const FGameplayTag& GetStateInCombatTag();
 	static const FGameplayTag& GetStateInvulnerableTag();
 	static const FGameplayTag& GetStateStunnedTag();
+	static const FGameplayTag& GetStateBurningTag();
+	static const FGameplayTag& GetStateGuardingTag();
 
 	static const FGameplayTag& GetQTEResultSuccessTag();
 	static const FGameplayTag& GetQTEResultFailureTag();

@@ -218,6 +218,18 @@ date: "2026-07-10"
 - 当前 1190 个 Package 的路径、长度和 SHA-256 与基线完全一致；Package/地图/Config/Tag 为 1190/10/6/71，主模块 Source=141，两个插件 Source 合计=24，暂存路径=0。没有 UE Package、用户 Save、Config 或 GameplayTag 变更。
 - ADR-020 与 DataAndInterfaceContracts 已冻结结构化命令、Provider 生命周期、Slate/F1、日志脱敏和 Shipping 边界。最终 AutomationReport `v015-final-report-after-driver-20260714b` 为 37/37 required PASS；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 为 optional `NOT_RUN`。v0.1.5 正式提交已创建：`ee0ff0de295d67269aa1b05530e3e0a4c0400706`（`v0.1.5 Add isolated debug tools and log channels`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
+# 2026-07-14 - v0.2.0-A 技能公共合同与目标选择（Completed）
+
+- 在 `CURRENT_VERSION.md` 继续指向 v0.2.0/In Progress 的前提下完成内部检查点 A；基线 HEAD 为 `0993c53d7d927273965801a038467d55c48ccc19`，未创建提交或推进公共版本。
+- 新增 PlayerSkill 公共类型/接口、Skill DataAsset 与六类 Fragment、公共 GA 基类、六个无业务逻辑 native GA 空壳、Avatar Component、World Subsystem，以及 Combat Mitigation/EventSubject/AttackProxy 接口。ASC 继续独占 AbilitySet、Spec、Input、Commit、Cost/Cooldown；AttributeSet、Save 与 ProjectRDebug 未修改。
+- 目标查询冻结 X/Z 投影、Source Y 平面、1 cm 容差、Pawn/WorldDynamic 候选、Visibility LOS、TargetId 去重和距离/角度/ID 稳定排序；位移使用 Authority-only `FRootMotionSource_MoveToForce`、Priority 500、Sweep/StopDistance、Timer 监控与 World/Avatar/Dead/Stunned 幂等清理，不使用运行时 `SetActorLocation` 或永久 Tick。
+- Combat 在 `FPRDamageRequest` 末尾追加 ImpactOrigin/IncomingDirection，保持旧状态值并追加 `RejectedBlocked=5`；冻结 Dead → Mitigation → Invulnerable → GAS 顺序和零数值 AbilityOutcome。A 中 Character→Component Mitigation 始终返回 NotHandled，不提前实现护壁。
+- GameplayTag 由 71 增至 94，根保持 12，checked getter 由 30 增至 47；InputConfig 精确由 6 增至 11，IMC 由 13 增至 26，旧 6/13 的顺序、Action、Key 和 Modifier 全部保持。AfterimageDodge 继续复用 Dodge。
+- Unreal MCP 以预写 Manifest 串行创建 5 IA、12 GE、6 GA BP、6 Skill DA，修改 InputConfig/IMC；18 个 BP warnings-as-errors 编译通过，31 个准确 Package 非空保存，Dirty=0 后正常重启并逐项回读。`DA_DefaultAbilitySet` 始终为空且未保存；没有状态 GE、VFX、SFX、MCPTest 或未来资产依赖。
+- TDD RED 只因目标公共类型/API 缺失。最终 BuildEditor `v020a-finalbuild7-20260714` 退出 0；`ProjectR.PlayerSkill` 5/5，Input/GAS/Combat/Ability/Save/Debug 分别 3/3、4/4、4/4、5/5、5/5、12/12。Debug 使用其冻结的 CombatGym `-game` Automation 调用；普通无 GameInstance 的 Editor 调用失败证据未被当作回归结果。
+- Future Compatibility Review：B 复用 Snapshot/Forward 查询并在完成逻辑后授予 Shadow/Fire；C 复用 GroundArea、Timer、位移与 AttackProxy；D 复用 Mobility 与 Mitigation；E 才补状态/表现/完整六 Entry/PIE/人工手感。v0.2.1–v0.4.4 只消费稳定接口、Tag、PrimaryAssetId、Fragment 与事件，不保存 SpecHandle/Timer/Target/UObject。
+- 回滚边界已记录于 ADR-021 和 v0.2.0 A 子合同；未获逐 Package 删除批准时不删除已保存资产。PIE、Network PIE、Physical Gamepad、Human Skill Feel 与 Authoring Tool 扩展均按 A 范围为 optional `NOT_RUN`；Package/GC/提交/push 均未执行。
+
 # 版本记录模板
 
 ```text

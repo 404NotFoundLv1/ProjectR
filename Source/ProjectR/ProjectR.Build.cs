@@ -18,6 +18,7 @@ public class ProjectR : ModuleRules
 			"GameplayTasks",
 			"InputCore",
 			"EnhancedInput",
+			"Niagara",
 			"AIModule",
 			"NavigationSystem",
 			"StateTreeModule",

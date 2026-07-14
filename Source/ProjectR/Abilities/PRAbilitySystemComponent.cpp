@@ -5,6 +5,8 @@
 #include "Abilities/PRAbilitySetDataAsset.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Abilities/PRGameplayAbility.h"
+#include "Abilities/Player/PRPlayerSkillGameplayAbility.h"
+#include "Abilities/Player/PRPlayerSkillDataAsset.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Core/PRTagLibrary.h"
 #include "GameplayEffect.h"
@@ -284,6 +286,12 @@ void UPRAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActo
 			UPRTagLibrary::GetStateDeadTag(), EGameplayTagEventType::NewOrRemoved)
 			.AddUObject(this, &UPRAbilitySystemComponent::HandleProjectRLifeStateChanged);
 	}
+	if (!StunnedTagEventHandle.IsValid())
+	{
+		StunnedTagEventHandle = RegisterGameplayTagEvent(
+			UPRTagLibrary::GetStateStunnedTag(), EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &UPRAbilitySystemComponent::HandleProjectRStunStateChanged);
+	}
 	if (!HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag()))
 	{
 		ActivatePassiveAbilities();
@@ -345,6 +353,16 @@ bool UPRAbilitySystemComponent::ValidateAbilitySetForGrant(
 			? Entry.AbilityClass->GetDefaultObject<UPRGameplayAbility>()
 			: nullptr;
 		if (!AbilityCDO || Entry.AbilityLevel < 1 || !AbilityCDO->GetProjectRAbilityTag().IsValid())
+		{
+			return false;
+		}
+		const UPRPlayerSkillGameplayAbility* PlayerSkillAbility = Cast<UPRPlayerSkillGameplayAbility>(AbilityCDO);
+		const UPRPlayerSkillDataAsset* PlayerSkillData = Cast<UPRPlayerSkillDataAsset>(Entry.AbilityData);
+		if ((PlayerSkillAbility != nullptr) != (PlayerSkillData != nullptr)
+			|| (PlayerSkillData
+				&& (PlayerSkillData->AbilityClass != Entry.AbilityClass
+					|| PlayerSkillData->AbilityTag != AbilityCDO->GetProjectRAbilityTag()
+					|| PlayerSkillData->InputTag != Entry.InputTag)))
 		{
 			return false;
 		}
@@ -441,6 +459,22 @@ void UPRAbilitySystemComponent::ReleaseHeldAbilities()
 	HeldAbilityHandles.Reset();
 }
 
+void UPRAbilitySystemComponent::ReleaseHeldPlayerSkillAbilities()
+{
+	const TArray<FGameplayAbilitySpecHandle> Handles = HeldAbilityHandles.Array();
+	for (const FGameplayAbilitySpecHandle Handle : Handles)
+	{
+		FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(Handle);
+		if (!Spec || !Cast<UPRPlayerSkillGameplayAbility>(Spec->Ability))
+		{
+			continue;
+		}
+		AbilitySpecInputReleased(*Spec);
+		Spec->InputPressed = false;
+		HeldAbilityHandles.Remove(Handle);
+	}
+}
+
 void UPRAbilitySystemComponent::CancelProjectRAbilities(const bool bOnlyCancelOnDeath)
 {
 	TArray<FGameplayAbilitySpecHandle> Handles;
@@ -449,6 +483,22 @@ void UPRAbilitySystemComponent::CancelProjectRAbilities(const bool bOnlyCancelOn
 		const UPRGameplayAbility* Ability = Cast<UPRGameplayAbility>(Spec.Ability);
 		if (Ability && Spec.IsActive()
 			&& (!bOnlyCancelOnDeath || Ability->ShouldCancelOnDeath()))
+		{
+			Handles.Add(Spec.Handle);
+		}
+	}
+	for (const FGameplayAbilitySpecHandle Handle : Handles)
+	{
+		CancelAbilityHandle(Handle);
+	}
+}
+
+void UPRAbilitySystemComponent::CancelPlayerSkillAbilities()
+{
+	TArray<FGameplayAbilitySpecHandle> Handles;
+	for (const FGameplayAbilitySpec& Spec : GetActivatableAbilities())
+	{
+		if (Spec.IsActive() && Cast<UPRPlayerSkillGameplayAbility>(Spec.Ability))
 		{
 			Handles.Add(Spec.Handle);
 		}
@@ -475,6 +525,17 @@ void UPRAbilitySystemComponent::HandleProjectRLifeStateChanged(
 	else
 	{
 		ActivatePassiveAbilities();
+	}
+}
+
+void UPRAbilitySystemComponent::HandleProjectRStunStateChanged(
+	const FGameplayTag Tag,
+	const int32 NewCount)
+{
+	if (Tag == UPRTagLibrary::GetStateStunnedTag() && NewCount > 0)
+	{
+		ReleaseHeldPlayerSkillAbilities();
+		CancelPlayerSkillAbilities();
 	}
 }
 

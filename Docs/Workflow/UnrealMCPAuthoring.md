@@ -134,3 +134,11 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - 验证 GA Graph 必须在 `-culture=en` 会话读取完整 DSL。实测 `read_graph_dsl` 虽为只读调用，却会把 `GA_AbilityValidation_Triggered` 标为 Dirty；只有在 node/Pin/连接回读与 warnings-as-errors 编译匹配后，才能把该准确单一 Package 加入 Manifest并重新保存。不得因此调用 Save All；此工具副作用记录为 KI-018。
 - v0.1.3 的准确保存清单为七个新 Package 与 `BP_PlayerState`；Character/Controller 仅编译且未 Dirty、未保存。默认文化重启后回读 AbilitySet、GA/GE CDO、Graph 和 PlayerState 引用；最终 `/Game` inventory 319 项中 265 个可查询资产 Dirty=false，54 个 `__ExternalObjects__` 仍按既有复合门排除。
 - Windows 后台节流和当前约 946 MiB 的显存超预算警告会放大 0.10 秒 Combat Timer 采样。最终 Combat 回归使用前台 Floating PIE，严格恢复时间为 0.1041/0.1046 秒并 PASS；失败的旧 Combat smoke 必须 StopPIE 后从新会话重测，不能把其临时属性状态当作持久 Package 状态。
+
+# v0.2.0-A Skill 空壳与 Enhanced Input 增量
+
+- 官方 26/279 Toolset 已足够创建五个 InputAction、十二个 GameplayEffect Blueprint、六个 GameplayAbility Blueprint、六个 Skill DataAsset，并配置 CDO、引用与 inline Fragment；A 未创建或修改 ProjectR Editor Toolset。
+- UE5.8 `UInputMappingContext` 的可写序列化事实位于 `DefaultKeyMappings.mappings`。ObjectTools 查询运行时派生属性 `Mappings` 会返回空数组，不能据此判定正式 IMC 无 Mapping；写前后必须回读 `DefaultKeyMappings` 并精确比较旧前缀。
+- ObjectTools 写入 `UGameplayEffectComponent` 的 instanced UObject 数组时，已验证的 JSON 表达是元素直接使用目标组件类 `refPath`；写入后必须逐项回读实际实例 Class、Tag 与数量。不要使用未经 Schema 验证的自造 `instance` 包装。
+- `UPRPlayerSkillDataAsset.Fragments` 使用 inline instanced UObject；ShadowThrust 的空 Fragment 合同以空数组/空引用表达，其他五项写入准确派生 Fragment Class 和冻结默认值。若类、字段或引用回读不一致，放弃事务并停止。
+- A 的创建顺序为 IA → Cost/Cooldown GE → GA BP → Skill DA → InputConfig/IMC；精确保存固定 31 项。`DA_DefaultAbilitySet` 和 Player Blueprint 只回读/编译，任何意外 Dirty 都是停止条件，不得 Save All 或静默清除。

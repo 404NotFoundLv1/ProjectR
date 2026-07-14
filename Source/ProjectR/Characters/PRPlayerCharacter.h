@@ -4,6 +4,7 @@
 
 #include "AbilitySystemInterface.h"
 #include "Core/PRCombatFeedbackInterface.h"
+#include "Core/PRCombatMitigationInterface.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
@@ -15,7 +16,9 @@ class UCameraComponent;
 class UInputAction;
 class UInputComponent;
 class UPRAbilitySystemComponent;
+class UPRPlayerSkillComponent;
 class APRPlayerState;
+struct FPRDamageRequest;
 struct FOnAttributeChangeData;
 struct FInputActionValue;
 
@@ -25,6 +28,7 @@ class PROJECTR_API APRPlayerCharacter
 	: public ACharacter
 	, public IAbilitySystemInterface
 	, public IPRCombatFeedbackInterface
+	, public IPRCombatMitigationInterface
 {
 	GENERATED_BODY()
 
@@ -33,6 +37,10 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	virtual void HandleCombatHitReaction() override;
 	virtual void HandleCombatLifeStateChanged(bool bIsDead) override;
+	virtual EPRCombatMitigationResult EvaluateIncomingDamage(
+		const FPRDamageRequest& Request,
+		FGameplayTagContainer& OutResponseTags) const override;
+	UPRPlayerSkillComponent* GetPlayerSkillComponent() const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -71,7 +79,12 @@ private:
 		const UInputAction*& AttackAction,
 		const UInputAction*& DodgeAction,
 		const UInputAction*& InteractAction,
-		const UInputAction*& ExecuteAction) const;
+		const UInputAction*& ExecuteAction,
+		const UInputAction*& ShadowThrustAction,
+		const UInputAction*& FireSlashAction,
+		const UInputAction*& ThunderDropAction,
+		const UInputAction*& VectorHookAction,
+		const UInputAction*& CounterProofWallAction) const;
 
 	TWeakObjectPtr<UInputComponent> BoundInputComponent;
 	FRotator InitialMeshRelativeRotation = FRotator::ZeroRotator;
@@ -91,4 +104,7 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UCameraComponent> SideViewCameraComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ProjectR|Skill", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UPRPlayerSkillComponent> PlayerSkillComponent;
 };

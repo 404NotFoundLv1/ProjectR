@@ -16,6 +16,7 @@ class PROJECTR_API UPRCombatSubsystem : public UWorldSubsystem
 public:
 	EPRCombatRequestStatus ApplyDamage(const FPRDamageRequest& Request);
 	EPRCombatRequestStatus Revive(const FPRReviveRequest& Request);
+	bool PublishAbilityOutcome(const FPRCombatOutcomeRequest& Request);
 	FPRCombatEventNative& OnCombatEvent();
 
 private:

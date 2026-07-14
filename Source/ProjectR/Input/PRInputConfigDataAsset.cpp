@@ -113,7 +113,12 @@ EDataValidationResult UPRInputConfigDataAsset::IsDataValid(FDataValidationContex
 			|| Entry.InputTag == UPRTagLibrary::GetInputAttackTag()
 			|| Entry.InputTag == UPRTagLibrary::GetInputDodgeTag()
 			|| Entry.InputTag == UPRTagLibrary::GetInputInteractTag()
-			|| Entry.InputTag == UPRTagLibrary::GetInputExecuteTag();
+			|| Entry.InputTag == UPRTagLibrary::GetInputExecuteTag()
+			|| Entry.InputTag == UPRTagLibrary::GetInputSkillShadowThrustTag()
+			|| Entry.InputTag == UPRTagLibrary::GetInputSkillFireSlashTag()
+			|| Entry.InputTag == UPRTagLibrary::GetInputSkillThunderDropTag()
+			|| Entry.InputTag == UPRTagLibrary::GetInputSkillVectorHookTag()
+			|| Entry.InputTag == UPRTagLibrary::GetInputSkillCounterProofWallTag();
 		if (bIsCurrentButton && Entry.InputAction->ValueType != EInputActionValueType::Boolean)
 		{
 			Context.AddError(FText::Format(

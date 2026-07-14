@@ -70,3 +70,11 @@ date: "2026-07-10"
 - 新根 `Cooldown` 当前只包含 `Cooldown.Validation`，由验证 Cooldown GE 授予；v0.2.0 的正式技能只能增量添加 `Cooldown.Skill.*`，不得复用验证 Tag。
 - 本版本不新增 Input、Skill、QTE 或正式技能 Tag。正式 AbilitySpec 继续使用既有 `Input.Attack`/`Input.Dodge` 做验证路由，正式空 AbilitySet 不授予任何验证 Ability。
 - `UPRTagLibrary` 仅为六个通用激活失败 Tag 新增 checked getter，总计 30 个；Validation/Cooldown 内容 Tag 保持数据驱动。
+
+# v0.2.0-A PlayerSkill 公共合同增量
+
+- 显式标签总数由 71 增至 94；根命名空间保持 12。既有 71 个名称、顺序和 `DevComment` 不变，仍无 Redirect。
+- 新增 23 个稳定标签：五个 `Input.Skill.*`、六个 `Cooldown.Skill.*`、`Ability.ActivateFail.{NoTarget,Obstructed,InvalidMovement}`、`Ability.State.PlayerSkillActive`、`Combat.Event.AbilityOutcome`、五个 `Combat.Response.*` 以及 `State.{Burning,Guarding}`。
+- `UPRTagLibrary` 为五个 Input、三个目标/位移失败、PlayerSkillActive、AbilityOutcome、五个 Response、Burning 与 Guarding 增加 17 个 checked getter，总计 47；六个 Cooldown Skill 标签保持数据驱动，不增加 getter。
+- 五个新 Input Tag 只用于正式 Enhanced Input 到 ASC 的语义路由；AfterimageDodge 固定复用 `Input.Dodge`。`State.Burning`、`State.Guarding` 和 Decoy/Guard/PerfectTiming Response 在 A 只冻结名称，不实现对应 B–D 业务。
+- `Combat.Response.*` 是 AbilityOutcome/Mitigation 的唯一响应标签范围；`Ability.ActivateFail.*` 是目标、LOS 与位移失败面。不得新增同义 Team/Faction、技能事件或测试标签。
