@@ -29,6 +29,7 @@ date: "2026-07-10"
 | KI-018 | `-culture=en` 下官方 `read_graph_dsl` 只读调用会把已保存的验证 GA 标为 Dirty | 只读 Graph 审计可能制造意外保存提示或掩盖真实 Dirty 来源 | 引擎/Tool 修复后重审；修复前必须前后检查 Dirty，并仅在完整 node/Pin/连接回读和编译通过后精确单项保存 | Accepted Risk |
 | KI-019 | `ProjectRAuthoringTools.Build.cs` 已依赖 GameplayAbilities/GameplayTags，但 `.uplugin` 因 v0.1.3 Forbidden path 未同步插件依赖声明 | UBT 持续输出插件元数据警告；当前 Editor-only 模块仍能构建和加载 | 后续明确允许 `.uplugin` 时补充准确插件依赖，并通过 Build、Editor 重启、26/279 Tool 反射及 Shipping Runtime 不加载验证 | Open |
 | KI-020 | 既有 Combat PIE smoke 在严格 Timer 失败路径不能完整恢复临时属性/状态，且后台节流会放大采样 | 失败诊断后的同一 PIE 会话不能继续作为可靠 Combat 基线 | 在允许修改既有 Combat Tool 的维护版本补齐所有失败路径回滚；当前必须 StopPIE、新会话、前台/浮动 PIE 后复测 | Open |
+| KI-021 | 本机旧 NVIDIA 566.26 驱动在打包程序默认 D3D12/Ray Tracing 启动时于 `nvgpucomp64.dll` 崩溃，Windows 异常 `0xc0000409`；一次运行还记录 D3D12 PSO `0x8007000e` | 旧驱动曾阻断 Development/Shipping 默认图形路径验收 | 用户更新到 NVIDIA 610.47 后，在无其他 UE 进程的干净条件下重新运行默认 D3D12 Development/Shipping 顶层入口、F1/输入烟测和新时间窗日志，均未复现崩溃 | Closed |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -115,6 +116,14 @@ date: "2026-07-10"
 - KI-018 保持 Accepted Risk，KI-004 保持 Open，KI-006 保持 Accepted Risk；本轮未调用 Graph DSL、未修改或启用插件、未新增 Toolset。
 - 没有创建或修改 UE Package；265 个可查询资产 Dirty=0，1190 个 Package 的路径、长度和基线 SHA-256 不变。新鲜 PIE 只记录 Save Subsystem “initialized without storage access”，未调用产品 Save API，也未访问真实用户槽。
 - 本版本没有新增未关闭功能阻断；NetworkPIEReplication 与 ProjectRAuthoringToolExtension 均为 optional `NOT_RUN`。
+
+# 2026-07-14 - v0.1.5 Known Issues Review（Completed）
+
+- KI-021 关闭：旧 NVIDIA 566.26 下默认 D3D12/Ray Tracing 的 `nvgpucomp64.dll`/`0xc0000409` 崩溃，在用户清洁更新到 610.47 后不再复现。默认 D3D12 Development 稳定进入 CombatGym并完成完整 Debug 固定序列；默认 D3D12 Shipping 两次 F1 无面板、正式 D 键移动有效，两个新时间窗均无 Windows 崩溃事件。
+- Development/Shipping Package 本身均退出 0，目标感知边界验证均退出 0；Shipping receipt、Shipping 编译动作、Stage 与 Archive 均不含 ProjectRDebug。共享/陈旧 UHT Manifest 和同轮 Development Editor 日志不再被误当作 Shipping 包含证据。
+- Development Client 的首次编译失败来自既有 Editor-only Input validation 测试在 `WITH_EDITOR=0` 下仍调用 `IsDataValid`。经用户准确批准，仅为该测试增加 `WITH_EDITOR` 保护；Editor `ProjectR.Input` 仍为 3/3，Development Client 随后打包成功，运行时输入实现和资产未变。
+- KI-019 保持 Open；最终 BuildEditor 仍只有既有 ProjectRAuthoringTools 插件元数据警告。KI-020 保持 Open；本轮遵守失败后 StopPIE、新前台 Floating 会话复测流程并取得 Combat PASS。Windows UI Automation 未暴露 Slate 子控件，DPI-aware Win32 注入作为计划内机械回退完成，没有转交用户。
+- ADR-020 与 Debug/日志接口合同已补齐；最终 AutomationReport 以驱动更新后的默认 D3D12 新鲜证据替换旧 FAIL/NOT_RUN。v0.1.5 没有未关闭的当前版本功能阻断，KI-019/KI-020 继续按既有隔离流程保持 Open。
 
 # 记录规则
 

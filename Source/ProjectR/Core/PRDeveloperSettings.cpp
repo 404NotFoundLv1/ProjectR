@@ -3,7 +3,13 @@
 #include "Core/PRDeveloperSettings.h"
 
 UPRDeveloperSettings::UPRDeveloperSettings()
-	: bEnableDebugFeatures(false)
+	: bEnableDebugFeatures(
+#if UE_BUILD_SHIPPING
+		false
+#else
+		true
+#endif
+	)
 	, bUseMockDirector(true)
 	, bEnableSteamFeatures(false)
 {

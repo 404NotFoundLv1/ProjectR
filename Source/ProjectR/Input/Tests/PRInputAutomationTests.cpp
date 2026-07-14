@@ -89,6 +89,8 @@ bool FPRInputConfigLookupTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+#if WITH_EDITOR
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRInputConfigValidationTest,
 	"ProjectR.Input.Config.Validation",
@@ -151,6 +153,8 @@ bool FPRInputConfigValidationTest::RunTest(const FString& Parameters)
 
 	return true;
 }
+
+#endif // WITH_EDITOR
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRInputRequiredAssetsTest,

@@ -239,6 +239,26 @@ date: "2026-07-10"
 
 **验证**：TDD RED Build 只因目标 Save 类型缺失；独立审查后的 deletion-guard RED 只因新安全谓词尚不存在。最终 BuildEditor `v014-delete-guard-final-build-20260713a` 退出 0。`ProjectR.Save` 5/5 覆盖 Schema、迁移、Envelope、A/B、并发、退出、真实平台槽隔离/清理及生产槽删除前拒绝；Ability 5/5、GAS 4/4、Combat 4/4、Input 3/3 回归成功。新鲜 Editor 反射 `UPRSaveSubsystem`，PIE 初始化日志明确为无存储访问；Ability/Input 及前台 Floating Combat 固定冒烟 PASS，截图非黑屏、265 个可查询资产 Dirty=0，原 1190 个 Package 哈希/长度不变。
 
+# ADR-020 - 非 Shipping Debug 插件、结构化白名单与原生 Slate
+
+**状态**：Accepted。
+
+**上下文**：v0.1.5 需要让 Development Editor/Client 可以查询状态并调用少量既有受控 Gameplay API，同时保证 Shipping 二进制、收据和运行时都不存在 Debug 功能。Console 文本、反射执行、通用 Spawn、任意 Save Slot 或 Widget Blueprint 会扩大攻击面、形成第二套业务入口，并削弱可审计性。
+
+**选项**：把 Cheat/Console 命令直接放入 ProjectR；创建随 Shipping 编译但由 Config 隐藏的 UMG 面板；建立独立、无 Content、Shipping 构建期排除的原生插件和结构化命令注册表。
+
+**决策**：创建 `ProjectRDebug` Win64 Runtime 插件，使用 `.uplugin` 模块与 `.uproject` 引用双重 Shipping DenyList，并加入 Shipping compile tripwire。主模块只提供六个通用日志类别和 `FPRLogSanitizer`，不反向依赖插件。插件以弱 UObject Provider、稳定 CommandId/StableName、严格参数 Schema 和 Game Thread 门维护 Registry；五个已接入命令只调用正式 Combat、Save 只读状态和枚举式 Travel API，六个未来命令固定返回 `NotAvailable`。UI 使用 GameInstanceSubsystem 管理的原生 Slate Viewport Widget 和受焦点约束的 F1 InputProcessor，不创建 UE Package。
+
+**Shipping 与审计边界**：`ValidateDebugBoundary.ps1` 同时检查依赖方向、危险 API、无 Content、双重 Deny、Development 包含证据与 Shipping 收据/编译/Stage/Archive 排除证据。Shipping 运行时还必须证明两次 F1 无面板且正式输入仍可用。命令日志只输出 opaque Request token、固定 StableName、结果枚举和状态改变标志。
+
+**后果**：Development QA 获得可扩展但默认拒绝未知能力的结构化入口；Shipping 不承担隐藏 Widget、Console 字符串或 Debug 模块的运行时风险。后续版本必须等正式白名单 API 建立后追加新 CommandId，基础 Registry 不引用具体 GA、敌人、QTE、Companion、Boss、Director 或账号删除实现。
+
+**影响版本/合同**：冻结 v0.1.5 的 11 个 Descriptor、Provider/Handle 生命周期、F1/Widget 清理、日志类别与脱敏格式、Debug Feature Gate 和 Shipping 排除规则。正式 Input、GAS、Ability、Combat、Save、地图、GameplayTags、Blueprint API 与 1190 个既有 Package 不变。
+
+**迁移/回滚**：先移除 `.uproject` 中的插件引用，再反向撤销插件、Logging 文件、边界脚本与文档；不删除 Package或用户 Save。禁止 Git hard reset/clean、Save All、Fix Redirectors 和 GC。
+
+**验证**：TDD RED `v015-tdd-red-20260714a` 因目标 Debug Header 缺失退出 6。最终 BuildEditor、Editor/Development Client `ProjectR.Debug` 12/12、Input/GAS/Combat/Ability/Save 回归、Development/Shipping Package 和两种边界验证均 PASS。NVIDIA 566.26 的默认 D3D12 驱动崩溃经 610.47 清洁更新后不再复现；默认 D3D12 Development 完成 F1、两次 Damage、Revive、Save 只读、未来命令拒绝、固定旅行和面板清理，Shipping 完成两次 F1 无响应与正式 D 键移动。没有 UE Package、Config、GameplayTag 或用户 Save 变化。
+
 # ADR 模板
 
 ```text

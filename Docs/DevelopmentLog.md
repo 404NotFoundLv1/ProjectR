@@ -206,6 +206,18 @@ date: "2026-07-10"
 - Future Compatibility Review：v0.1.5 只读 RuntimeState/Event；关系、Account/Run/Graveyard、Meta、Settings 与 Memory 通过严格 Schema 迁移加入；Steam Cloud 复用同一 A/B/PRSV 字节。没有持久化 UObject、ASC/Spec/Effect/Grant Handle、Held Input、Delegate 或 CombatEvent。
 - 本版本无人工步骤，UE Package Manifest 为空；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 保持 optional `NOT_RUN`。v0.1.4 正式提交已创建：`d746de9e56ab8ec8af657c01b9100315fbff45be`（`v0.1.4 Add versioned SaveGame subsystem`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
+# 2026-07-14 - v0.1.5 隔离式 Debug 菜单（Completed）
+
+- 已实现无 Content 的 `ProjectRDebug` Runtime 插件、11 项固定命令 Schema、弱 UObject Provider Registry、Game Thread/上下文/参数白名单、原生 Slate 面板、F1 InputProcessor、旅行/PIE 清理，以及六个主模块日志类别、独立 Debug 日志与 GUID 脱敏。
+- TDD RED `v015-tdd-red-20260714a` 只因目标 Debug Header 缺失退出 6；最终 BuildEditor `v015-final-build-20260714a` 退出 0。`ProjectR.Debug` 在 Editor 和 Development Client 均为 12/12，Input/GAS/Combat/Ability/Save 回归分别为 3/3、4/4、4/4、5/5、5/5。
+- Development Package `v015-dev-package-20260714b` 与 Shipping Package `v015-shipping-package-20260714a` 均退出 0；目标感知 `ValidateDebugBoundary.ps1` 对两者均退出 0。Shipping receipt/编译动作/Stage/Archive 不含 ProjectRDebug。
+- Development DX11 诊断先完成 Status、两次 Damage、Revive、Save RuntimeState 只读、未来命令 NotAvailable 与 CombatGym 旅行；日志只包含 opaque Request token，旅行后面板自动关闭。Shipping DX11 诊断中两次 F1 无面板，D 键仍驱动正式角色移动。
+- Development Client 首次打包因既有 Editor-only Input validation 测试在 Client 编译中调用 `IsDataValid` 失败。用户批准准确单文件例外后以 `WITH_EDITOR` 隔离该测试；Editor `ProjectR.Input` 仍为 3/3，Client 打包成功。
+- 默认 D3D12/Ray Tracing 首次在 NVIDIA 566.26 `nvgpucomp64.dll` 中以 `0xc0000409` 崩溃，另一次记录 PSO `0x8007000e`；用户清洁更新到 610.47 后，同一 Development 归档稳定加载 CombatGym。默认 D3D12 完整烟测实际完成 F1、Status、Damage 25/100000、Revive、Save 只读、未来命令 NotAvailable、固定旅行及面板清理，日志无 ProjectR Error/Ensure/Blueprint Runtime Error，Windows 无新崩溃事件。
+- 默认 D3D12 Shipping 归档稳定启动；自动发送两次 F1 后截图均无 Debug 面板，D 键移动改变正式场景构图，进程保持稳定，Archive 中 `ProjectRDebug` 文件数为 0。KI-021 已按新鲜 Development/Shipping 证据关闭，没有修改 Config 或默认 RHI。
+- 当前 1190 个 Package 的路径、长度和 SHA-256 与基线完全一致；Package/地图/Config/Tag 为 1190/10/6/71，主模块 Source=141，两个插件 Source 合计=24，暂存路径=0。没有 UE Package、用户 Save、Config 或 GameplayTag 变更。
+- ADR-020 与 DataAndInterfaceContracts 已冻结结构化命令、Provider 生命周期、Slate/F1、日志脱敏和 Shipping 边界。最终 AutomationReport `v015-final-report-after-driver-20260714b` 为 37/37 required PASS；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 为 optional `NOT_RUN`。本轮不提交、不 push、不推进 CURRENT_VERSION，GC 未执行。
+
 # 版本记录模板
 
 ```text

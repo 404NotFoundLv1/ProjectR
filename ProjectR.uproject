@@ -57,6 +57,19 @@
 		{
 			"Name": "EditorToolset",
 			"Enabled": true
+		},
+		{
+			"Name": "ProjectRDebug",
+			"Enabled": true,
+			"PlatformAllowList": [
+				"Win64"
+			],
+			"TargetConfigurationDenyList": [
+				"Shipping"
+			],
+			"SupportedTargetPlatforms": [
+				"Win64"
+			]
 		}
 	]
 }

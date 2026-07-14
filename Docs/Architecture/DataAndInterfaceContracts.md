@@ -169,7 +169,25 @@ date: "2026-07-10"
 - 未来关系、Account/Run/Graveyard、Meta、Settings 与有界 Memory/RunSummary 只能在对应版本通过新 Schema 和逐版本迁移加入。运行时 UObject、ASC/AttributeSet、Actor、Spec/Effect/Grant Handle、Held Input、Delegate、CombatEvent、原始 LLM 响应和 API Key 永不进入存档。
 - Steam Cloud 复用同一 A/B 槽字节、`PRSV` 和业务 Schema，不创建第二套云端格式；任何破坏性格式变化必须新增 ADR、迁移、消费者清单与兼容测试。
 
-# 4. Companion 与 Relationship 合同
+# 4. 隔离式 Debug 与日志合同
+
+**所有者**：Core/Logging 与 `ProjectRDebug`。
+**建立版本**：v0.1.5。
+**消费者**：Development QA、v0.2.0-v0.4.3 的受控调试适配器、v0.9.1 QA，以及 v1.0.1/v1.0.2 发布边界。
+
+- ProjectR 主模块只拥有通用日志类别和脱敏工具，不得 include、链接、动态加载或以软路径引用 `ProjectRDebug`。兼容类别 `LogProjectR` 保留；新增类别固定为 `LogProjectRCore`、`LogProjectRInput`、`LogProjectRGAS`、`LogProjectRAbility`、`LogProjectRCombat`、`LogProjectRSave`。`LogProjectRDebug` 只在 Debug 插件内定义。
+- `FPRLogSanitizer::RedactedValue()` 固定返回 `[REDACTED]`；GUID 日志关联只允许输出域分隔 SHA-1 的 `prg_` 加 12 位小写十六进制，非法 GUID 输出 `prg_invalid`。该 token 不持久化、不作为认证或业务身份。
+- Debug 命令使用 SchemaVersion 1 的结构化 Descriptor/Argument/Request/Result。CommandId、StableName、参数顺序、类型、范围、Choice 白名单和 `bChangesRuntimeState` 发布后冻结；未来只能追加新 CommandId，不得复用、重排或静默改名。
+- Registry 只接受 Game Thread 调用、弱绑定 UObject Provider 和准确 Provider Handle。Provider、CommandId、StableName 三重唯一；同 Provider 的完全相同注册幂等返回原 Handle，失效 Provider 不执行，注销只影响准确 Handle。
+- v0.1.5 的可用命令固定为 `Debug.Status`、`Combat.DamageSelf`、`Combat.ReviveSelf`、`Save.RuntimeState` 和 `Travel.CombatGym`。它们只能调用既有 Combat、Save 只读状态和枚举式 Travel API；不得缓存 Pawn/ASC，不得读取 ProfileId，不得形成第二套玩法或存储入口。
+- `Ability.GrantResource`、`Ability.ClearCooldown`、`Director.GenerateRule`、`QTE.Spawn`、`Companion.CycleAI`、`Boss.Jump` 在正式白名单 API 建立前必须返回 `NotAvailable`，不能用临时反射、Console、Spawn、对象路径或自由文本绕过。
+- `UPRDebugSubsystem` 绑定 GameInstance 生命周期；原生 Slate 面板由 SceneViewport 焦点下的非重复 F1 打开，面板后代焦点只允许 F1 关闭。PreLoadMap、World cleanup、PIE Stop 和 Deinitialize 必须移除准确 Widget、InputProcessor、Provider 与 Delegate，并恢复鼠标和 GameOnly 输入模式。
+- `ProjectRDebug` 是无 Content 的 Win64 Runtime 插件，但 `.uplugin` 模块与 `.uproject` 引用同时 `TargetConfigurationDenyList=[Shipping]`，并保留 Shipping compile tripwire。Development Feature Gate 还受 `UPRDeveloperSettings::bEnableDebugFeatures` 控制；Shipping 中该设置不能重新激活不存在的模块。
+- `BuildScripts/ValidateDebugBoundary.ps1` 是正式静态/Package 门：Development 必须证明插件和模块存在；Shipping 必须用目标收据、Shipping 编译动作、Stage、Archive 和运行时共同证明插件不存在。共享或陈旧 UHT Manifest、同轮 Development Editor 日志不得作为 Shipping 包含证据。
+- 命令审计日志只允许 `Request=<opaque token>`、固定 `StableName`、结果枚举和 `ChangesRuntimeState`；不得记录参数原文、ProfileId、Payload、路径、环境变量、账号或自由文本。
+- 本合同不创建 UE Package、输入资产、Widget Blueprint、Save Slot 或 GameplayTag。任何未来 Debug 写操作都必须先有正式白名单业务 API、Allowed-path 修订、独立测试和 Shipping 边界回归。
+
+# 5. Companion 与 Relationship 合同
 
 **所有者**：Companions；持久化由 Save。  
 **建立版本**：v0.3.0。  
@@ -180,7 +198,7 @@ date: "2026-07-10"
 - 战斗支援读取不可变关系快照，关系变化通过 `FPRRelationshipDelta` 请求并由所有者校验。
 - AI 无法以支援伤害完成普通/精英/Boss 终结；阈值属于 Companion Combat Policy 数据。
 
-# 5. QTEResult 合同
+# 6. QTEResult 合同
 
 **所有者**：QTE。  
 **建立版本**：v0.3.2。  
@@ -192,7 +210,7 @@ date: "2026-07-10"
 - 失败、拒绝、超时必须是不同 ResultTag。
 - QTE DataAsset 的 ID 和触发 Tag 发布后冻结。
 
-# 6. Director 合同
+# 7. Director 合同
 
 **所有者**：Director。  
 **建立版本**：v0.4.0。  
@@ -212,7 +230,7 @@ FPRPlayerProfileSnapshot
 
 Response 只允许 RuleId、Level、ReasonTags、VisibleReason、有限参数和表达文本。Validator 执行 Schema、白名单、Clamp、长度、超时和 fallback。未知 RuleId 永不进入执行层。
 
-# 7. Room 与 Reward 合同
+# 8. Room 与 Reward 合同
 
 **所有者**：Roguelike。  
 **建立版本**：v0.4.2。  
@@ -223,7 +241,7 @@ Response 只允许 RuleId、Level、ReasonTags、VisibleReason、有限参数和
 - 章节通过内容注册表提供 Room/Enemy/Rule/Reward，不修改 RoomManager 核心流程。
 - 经济和难度只能调整权重/约束，不直接生成未知资产类。
 
-# 8. RunSummary 与 AccountRecord 合同
+# 9. RunSummary 与 AccountRecord 合同
 
 **所有者**：RunState；持久化由 Save。  
 **建立版本**：v0.4.3。  
@@ -231,7 +249,7 @@ Response 只允许 RuleId、Level、ReasonTags、VisibleReason、有限参数和
 
 AccountRecord 保存账号 ID、身份、开始/结束时间、结束原因、章节、Boss、主要法令、构筑摘要、主同步 AI、关键 QTE、死因和反证奖励。RunSummary 是适合对话/画像消费的有界摘要，不保存无限战斗日志。
 
-# 9. 契约升级清单
+# 10. 契约升级清单
 
 1. 列出所有直接消费者。
 2. 判断能否仅新增字段/Tag/可选接口。
