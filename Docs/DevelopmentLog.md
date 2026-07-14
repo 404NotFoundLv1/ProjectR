@@ -216,7 +216,7 @@ date: "2026-07-10"
 - 默认 D3D12/Ray Tracing 首次在 NVIDIA 566.26 `nvgpucomp64.dll` 中以 `0xc0000409` 崩溃，另一次记录 PSO `0x8007000e`；用户清洁更新到 610.47 后，同一 Development 归档稳定加载 CombatGym。默认 D3D12 完整烟测实际完成 F1、Status、Damage 25/100000、Revive、Save 只读、未来命令 NotAvailable、固定旅行及面板清理，日志无 ProjectR Error/Ensure/Blueprint Runtime Error，Windows 无新崩溃事件。
 - 默认 D3D12 Shipping 归档稳定启动；自动发送两次 F1 后截图均无 Debug 面板，D 键移动改变正式场景构图，进程保持稳定，Archive 中 `ProjectRDebug` 文件数为 0。KI-021 已按新鲜 Development/Shipping 证据关闭，没有修改 Config 或默认 RHI。
 - 当前 1190 个 Package 的路径、长度和 SHA-256 与基线完全一致；Package/地图/Config/Tag 为 1190/10/6/71，主模块 Source=141，两个插件 Source 合计=24，暂存路径=0。没有 UE Package、用户 Save、Config 或 GameplayTag 变更。
-- ADR-020 与 DataAndInterfaceContracts 已冻结结构化命令、Provider 生命周期、Slate/F1、日志脱敏和 Shipping 边界。最终 AutomationReport `v015-final-report-after-driver-20260714b` 为 37/37 required PASS；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 为 optional `NOT_RUN`。本轮不提交、不 push、不推进 CURRENT_VERSION，GC 未执行。
+- ADR-020 与 DataAndInterfaceContracts 已冻结结构化命令、Provider 生命周期、Slate/F1、日志脱敏和 Shipping 边界。最终 AutomationReport `v015-final-report-after-driver-20260714b` 为 37/37 required PASS；`NetworkPIEReplication` 与 `ProjectRAuthoringToolExtension` 为 optional `NOT_RUN`。v0.1.5 正式提交已创建：`ee0ff0de295d67269aa1b05530e3e0a4c0400706`（`v0.1.5 Add isolated debug tools and log channels`），且该实施提交已与 `origin/main` 同步；GC 未执行，`CURRENT_VERSION` 的推进由独立版本转换提交完成。
 
 # 版本记录模板
 
