@@ -6,6 +6,7 @@
 #include "Abilities/PRAttributeSet.h"
 #include "Abilities/Player/PRGA_FireSlash.h"
 #include "Abilities/Player/PRGA_ShadowThrust.h"
+#include "Abilities/Player/PRSkillDecoyActor.h"
 #include "Abilities/Player/PRPlayerSkillComponent.h"
 #include "Abilities/Player/PRPlayerSkillDataAsset.h"
 #include "Abilities/Player/PRPlayerSkillFragment.h"
@@ -159,6 +160,13 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 		static_cast<uint8>(EPRCombatRequestStatus::RejectedBlocked), static_cast<uint8>(5));
 
 	FScopedWorld World;
+	APRSkillDecoyActor* Decoy = World.Get()->SpawnActor<APRSkillDecoyActor>();
+	if (!TestNotNull(TEXT("Afterimage decoy actor is available"), Decoy))
+	{
+		return false;
+	}
+	TestFalse(TEXT("Fresh decoy rejects a null attacker"), Decoy->ConsumeAttackProxy(nullptr));
+	Decoy->Destroy();
 	APRPlayerState* PlayerState = SpawnBlueprintActor<APRPlayerState>(
 		World.Get(), TEXT("/Game/ProjectR/Blueprints/Player/BP_PlayerState.BP_PlayerState_C"));
 	APRPlayerController* Controller = SpawnBlueprintActor<APRPlayerController>(
@@ -316,6 +324,73 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 	SkillSource.Character->GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 	TestTrue(TEXT("Formal side-view right facing resolves along positive X"),
 		SkillSource.Character->GetMesh()->GetRightVector().Equals(FVector::ForwardVector, 0.01f));
+	APRSkillDecoyActor* RuntimeDecoy = World.Get()->SpawnActor<APRSkillDecoyActor>();
+	if (!TestNotNull(TEXT("Runtime decoy spawned"), RuntimeDecoy))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	RuntimeDecoy->InitializeProxy(
+		SkillSource.Character,
+		TEXT("Automation.AfterimageDecoy"),
+		0.14f,
+		1.5f);
+	const int32 DecoyOutcomeStart = Events.Num();
+	TestTrue(TEXT("First legal attacker consumes the decoy"),
+		RuntimeDecoy->ConsumeAttackProxy(SkillTarget.Character));
+	TestFalse(TEXT("A consumed decoy rejects a second attacker"),
+		RuntimeDecoy->ConsumeAttackProxy(SkillTarget.Character));
+	TestEqual(TEXT("Decoy consumption publishes exactly one AbilityOutcome"),
+		Events.Num(), DecoyOutcomeStart + 1);
+	if (Events.Num() == DecoyOutcomeStart + 1)
+	{
+		const FPRCombatEvent& DecoyOutcome = Events.Last();
+		TestEqual(TEXT("Decoy consumption is an AbilityOutcome"),
+			DecoyOutcome.EventTag, UPRTagLibrary::GetCombatEventAbilityOutcomeTag());
+		TestTrue(TEXT("Decoy consumption preserves its response"),
+			DecoyOutcome.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseDecoyConsumedTag()));
+		TestTrue(TEXT("Consumption inside the window marks PerfectTiming"),
+			DecoyOutcome.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponsePerfectTimingTag()));
+	}
+	const UPRPlayerSkillDataAsset* ThunderData = LoadObject<UPRPlayerSkillDataAsset>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_ThunderDrop.DA_Skill_ThunderDrop"));
+	UClass* StunnedEffectClass = LoadClass<UGameplayEffect>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/Effects/GE_State_Stunned.GE_State_Stunned_C"));
+	UPRPlayerSkillSubsystem* ThunderSubsystem = World.Get()->GetSubsystem<UPRPlayerSkillSubsystem>();
+	if (!TestNotNull(TEXT("Formal ThunderDrop data exists"), ThunderData)
+		|| !TestNotNull(TEXT("ThunderDrop Stunned effect exists"), StunnedEffectClass)
+		|| !TestNotNull(TEXT("PlayerSkill subsystem exists"), ThunderSubsystem))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	FPRPlayerSkillExecutionSnapshot ThunderSnapshot;
+	ThunderSnapshot.AbilityTag = ThunderData->AbilityTag;
+	ThunderSnapshot.InputTag = ThunderData->InputTag;
+	ThunderSnapshot.SourceActor = SkillSource.Character;
+	ThunderSnapshot.Origin = SkillSource.Character->GetActorLocation();
+	ThunderSnapshot.AimDirection = FVector::ForwardVector;
+	ThunderSnapshot.AttackPower = 10.0f;
+	ThunderSnapshot.BaseDamage = ThunderData->BaseDamage;
+	ThunderSnapshot.AttackPowerScale = ThunderData->AttackPowerScale;
+	TestTrue(TEXT("ThunderDrop schedules exactly one delayed impact"),
+		ThunderSubsystem->ScheduleThunderDrop(
+			ThunderSnapshot,
+			SkillTarget.Character->GetActorLocation(),
+			*const_cast<UPRPlayerSkillDataAsset*>(ThunderData),
+			StunnedEffectClass));
+	World.TickFor(0.59f);
+	TestEqual(TEXT("ThunderDrop has no early damage before 0.60 seconds"),
+		SkillTarget.Attributes->GetHealth(), 100.0f);
+	World.TickFor(0.02f);
+	TestEqual(TEXT("ThunderDrop applies 25 + 2.0 * AttackPower once"),
+		SkillTarget.Attributes->GetHealth(), 55.0f);
+	TestTrue(TEXT("ThunderDrop applies Stunned after successful damage"),
+		SkillTarget.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag()));
+	World.TickFor(0.8f);
+	TestFalse(TEXT("ThunderDrop Stunned naturally expires before B regression"),
+		SkillTarget.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag()));
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
 
 	const UPRPlayerSkillDataAsset* FireData = LoadObject<UPRPlayerSkillDataAsset>(
 		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_FireSlash.DA_Skill_FireSlash"));

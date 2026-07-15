@@ -17,6 +17,7 @@ public class ProjectRAuthoringTools : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"CoreUObject",
+			"AssetRegistry",
 			"Engine",
 			"EnhancedInput",
 			"GameplayAbilities",

@@ -5,6 +5,7 @@
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/Player/PRAbilityTargetInterface.h"
 #include "Abilities/Player/PRPlayerSkillFragment.h"
+#include "Abilities/Player/PRPlayerSkillDataAsset.h"
 #include "AbilitySystemInterface.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Components/CapsuleComponent.h"
@@ -71,6 +72,7 @@ void UPRPlayerSkillSubsystem::Deinitialize()
 {
 	CleanupAllDisplacements();
 	CleanupAllBurning(true);
+	CleanupAllThunderDrops();
 	if (WorldCleanupHandle.IsValid())
 	{
 		FWorldDelegates::OnWorldCleanup.Remove(WorldCleanupHandle);
@@ -917,7 +919,145 @@ void UPRPlayerSkillSubsystem::HandleWorldCleanup(
 	{
 		CleanupAllDisplacements();
 		CleanupAllBurning(true);
+		CleanupAllThunderDrops();
 	}
+}
+
+bool UPRPlayerSkillSubsystem::ScheduleThunderDrop(
+	const FPRPlayerSkillExecutionSnapshot& Snapshot,
+	const FVector ImpactPoint,
+	UPRPlayerSkillDataAsset& SkillData,
+	const TSubclassOf<UGameplayEffect> StunnedEffectClass)
+{
+	AActor* Source = Snapshot.SourceActor.Get();
+	UWorld* World = GetWorld();
+	if (!World || !IsValid(Source) || Source->GetWorld() != World || !Source->HasAuthority()
+		|| !Snapshot.AbilityTag.IsValid() || Snapshot.AbilityTag != SkillData.AbilityTag
+		|| ImpactPoint.ContainsNaN() || !StunnedEffectClass
+		|| !FMath::IsFinite(SkillData.ActiveDuration) || SkillData.ActiveDuration <= 0.0f)
+	{
+		return false;
+	}
+
+	const TWeakObjectPtr<UPRPlayerSkillDataAsset> Key(&SkillData);
+	if (ActiveThunderDrops.Contains(Key))
+	{
+		return false;
+	}
+	FActiveThunderDrop Active;
+	Active.Snapshot = Snapshot;
+	Active.ImpactPoint = ImpactPoint;
+	Active.SkillData = &SkillData;
+	Active.StunnedEffectClass = StunnedEffectClass;
+	World->GetTimerManager().SetTimer(
+		Active.TimerHandle,
+		FTimerDelegate::CreateUObject(this, &UPRPlayerSkillSubsystem::ResolveThunderDrop, Key),
+		SkillData.ActiveDuration,
+		false);
+	ActiveThunderDrops.Add(Key, Active);
+	return true;
+}
+
+void UPRPlayerSkillSubsystem::ResolveThunderDrop(const TWeakObjectPtr<UPRPlayerSkillDataAsset> SkillDataKey)
+{
+	FActiveThunderDrop* ActivePtr = ActiveThunderDrops.Find(SkillDataKey);
+	if (!ActivePtr)
+	{
+		return;
+	}
+	const FActiveThunderDrop Active = *ActivePtr;
+	ActiveThunderDrops.Remove(SkillDataKey);
+	if (UWorld* World = GetWorld())
+	{
+		FTimerHandle TimerHandle = Active.TimerHandle;
+		World->GetTimerManager().ClearTimer(TimerHandle);
+	}
+
+	UPRPlayerSkillDataAsset* SkillData = Active.SkillData.Get();
+	AActor* Source = Active.Snapshot.SourceActor.Get();
+	if (!SkillData || !IsValid(Source) || !Source->HasAuthority() || Source->GetWorld() != GetWorld()
+		|| !Active.StunnedEffectClass || Active.ImpactPoint.ContainsNaN())
+	{
+		return;
+	}
+
+	FPRAbilityTargetQuery Query;
+	Query.SourceActor = Source;
+	Query.AbilityTag = Active.Snapshot.AbilityTag;
+	Query.TargetPolicy = EPRPlayerSkillTargetPolicy::GroundArea;
+	Query.Origin = Active.Snapshot.Origin;
+	Query.AimDirection = Active.Snapshot.AimDirection;
+	Query.AreaCenter = Active.ImpactPoint;
+	Query.Range = SkillData->Range;
+	Query.Radius = SkillData->Radius;
+	FPRAbilityTargetQueryResult Targets;
+	FGameplayTag FailureTag;
+	if (!QueryTargets(Query, Targets, FailureTag))
+	{
+		return;
+	}
+
+	TSet<FName> DamagedTargetIds;
+	for (const TWeakObjectPtr<AActor>& TargetPtr : Targets.Targets)
+	{
+		AActor* Target = TargetPtr.Get();
+		const IPRAbilityTargetInterface* TargetInterface = Cast<IPRAbilityTargetInterface>(Target);
+		if (!IsValid(Target) || !TargetInterface || TargetInterface->GetAbilityTargetId().IsNone()
+			|| DamagedTargetIds.Contains(TargetInterface->GetAbilityTargetId()))
+		{
+			continue;
+		}
+		DamagedTargetIds.Add(TargetInterface->GetAbilityTargetId());
+		const EPRCombatRequestStatus Status = ApplySkillDamage(
+			Active.Snapshot,
+			*Target,
+			*SkillData,
+			Active.ImpactPoint,
+			Active.Snapshot.BaseDamage,
+			Active.Snapshot.AttackPowerScale,
+			Active.Snapshot.bCritical,
+			Active.Snapshot.AimDirection);
+		if (Status == EPRCombatRequestStatus::Applied)
+		{
+			ApplyStunnedEffect(*Source, *Target, *SkillData, Active.StunnedEffectClass);
+		}
+	}
+}
+
+void UPRPlayerSkillSubsystem::CleanupAllThunderDrops()
+{
+	for (const TPair<TWeakObjectPtr<UPRPlayerSkillDataAsset>, FActiveThunderDrop>& Pair : ActiveThunderDrops)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			FTimerHandle TimerHandle = Pair.Value.TimerHandle;
+			World->GetTimerManager().ClearTimer(TimerHandle);
+		}
+	}
+	ActiveThunderDrops.Reset();
+}
+
+bool UPRPlayerSkillSubsystem::ApplyStunnedEffect(
+	AActor& Source,
+	AActor& Target,
+	UPRPlayerSkillDataAsset& SkillData,
+	const TSubclassOf<UGameplayEffect> StunnedEffectClass) const
+{
+	const IAbilitySystemInterface* SourceInterface = Cast<IAbilitySystemInterface>(&Source);
+	const IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(&Target);
+	UPRAbilitySystemComponent* SourceASC = SourceInterface
+		? Cast<UPRAbilitySystemComponent>(SourceInterface->GetAbilitySystemComponent()) : nullptr;
+	UPRAbilitySystemComponent* TargetASC = TargetInterface
+		? Cast<UPRAbilitySystemComponent>(TargetInterface->GetAbilitySystemComponent()) : nullptr;
+	if (!SourceASC || !TargetASC || !StunnedEffectClass
+		|| TargetASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag()))
+	{
+		return false;
+	}
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddSourceObject(&SkillData);
+	const FGameplayEffectSpecHandle Spec = SourceASC->MakeOutgoingSpec(StunnedEffectClass, 1.0f, Context);
+	return Spec.IsValid() && SourceASC->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(), TargetASC).WasSuccessfullyApplied();
 }
 
 void UPRPlayerSkillSubsystem::FinishDisplacement(

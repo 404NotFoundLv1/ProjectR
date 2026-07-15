@@ -13,6 +13,7 @@ class UCharacterMovementComponent;
 class UGameplayEffect;
 class UObject;
 class UPRAbilitySystemComponent;
+class UPRPlayerSkillDataAsset;
 class UPRFireSlashSkillFragment;
 enum class EPRCombatRequestStatus : uint8;
 struct FPRCombatOutcomeRequest;
@@ -124,13 +125,38 @@ private:
 		const AActor* SourceActor) const;
 	void CleanupAllDisplacements();
 
+	struct FActiveThunderDrop
+	{
+		FPRPlayerSkillExecutionSnapshot Snapshot;
+		FVector ImpactPoint = FVector::ZeroVector;
+		TWeakObjectPtr<UPRPlayerSkillDataAsset> SkillData;
+		TSubclassOf<UGameplayEffect> StunnedEffectClass;
+		FTimerHandle TimerHandle;
+	};
+
+	bool ScheduleThunderDrop(
+		const FPRPlayerSkillExecutionSnapshot& Snapshot,
+		FVector ImpactPoint,
+		UPRPlayerSkillDataAsset& SkillData,
+		TSubclassOf<UGameplayEffect> StunnedEffectClass);
+	void ResolveThunderDrop(TWeakObjectPtr<UPRPlayerSkillDataAsset> SkillData);
+	void CleanupAllThunderDrops();
+	bool ApplyStunnedEffect(
+		AActor& Source,
+		AActor& Target,
+		UPRPlayerSkillDataAsset& SkillData,
+		TSubclassOf<UGameplayEffect> StunnedEffectClass) const;
+
 	TMap<FGuid, FActiveDisplacement> ActiveDisplacements;
 	TMap<TWeakObjectPtr<AActor>, FActiveBurning> ActiveBurning;
+	TMap<TWeakObjectPtr<UPRPlayerSkillDataAsset>, FActiveThunderDrop> ActiveThunderDrops;
 	FPRAbilityDisplacementFinishedNative DisplacementFinishedEvent;
 	FDelegateHandle WorldCleanupHandle;
 
 	friend class UPRGA_ShadowThrust;
 	friend class UPRGA_FireSlash;
+	friend class UPRGA_ThunderDrop;
+	friend class UPRGA_AfterimageDodge;
 	friend class FPRPlayerSkillDamageDefenseTest;
 	friend class FPRPlayerSkillLifecycleTest;
 	friend class FPRPlayerSkillTargetingTest;

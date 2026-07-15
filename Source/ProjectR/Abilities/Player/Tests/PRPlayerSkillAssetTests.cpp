@@ -186,12 +186,52 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 			EGameplayEffectStackingExpirationPolicy::ClearEntireStack);
 	}
 
+	struct FStateEffectExpectation
+	{
+		const TCHAR* Name;
+		float Duration;
+		const TCHAR* Tag;
+	};
+	const FStateEffectExpectation StateEffects[] = {
+		{TEXT("Stunned"), 0.75f, TEXT("State.Stunned")},
+		{TEXT("Invulnerable"), 0.22f, TEXT("State.Invulnerable")}};
+	const UClass* StateEffectClasses[UE_ARRAY_COUNT(StateEffects)] = {};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(StateEffects); ++Index)
+	{
+		const FStateEffectExpectation& Expected = StateEffects[Index];
+		StateEffectClasses[Index] = LoadClass<UGameplayEffect>(
+			nullptr,
+			*FString::Printf(TEXT("/Game/ProjectR/Abilities/Effects/GE_State_%s.GE_State_%s_C"),
+				Expected.Name, Expected.Name));
+		const UGameplayEffect* StateEffect = StateEffectClasses[Index]
+			? StateEffectClasses[Index]->GetDefaultObject<UGameplayEffect>() : nullptr;
+		if (!TestNotNull(*FString::Printf(TEXT("C State %s effect exists"), Expected.Name), StateEffect))
+		{
+			continue;
+		}
+		float Duration = 0.0f;
+		TestEqual(*FString::Printf(TEXT("C State %s has duration"), Expected.Name),
+			StateEffect->DurationPolicy, EGameplayEffectDurationType::HasDuration);
+		TestTrue(*FString::Printf(TEXT("C State %s duration is static"), Expected.Name),
+			StateEffect->DurationMagnitude.GetStaticMagnitudeIfPossible(1.0f, Duration));
+		TestEqual(*FString::Printf(TEXT("C State %s duration"), Expected.Name), Duration, Expected.Duration);
+		TestEqual(*FString::Printf(TEXT("C State %s has no period"), Expected.Name),
+			StateEffect->Period.GetValueAtLevel(1.0f), 0.0f);
+		TestEqual(*FString::Printf(TEXT("C State %s has no modifiers"), Expected.Name), StateEffect->Modifiers.Num(), 0);
+		TestEqual(*FString::Printf(TEXT("C State %s has no executions"), Expected.Name), StateEffect->Executions.Num(), 0);
+		TestEqual(*FString::Printf(TEXT("C State %s has no cues"), Expected.Name), StateEffect->GameplayCues.Num(), 0);
+		TestEqual(*FString::Printf(TEXT("C State %s grants one tag"), Expected.Name), StateEffect->GetGrantedTags().Num(), 1);
+		TestTrue(*FString::Printf(TEXT("C State %s grants expected tag"), Expected.Name),
+			StateEffect->GetGrantedTags().HasTagExact(FGameplayTag::RequestGameplayTag(Expected.Tag)));
+	}
+
 	const TArray<FPRAbilitySetEntry>& StartupEntries = DefaultSet->GetAbilityEntries();
-	TestEqual(TEXT("Checkpoint B default ability set contains two entries"), StartupEntries.Num(), 2);
-	const TCHAR* ExpectedStartupSkills[] = {TEXT("ShadowThrust"), TEXT("FireSlash")};
+	TestEqual(TEXT("Checkpoint C default ability set contains four entries"), StartupEntries.Num(), 4);
+	const TCHAR* ExpectedStartupSkills[] = {TEXT("ShadowThrust"), TEXT("FireSlash"), TEXT("ThunderDrop"), TEXT("AfterimageDodge")};
 	const TCHAR* ExpectedStartupInputs[] = {
-		TEXT("Input.Skill.ShadowThrust"), TEXT("Input.Skill.FireSlash")};
-	for (int32 Index = 0; Index < FMath::Min(StartupEntries.Num(), 2); ++Index)
+		TEXT("Input.Skill.ShadowThrust"), TEXT("Input.Skill.FireSlash"),
+		TEXT("Input.Skill.ThunderDrop"), TEXT("Input.Dodge")};
+	for (int32 Index = 0; Index < FMath::Min(StartupEntries.Num(), 4); ++Index)
 	{
 		const FPRAbilitySetEntry& Entry = StartupEntries[Index];
 		const FString SkillName(ExpectedStartupSkills[Index]);
@@ -271,6 +311,20 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 						BurningProperty->GetObjectPropertyValue_InContainer(AbilityCDO));
 					TestTrue(TEXT("FireSlash references formal Burning GE"),
 						ConfiguredBurningClass == BurningEffectClass);
+				}
+			}
+			else if (FString(Expected.Name) == TEXT("ThunderDrop")
+				|| FString(Expected.Name) == TEXT("AfterimageDodge"))
+			{
+				const bool bThunder = FString(Expected.Name) == TEXT("ThunderDrop");
+				const FClassProperty* StateProperty = FindFProperty<FClassProperty>(
+					AbilityCDO->GetClass(), bThunder ? TEXT("StunnedEffectClass") : TEXT("InvulnerableEffectClass"));
+				if (TestNotNull(*FString::Printf(TEXT("%s exposes its private State GE binding"), Expected.Name), StateProperty))
+				{
+					const UClass* ConfiguredStateClass = Cast<UClass>(
+						StateProperty->GetObjectPropertyValue_InContainer(AbilityCDO));
+					TestTrue(*FString::Printf(TEXT("%s references its formal State GE"), Expected.Name),
+						ConfiguredStateClass == StateEffectClasses[bThunder ? 0 : 1]);
 				}
 			}
 		}

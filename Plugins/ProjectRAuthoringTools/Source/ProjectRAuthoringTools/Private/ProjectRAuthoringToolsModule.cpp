@@ -5,6 +5,7 @@
 #include "PRCombatAutomationToolset.h"
 #include "PRInputAutomationToolset.h"
 #include "PRPlayerSkillAutomationToolset.h"
+#include "PRPlayerSkillStateEffectToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -16,10 +17,12 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPRCombatAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRInputAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRPlayerSkillAutomationToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRPlayerSkillStateEffectToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
 	{
+		UToolsetRegistry::UnregisterToolsetClass(UPRPlayerSkillStateEffectToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRPlayerSkillAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRInputAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRCombatAutomationToolset::StaticClass());
