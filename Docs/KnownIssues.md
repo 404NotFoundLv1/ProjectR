@@ -30,6 +30,7 @@ date: "2026-07-10"
 | KI-019 | `ProjectRAuthoringTools.Build.cs` 已依赖 GameplayAbilities/GameplayTags，但 `.uplugin` 因 v0.1.3 Forbidden path 未同步插件依赖声明 | UBT 持续输出插件元数据警告；当前 Editor-only 模块仍能构建和加载 | 后续明确允许 `.uplugin` 时补充准确插件依赖，并通过 Build、Editor 重启、26/279 Tool 反射及 Shipping Runtime 不加载验证 | Open |
 | KI-020 | 既有 Combat PIE smoke 在严格 Timer 失败路径不能完整恢复临时属性/状态，且后台节流会放大采样 | 失败诊断后的同一 PIE 会话不能继续作为可靠 Combat 基线 | 在允许修改既有 Combat Tool 的维护版本补齐所有失败路径回滚；当前必须 StopPIE、新会话、前台/浮动 PIE 后复测 | Open |
 | KI-021 | 本机旧 NVIDIA 566.26 驱动在打包程序默认 D3D12/Ray Tracing 启动时于 `nvgpucomp64.dll` 崩溃，Windows 异常 `0xc0000409`；一次运行还记录 D3D12 PSO `0x8007000e` | 旧驱动曾阻断 Development/Shipping 默认图形路径验收 | 用户更新到 NVIDIA 610.47 后，在无其他 UE 进程的干净条件下重新运行默认 D3D12 Development/Shipping 顶层入口、F1/输入烟测和新时间窗日志，均未复现崩溃 | Closed |
+| KI-022 | 官方 SceneTools 在活动 PIE 中禁止创建 Actor，且 v0.2.0-B transient 技能目标代理不可放置 | 现有官方工具不能构造固定 Shadow/Fire PIE 场景；B 的 `FixedPIE` 与 38/38 报告被阻断 | 用户单独批准并验证固定无参、Editor-only `RunPIEPlayerSkillCheckpointBSmoke()`；该入口只在 PlayWorld 创建/清理 transient 场景、不保存 Package，并使固定 PIE、Dirty=0 和 B 报告全部 PASS | Closed |
 
 # 2026-07-10 - v0.0.1 Known Issues Review
 
@@ -124,6 +125,13 @@ date: "2026-07-10"
 - Development Client 的首次编译失败来自既有 Editor-only Input validation 测试在 `WITH_EDITOR=0` 下仍调用 `IsDataValid`。经用户准确批准，仅为该测试增加 `WITH_EDITOR` 保护；Editor `ProjectR.Input` 仍为 3/3，Development Client 随后打包成功，运行时输入实现和资产未变。
 - KI-019 保持 Open；最终 BuildEditor 仍只有既有 ProjectRAuthoringTools 插件元数据警告。KI-020 保持 Open；本轮遵守失败后 StopPIE、新前台 Floating 会话复测流程并取得 Combat PASS。Windows UI Automation 未暴露 Slate 子控件，DPI-aware Win32 注入作为计划内机械回退完成，没有转交用户。
 - ADR-020 与 Debug/日志接口合同已补齐；最终 AutomationReport 以驱动更新后的默认 D3D12 新鲜证据替换旧 FAIL/NOT_RUN。v0.1.5 没有未关闭的当前版本功能阻断，KI-019/KI-020 继续按既有隔离流程保持 Open。
+
+# 2026-07-15 - v0.2.0-B Known Issues Review（Completed）
+
+- KI-022 关闭：官方 SceneTools 的 PIE Actor 创建限制稳定复现后，用户批准固定无参 PlayerSkill Toolset。两个全新 PIE 会话均以正式输入/AbilitySet/GA/GE/Combat 完成开放与阻挡 Shadow、Fire/Burning、Commit 后取消、三种 Startup 取消和运行时清理；未保存地图、MCPTest 或任何额外 Package。
+- KI-020 仍为 Open：隐藏窗口的既有 Combat smoke 仍把严格 0.10 秒 Timer 采样量化为 0.3333 秒；失败会话立即 StopPIE，随后以 UE 官方 `-Unattended -RenderOffScreen` 无窗口模式和原阈值在新会话复测 PASS（0.1107/0.1108 秒）。该执行规程避免了本轮误判，但既有 Tool 失败路径清理债务仍未修改。
+- KI-006 保持 Accepted Risk；本轮官方 ObjectTools 成功写入并重启回读正式两项 `FPRAbilitySetEntry[]`，因此没有复用会清空正式集合的旧验证工具，也没有触发资产配置 Toolset 扩展。
+- KI-019 保持 Open；BuildEditor 仍只有既有 `.uplugin` 依赖元数据警告。Network PIE、物理手柄、人工手感与 Package 未运行；它们均未被冒充 PASS。
 
 # 记录规则
 

@@ -4,6 +4,8 @@
 
 #include "Combat/PRCombatTypes.h"
 #include "Components/SphereComponent.h"
+#include "Core/PRTagLibrary.h"
+#include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
 
 APRPlayerSkillTestTarget::APRPlayerSkillTestTarget()
 {
@@ -87,6 +89,59 @@ EPRCombatMitigationResult APRPlayerSkillMitigationTestCharacter::EvaluateIncomin
 	LastIncomingDirection = Request.IncomingDirection;
 	OutResponseTags.AppendTags(MitigationResponseTags);
 	return MitigationResult;
+}
+
+FName APRPlayerSkillCombatTestCharacter::GetAbilityTargetId() const
+{
+	return TargetId;
+}
+
+FVector APRPlayerSkillCombatTestCharacter::GetAbilityTargetPoint() const
+{
+	return GetActorLocation();
+}
+
+EPRAbilityTargetMobility APRPlayerSkillCombatTestCharacter::GetAbilityTargetMobility() const
+{
+	return EPRAbilityTargetMobility::Light;
+}
+
+bool APRPlayerSkillCombatTestCharacter::CanBeTargetedByAbility(const FGameplayTag AbilityTag) const
+{
+	return bTargetable && AbilityTag.IsValid();
+}
+
+void APRPlayerSkillCombatTestCharacter::ConfigureTarget(
+	const FName InTargetId,
+	const bool bInTargetable)
+{
+	TargetId = InTargetId;
+	bTargetable = bInTargetable;
+}
+
+
+UPRPlayerSkillBurningTestEffect::UPRPlayerSkillBurningTestEffect(
+	const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	DurationPolicy = EGameplayEffectDurationType::HasDuration;
+	DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(1.5f));
+	Period = FScalableFloat(0.0f);
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	StackingType = EGameplayEffectStackingType::AggregateByTarget;
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	StackLimitCount = 1;
+	StackDurationRefreshPolicy = EGameplayEffectStackingDurationPolicy::RefreshOnSuccessfulApplication;
+	StackPeriodResetPolicy = EGameplayEffectStackingPeriodPolicy::NeverReset;
+	StackExpirationPolicy = EGameplayEffectStackingExpirationPolicy::ClearEntireStack;
+	UTargetTagsGameplayEffectComponent* TargetTags =
+		ObjectInitializer.CreateDefaultSubobject<UTargetTagsGameplayEffectComponent>(
+			this,
+			TEXT("TargetTags"));
+	GEComponents.Add(TargetTags);
+	FInheritedTagContainer GrantedTags;
+	GrantedTags.AddTag(UPRTagLibrary::GetStateBurningTag());
+	TargetTags->SetAndApplyTargetTagChanges(GrantedTags);
 }
 
 UPRPlayerSkillLifecycleTestAbility::UPRPlayerSkillLifecycleTestAbility()

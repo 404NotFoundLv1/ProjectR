@@ -4,6 +4,12 @@
 
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
+#include "Abilities/Player/PRGA_FireSlash.h"
+#include "Abilities/Player/PRGA_ShadowThrust.h"
+#include "Abilities/Player/PRPlayerSkillComponent.h"
+#include "Abilities/Player/PRPlayerSkillDataAsset.h"
+#include "Abilities/Player/PRPlayerSkillFragment.h"
+#include "Abilities/Player/PRPlayerSkillSubsystem.h"
 #include "Abilities/Player/Tests/PRPlayerSkillTestTypes.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Core/PRPlayerController.h"
@@ -13,7 +19,10 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "GameplayEffect.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Misc/AutomationTest.h"
+#include "UObject/UnrealType.h"
 
 namespace PRPlayerSkillDefenseAutomation
 {
@@ -41,6 +50,21 @@ public:
 	}
 
 	UWorld* Get() const { return World; }
+	void Tick(const float DeltaSeconds) const
+	{
+		++GFrameCounter;
+		World->Tick(ELevelTick::LEVELTICK_All, DeltaSeconds);
+	}
+	void TickFor(const float Duration, const float Step = 1.0f / 120.0f) const
+	{
+		float Elapsed = 0.0f;
+		while (Elapsed + UE_SMALL_NUMBER < Duration)
+		{
+			const float Delta = FMath::Min(Step, Duration - Elapsed);
+			Tick(Delta);
+			Elapsed += Delta;
+		}
+	}
 
 private:
 	TObjectPtr<UWorld> World;
@@ -51,6 +75,68 @@ T* SpawnBlueprintActor(UWorld* World, const TCHAR* ClassPath)
 {
 	UClass* ActorClass = LoadClass<T>(nullptr, ClassPath);
 	return ActorClass ? World->SpawnActor<T>(ActorClass) : nullptr;
+}
+
+struct FCombatPlayer
+{
+	APRPlayerState* PlayerState = nullptr;
+	APRPlayerController* Controller = nullptr;
+	APRPlayerSkillCombatTestCharacter* Character = nullptr;
+	UPRAbilitySystemComponent* ASC = nullptr;
+	const UPRAttributeSet* Attributes = nullptr;
+};
+
+bool SpawnCombatPlayer(UWorld* World, const FVector Location, const FName TargetId, FCombatPlayer& OutPlayer)
+{
+	OutPlayer.PlayerState = SpawnBlueprintActor<APRPlayerState>(
+		World, TEXT("/Game/ProjectR/Blueprints/Player/BP_PlayerState.BP_PlayerState_C"));
+	OutPlayer.Controller = SpawnBlueprintActor<APRPlayerController>(
+		World, TEXT("/Game/ProjectR/Blueprints/Player/BP_PlayerController.BP_PlayerController_C"));
+	OutPlayer.Character = World->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	if (!OutPlayer.PlayerState || !OutPlayer.Controller || !OutPlayer.Character)
+	{
+		return false;
+	}
+	OutPlayer.Character->SetActorLocation(Location);
+	OutPlayer.Character->ConfigureTarget(TargetId, true);
+	OutPlayer.Controller->SetPlayerState(OutPlayer.PlayerState);
+	OutPlayer.Controller->Possess(OutPlayer.Character);
+	OutPlayer.ASC = OutPlayer.PlayerState->GetProjectRAbilitySystemComponent();
+	OutPlayer.Attributes = OutPlayer.PlayerState->GetAttributeSet();
+	if (!OutPlayer.ASC || !OutPlayer.Attributes)
+	{
+		return false;
+	}
+	OutPlayer.Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetMaxHealthAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetMaxShieldAttribute(), 0.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetShieldAttribute(), 0.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetMaxEnergyAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetEnergyAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetAttackPowerAttribute(), 10.0f);
+	return true;
+}
+
+FGameplayAbilitySpecHandle GrantFormalSkill(
+	UPRAbilitySystemComponent& ASC,
+	const UPRPlayerSkillDataAsset& SkillData)
+{
+	for (const FGameplayAbilitySpec& ExistingSpec : ASC.GetActivatableAbilities())
+	{
+		if (ExistingSpec.Ability
+			&& ExistingSpec.Ability->GetClass() == SkillData.AbilityClass.Get()
+			&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(SkillData.AbilityTag)
+			&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(SkillData.InputTag))
+		{
+			return ExistingSpec.Handle;
+		}
+	}
+	FGameplayAbilitySpec Spec(SkillData.AbilityClass, 1, INDEX_NONE,
+		const_cast<UPRPlayerSkillDataAsset*>(&SkillData));
+	Spec.GetDynamicSpecSourceTags().AddTag(SkillData.AbilityTag);
+	Spec.GetDynamicSpecSourceTags().AddTag(SkillData.InputTag);
+	return ASC.GiveAbility(Spec);
 }
 } // namespace PRPlayerSkillDefenseAutomation
 
@@ -215,6 +301,241 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 		EAutomationExpectedErrorFlags::Contains, 1);
 	TestFalse(TEXT("Non-response AbilityOutcome is rejected"), Combat->PublishAbilityOutcome(Outcome));
 	TestEqual(TEXT("Invalid AbilityOutcome emits no event"), Events.Num(), 4);
+	Subject->Destroy();
+
+	FCombatPlayer SkillSource;
+	FCombatPlayer SkillTarget;
+	if (!TestTrue(TEXT("Formal skill source fixture spawns"), SpawnCombatPlayer(
+		World.Get(), FVector::ZeroVector, TEXT("Automation.SkillSource"), SkillSource))
+		|| !TestTrue(TEXT("Formal skill target fixture spawns"), SpawnCombatPlayer(
+			World.Get(), FVector(200.0f, 0.0f, 0.0f), TEXT("Automation.SkillTarget"), SkillTarget)))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	SkillSource.Character->GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	TestTrue(TEXT("Formal side-view right facing resolves along positive X"),
+		SkillSource.Character->GetMesh()->GetRightVector().Equals(FVector::ForwardVector, 0.01f));
+
+	const UPRPlayerSkillDataAsset* FireData = LoadObject<UPRPlayerSkillDataAsset>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_FireSlash.DA_Skill_FireSlash"));
+	const UPRPlayerSkillDataAsset* ShadowData = LoadObject<UPRPlayerSkillDataAsset>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_ShadowThrust.DA_Skill_ShadowThrust"));
+	if (!TestNotNull(TEXT("Formal FireSlash data exists"), FireData)
+		|| !TestNotNull(TEXT("Formal ShadowThrust data exists"), ShadowData))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+
+	UPRPlayerSkillGameplayAbility* FireCDO = FireData->AbilityClass
+		? FireData->AbilityClass->GetDefaultObject<UPRPlayerSkillGameplayAbility>() : nullptr;
+	UPRPlayerSkillGameplayAbility* ShadowCDO = ShadowData->AbilityClass
+		? ShadowData->AbilityClass->GetDefaultObject<UPRPlayerSkillGameplayAbility>() : nullptr;
+	TestNotNull(TEXT("Formal FireSlash Blueprint uses the native FireSlash parent"),
+		Cast<UPRGA_FireSlash>(FireCDO));
+	TestNotNull(TEXT("Formal ShadowThrust Blueprint uses the native ShadowThrust parent"),
+		Cast<UPRGA_ShadowThrust>(ShadowCDO));
+	if (FireCDO && ShadowCDO)
+	{
+		TestEqual(TEXT("Formal FireSlash uses OnInputTriggered"),
+			FireCDO->GetActivationPolicy(), EPRAbilityActivationPolicy::OnInputTriggered);
+		TestEqual(TEXT("Formal FireSlash and ShadowThrust share the same GAS net execution policy"),
+			FireCDO->GetNetExecutionPolicy(), ShadowCDO->GetNetExecutionPolicy());
+		TestEqual(TEXT("Formal FireSlash and ShadowThrust share InstancedPerActor"),
+			FireCDO->GetInstancingPolicy(), ShadowCDO->GetInstancingPolicy());
+	}
+	FClassProperty* BurningProperty = FireCDO
+		? FindFProperty<FClassProperty>(FireCDO->GetClass(), TEXT("BurningEffectClass")) : nullptr;
+	if (TestNotNull(TEXT("FireSlash has a Burning effect binding"), BurningProperty))
+	{
+		BurningProperty->SetObjectPropertyValue_InContainer(
+			FireCDO, UPRPlayerSkillBurningTestEffect::StaticClass());
+	}
+
+	const FGameplayAbilitySpecHandle FireHandle = GrantFormalSkill(*SkillSource.ASC, *FireData);
+	TestTrue(TEXT("Formal FireSlash spec granted for runtime test"), FireHandle.IsValid());
+	const FGameplayAbilitySpec* FireSpec = SkillSource.ASC->FindAbilitySpecFromHandle(FireHandle);
+	TestFalse(TEXT("Formal FireSlash Spec starts inactive"), FireSpec && FireSpec->IsActive());
+	TestTrue(TEXT("Formal FireSlash Spec preserves its InputTag"), FireSpec
+		&& FireSpec->GetDynamicSpecSourceTags().HasTagExact(FireData->InputTag));
+	FPRAbilityRuntimeState FireRuntimeState;
+	TestTrue(TEXT("ASC resolves FireSlash by its exact InputTag"),
+		SkillSource.ASC->GetAbilityRuntimeStateByInputTag(FireData->InputTag, FireRuntimeState));
+	const int32 FireEventStart = Events.Num();
+	SkillSource.ASC->AbilityInputTagPressed(FireData->InputTag);
+	TestEqual(TEXT("FireSlash enters Startup immediately"),
+		SkillSource.Character->GetPlayerSkillComponent()->GetCurrentPhase(),
+		EPRPlayerSkillPhase::Startup);
+	World.TickFor(0.16f);
+	TestEqual(TEXT("FireSlash enters Recovery after its initial hit"),
+		SkillSource.Character->GetPlayerSkillComponent()->GetCurrentPhase(),
+		EPRPlayerSkillPhase::Recovery);
+	TestEqual(TEXT("FireSlash commits exactly 25 Energy"), SkillSource.Attributes->GetEnergy(), 75.0f);
+	TestEqual(TEXT("FireSlash initial hit uses 15 + 1.0 AP"), SkillTarget.Attributes->GetHealth(), 75.0f);
+	TestTrue(TEXT("FireSlash initial hit grants State.Burning"),
+		SkillTarget.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateBurningTag()));
+	World.TickFor(1.51f);
+	TestEqual(TEXT("Burning deals three ticks of 4 + 0.1 AP"),
+		SkillTarget.Attributes->GetHealth(), 60.0f);
+	TestFalse(TEXT("Burning tag clears after its third tick"),
+		SkillTarget.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateBurningTag()));
+	int32 FireDamageEvents = 0;
+	for (int32 Index = FireEventStart; Index < Events.Num(); ++Index)
+	{
+		if (Events[Index].AbilityTag == FireData->AbilityTag
+			&& Events[Index].EventTag == UPRTagLibrary::GetCombatEventDamageTag())
+		{
+			++FireDamageEvents;
+		}
+	}
+	TestEqual(TEXT("FireSlash publishes one initial and three Burning damage events"), FireDamageEvents, 4);
+
+	UPRPlayerSkillSubsystem* SkillSubsystem = World.Get()->GetSubsystem<UPRPlayerSkillSubsystem>();
+	const UPRFireSlashSkillFragment* FireFragment = Cast<UPRFireSlashSkillFragment>(FireData->SkillFragment);
+	if (!TestNotNull(TEXT("PlayerSkill subsystem exists for Burning lifecycle"), SkillSubsystem)
+		|| !TestNotNull(TEXT("Formal FireSlash fragment exists for Burning lifecycle"), FireFragment))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	FPRPlayerSkillExecutionSnapshot CriticalSnapshot;
+	CriticalSnapshot.SourceActor = SkillSource.Character;
+	CriticalSnapshot.AbilityTag = ShadowData->AbilityTag;
+	CriticalSnapshot.AimDirection = FVector::ForwardVector;
+	CriticalSnapshot.AttackPower = 10.0f;
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	TestEqual(TEXT("Explicit critical input applies through Combat"),
+		SkillSubsystem->ApplySkillDamage(
+			CriticalSnapshot,
+			*SkillTarget.Character,
+			*ShadowCDO,
+			SkillSource.Character->GetActorLocation(),
+			25.0f,
+			1.5f,
+			true,
+			FVector::ForwardVector),
+		EPRCombatRequestStatus::Applied);
+	TestEqual(TEXT("Critical formula is (25 + 1.5 AP) x 1.5 without RNG"),
+		SkillTarget.Attributes->GetHealth(), 40.0f);
+	FGameplayTagContainer BurningTags;
+	BurningTags.AddTag(UPRTagLibrary::GetStateBurningTag());
+	const FGameplayEffectQuery BurningQuery =
+		FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(BurningTags);
+	FPRPlayerSkillExecutionSnapshot BurningSnapshot;
+	BurningSnapshot.SourceActor = SkillSource.Character;
+	BurningSnapshot.AbilityTag = FireData->AbilityTag;
+	BurningSnapshot.AimDirection = FVector::ForwardVector;
+	BurningSnapshot.AttackPower = 10.0f;
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	TestTrue(TEXT("Burning lifecycle fixture applies its first instance"),
+		SkillSubsystem->ApplyOrRefreshBurning(
+			BurningSnapshot,
+			*SkillTarget.Character,
+			*FireCDO,
+			UPRPlayerSkillBurningTestEffect::StaticClass(),
+			*FireFragment));
+	World.TickFor(0.25f);
+	FPRPlayerSkillExecutionSnapshot RefreshedSnapshot = BurningSnapshot;
+	RefreshedSnapshot.SourceActor = Character;
+	RefreshedSnapshot.AttackPower = 20.0f;
+	TestTrue(TEXT("A different source refreshes the one Burning instance"),
+		SkillSubsystem->ApplyOrRefreshBurning(
+			RefreshedSnapshot,
+			*SkillTarget.Character,
+			*FireCDO,
+			UPRPlayerSkillBurningTestEffect::StaticClass(),
+			*FireFragment));
+	TestEqual(TEXT("Burning refresh never stacks a second ActiveEffect"),
+		SkillTarget.ASC->GetActiveEffects(BurningQuery).Num(), 1);
+	World.TickFor(1.51f);
+	TestEqual(TEXT("Burning refresh restarts three ticks from the latest snapshot"),
+		SkillTarget.Attributes->GetHealth(), 82.0f);
+	TestEqual(TEXT("Refreshed Burning clears its only ActiveEffect"),
+		SkillTarget.ASC->GetActiveEffects(BurningQuery).Num(), 0);
+
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	TestTrue(TEXT("Burning can be applied before an external early removal"),
+		SkillSubsystem->ApplyOrRefreshBurning(
+			BurningSnapshot,
+			*SkillTarget.Character,
+			*FireCDO,
+			UPRPlayerSkillBurningTestEffect::StaticClass(),
+			*FireFragment));
+	TestEqual(TEXT("External removal removes the one Burning effect"),
+		SkillTarget.ASC->RemoveActiveEffects(BurningQuery), 1);
+	World.TickFor(0.51f);
+	TestEqual(TEXT("Externally removed Burning produces no later Tick"),
+		SkillTarget.Attributes->GetHealth(), 100.0f);
+
+	TestTrue(TEXT("Burning can be applied before target death"),
+		SkillSubsystem->ApplyOrRefreshBurning(
+			BurningSnapshot,
+			*SkillTarget.Character,
+			*FireCDO,
+			UPRPlayerSkillBurningTestEffect::StaticClass(),
+			*FireFragment));
+	SkillTarget.ASC->SetLooseGameplayTagCount(
+		UPRTagLibrary::GetStateDeadTag(), 1, EGameplayTagReplicationState::TagOnly);
+	World.TickFor(0.51f);
+	TestEqual(TEXT("Target death clears Burning without a Tick"),
+		SkillTarget.Attributes->GetHealth(), 100.0f);
+	TestEqual(TEXT("Target death clears the Burning ActiveEffect"),
+		SkillTarget.ASC->GetActiveEffects(BurningQuery).Num(), 0);
+	SkillTarget.ASC->SetLooseGameplayTagCount(
+		UPRTagLibrary::GetStateDeadTag(), 0, EGameplayTagReplicationState::TagOnly);
+
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	const FGameplayAbilitySpecHandle ShadowHandle = GrantFormalSkill(*SkillSource.ASC, *ShadowData);
+	TestTrue(TEXT("Formal ShadowThrust spec granted for runtime test"), ShadowHandle.IsValid());
+	const int32 ShadowEventStart = Events.Num();
+	SkillSource.ASC->AbilityInputTagPressed(ShadowData->InputTag);
+	World.TickFor(0.09f);
+	TestEqual(TEXT("ShadowThrust commits exactly 20 Energy"), SkillSource.Attributes->GetEnergy(), 55.0f);
+	TestEqual(TEXT("ShadowThrust enters Active after startup"),
+		SkillSource.Character->GetPlayerSkillComponent()->GetCurrentPhase(), EPRPlayerSkillPhase::Active);
+	TestTrue(TEXT("ShadowThrust owns a controlled displacement request"),
+		SkillSource.Character->GetPlayerSkillComponent()->GetActiveDisplacementRequestId().IsValid());
+	TestTrue(TEXT("ShadowThrust displacement is backed by RootMotionSource"),
+		SkillSource.Character->GetCharacterMovement()->CurrentRootMotion.HasActiveRootMotionSources());
+	// This transient world has no game-mode movement loop. Mirror the targeting
+	// automation fixture by advancing to the RootMotionSource endpoint; the
+	// ability still owns and evaluates the actual 0 -> 450 path.
+	SkillSource.Character->SetActorLocation(FVector(450.0f, 0.0f, 0.0f));
+	World.TickFor(0.31f);
+	TestEqual(TEXT("ShadowThrust uses 25 + 1.5 AP once"), SkillTarget.Attributes->GetHealth(), 60.0f);
+	int32 ShadowDamageEvents = 0;
+	int32 ShadowOutcomeEvents = 0;
+	for (int32 Index = ShadowEventStart; Index < Events.Num(); ++Index)
+	{
+		if (Events[Index].AbilityTag != ShadowData->AbilityTag)
+		{
+			continue;
+		}
+		ShadowDamageEvents += Events[Index].EventTag == UPRTagLibrary::GetCombatEventDamageTag() ? 1 : 0;
+		ShadowOutcomeEvents += Events[Index].EventTag == UPRTagLibrary::GetCombatEventAbilityOutcomeTag() ? 1 : 0;
+	}
+	TestEqual(TEXT("ShadowThrust hits a TargetId at most once"), ShadowDamageEvents, 1);
+	TestTrue(TEXT("ShadowThrust moves forward without leaving the X/Z plane"),
+		SkillSource.Character->GetActorLocation().X > 0.0f
+			&& FMath::IsNearlyZero(SkillSource.Character->GetActorLocation().Y, 1.0f));
+	TestTrue(TEXT("Completed ShadowThrust publishes at most one displacement outcome"),
+		ShadowOutcomeEvents <= 1);
+
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	TestTrue(TEXT("Burning can be applied before World Cleanup"),
+		SkillSubsystem->ApplyOrRefreshBurning(
+			BurningSnapshot,
+			*SkillTarget.Character,
+			*FireCDO,
+			UPRPlayerSkillBurningTestEffect::StaticClass(),
+			*FireFragment));
+	FWorldDelegates::OnWorldCleanup.Broadcast(World.Get(), true, true);
+	TestEqual(TEXT("World Cleanup removes the Burning ActiveEffect"),
+		SkillTarget.ASC->GetActiveEffects(BurningQuery).Num(), 0);
+	World.TickFor(0.51f);
+	TestEqual(TEXT("World Cleanup leaves no Burning Timer damage"),
+		SkillTarget.Attributes->GetHealth(), 100.0f);
 
 	Combat->OnCombatEvent().Remove(EventHandle);
 	return true;

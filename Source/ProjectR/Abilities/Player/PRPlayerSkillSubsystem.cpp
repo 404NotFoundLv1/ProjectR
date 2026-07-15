@@ -4,15 +4,18 @@
 
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/Player/PRAbilityTargetInterface.h"
+#include "Abilities/Player/PRPlayerSkillFragment.h"
 #include "AbilitySystemInterface.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Components/CapsuleComponent.h"
+#include "Core/PRCombatantInterface.h"
 #include "Core/PRTagLibrary.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
+#include "GameplayEffect.h"
 #include "ProjectR.h"
 #include "TimerManager.h"
 
@@ -20,7 +23,9 @@ namespace PRPlayerSkillTargeting
 {
 constexpr float PlaneTolerance = 1.0f;
 constexpr float DestinationTolerance = 2.0f;
+constexpr float ShadowPathRetreat = 1.0f;
 constexpr uint16 RootMotionPriority = 500;
+constexpr float CriticalMultiplier = 1.5f;
 
 bool IsFiniteVector(const FVector& Value)
 {
@@ -65,6 +70,7 @@ void UPRPlayerSkillSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UPRPlayerSkillSubsystem::Deinitialize()
 {
 	CleanupAllDisplacements();
+	CleanupAllBurning(true);
 	if (WorldCleanupHandle.IsValid())
 	{
 		FWorldDelegates::OnWorldCleanup.Remove(WorldCleanupHandle);
@@ -451,6 +457,403 @@ bool UPRPlayerSkillSubsystem::PublishAbilityOutcome(const FPRCombatOutcomeReques
 	return Combat && Combat->PublishAbilityOutcome(Request);
 }
 
+bool UPRPlayerSkillSubsystem::ResolveShadowPath(
+	const ACharacter& Character,
+	FVector AimDirection,
+	const float DesiredDistance,
+	const float PathRadius,
+	FVector& OutEndLocation,
+	float& OutSafeDistance,
+	FGameplayTag& OutFailureTag) const
+{
+	using namespace PRPlayerSkillTargeting;
+	OutEndLocation = Character.GetActorLocation();
+	OutSafeDistance = 0.0f;
+	OutFailureTag = FGameplayTag();
+	const UWorld* World = GetWorld();
+	const UCapsuleComponent* Capsule = Character.GetCapsuleComponent();
+	AimDirection = ToPlanar(AimDirection);
+	if (!World || !Capsule || Character.GetWorld() != World || !Character.HasAuthority()
+		|| !AimDirection.Normalize() || !FMath::IsFinite(DesiredDistance)
+		|| !FMath::IsFinite(PathRadius) || DesiredDistance <= 0.0f || PathRadius <= 0.0f)
+	{
+		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
+		return false;
+	}
+
+	const FVector Start = Character.GetActorLocation();
+	const FVector DesiredEnd = Start + AimDirection * DesiredDistance;
+	FCollisionObjectQueryParams Objects;
+	Objects.AddObjectTypesToQuery(ECC_WorldStatic);
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(PRShadowThrustPath), false, &Character);
+	float BlockingDistance = DesiredDistance;
+	auto AccumulateBlockingDistance = [&](const FCollisionShape& Shape)
+	{
+		TArray<FHitResult> Hits;
+		if (!World->SweepMultiByObjectType(
+			Hits,
+			Start,
+			DesiredEnd,
+			FQuat::Identity,
+			Objects,
+			Shape,
+			Params))
+		{
+			return;
+		}
+		for (const FHitResult& Hit : Hits)
+		{
+			if (Hit.bBlockingHit && Hit.bStartPenetrating)
+			{
+				BlockingDistance = 0.0f;
+				continue;
+			}
+			const FVector PlanarNormal = ToPlanar(Hit.ImpactNormal).GetSafeNormal();
+			if (Hit.bBlockingHit
+				&& FVector::DotProduct(PlanarNormal, AimDirection) < -UE_SMALL_NUMBER)
+			{
+				BlockingDistance = FMath::Min(BlockingDistance, Hit.Distance);
+			}
+		}
+	};
+
+	AccumulateBlockingDistance(FCollisionShape::MakeSphere(PathRadius));
+	AccumulateBlockingDistance(FCollisionShape::MakeCapsule(
+		Capsule->GetScaledCapsuleRadius(),
+		Capsule->GetScaledCapsuleHalfHeight()));
+	OutSafeDistance = BlockingDistance < DesiredDistance
+		? BlockingDistance - ShadowPathRetreat
+		: DesiredDistance;
+	if (OutSafeDistance < ShadowPathRetreat)
+	{
+		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailObstructedTag();
+		return false;
+	}
+	OutEndLocation = Start + AimDirection * OutSafeDistance;
+	OutEndLocation.Y = Start.Y;
+	return true;
+}
+
+EPRCombatRequestStatus UPRPlayerSkillSubsystem::ApplySkillDamage(
+	const FPRPlayerSkillExecutionSnapshot& Snapshot,
+	AActor& Target,
+	UObject& AbilitySource,
+	const FVector ImpactOrigin,
+	const float BaseDamage,
+	const float AttackPowerScale,
+	const bool bCritical,
+	FVector DirectionFallback,
+	const FName SourceIdOverride) const
+{
+	AActor* Source = Snapshot.SourceActor.Get();
+	const UWorld* World = GetWorld();
+	if (!World || !IsValid(Source) || !IsValid(&Target) || !IsValid(&AbilitySource)
+		|| Source->GetWorld() != World || Target.GetWorld() != World
+		|| !Source->HasAuthority() || !Snapshot.AbilityTag.IsValid()
+		|| !FMath::IsFinite(Snapshot.AttackPower) || !FMath::IsFinite(BaseDamage)
+		|| !FMath::IsFinite(AttackPowerScale) || BaseDamage < 0.0f || AttackPowerScale < 0.0f
+		|| ImpactOrigin.ContainsNaN())
+	{
+		return EPRCombatRequestStatus::Invalid;
+	}
+
+	FName SourceId = SourceIdOverride;
+	if (SourceId.IsNone())
+	{
+		const IAbilitySystemInterface* AbilityInterface = Cast<IAbilitySystemInterface>(Source);
+		const UAbilitySystemComponent* ASC = AbilityInterface
+			? AbilityInterface->GetAbilitySystemComponent()
+			: nullptr;
+		const AActor* Owner = ASC ? ASC->GetOwnerActor() : nullptr;
+		const IPRCombatantInterface* Combatant = Cast<IPRCombatantInterface>(Owner);
+		SourceId = Combatant ? Combatant->GetCombatantId() : NAME_None;
+	}
+	DirectionFallback = PRPlayerSkillTargeting::ToPlanar(DirectionFallback);
+	FVector IncomingDirection = PRPlayerSkillTargeting::ToPlanar(
+		Target.GetActorLocation() - Source->GetActorLocation());
+	if (!IncomingDirection.Normalize())
+	{
+		IncomingDirection = DirectionFallback.GetSafeNormal();
+	}
+	const float CriticalScale = bCritical ? PRPlayerSkillTargeting::CriticalMultiplier : 1.0f;
+	const float RawDamage = (BaseDamage + AttackPowerScale * Snapshot.AttackPower) * CriticalScale;
+	if (SourceId.IsNone() || !IncomingDirection.IsNormalized()
+		|| !FMath::IsFinite(RawDamage) || RawDamage <= 0.0f)
+	{
+		return EPRCombatRequestStatus::Invalid;
+	}
+
+	FPRDamageRequest Request;
+	Request.SourceId = SourceId;
+	Request.DamageSource = &AbilitySource;
+	Request.Instigator = Source;
+	Request.Target = &Target;
+	Request.AbilityTag = Snapshot.AbilityTag;
+	Request.RawDamage = RawDamage;
+	Request.bCritical = bCritical;
+	Request.ImpactOrigin = ImpactOrigin;
+	Request.IncomingDirection = IncomingDirection;
+	UPRCombatSubsystem* Combat = World->GetSubsystem<UPRCombatSubsystem>();
+	return Combat ? Combat->ApplyDamage(Request) : EPRCombatRequestStatus::Invalid;
+}
+
+bool UPRPlayerSkillSubsystem::ApplyOrRefreshBurning(
+	const FPRPlayerSkillExecutionSnapshot& Snapshot,
+	AActor& Target,
+	UObject& AbilitySource,
+	const TSubclassOf<UGameplayEffect> BurningEffectClass,
+	const UPRFireSlashSkillFragment& Fragment)
+{
+	AActor* Source = Snapshot.SourceActor.Get();
+	const IAbilitySystemInterface* SourceAbilityInterface = Cast<IAbilitySystemInterface>(Source);
+	const IAbilitySystemInterface* TargetAbilityInterface = Cast<IAbilitySystemInterface>(&Target);
+	UPRAbilitySystemComponent* SourceASC = SourceAbilityInterface
+		? Cast<UPRAbilitySystemComponent>(SourceAbilityInterface->GetAbilitySystemComponent())
+		: nullptr;
+	UPRAbilitySystemComponent* TargetASC = TargetAbilityInterface
+		? Cast<UPRAbilitySystemComponent>(TargetAbilityInterface->GetAbilitySystemComponent())
+		: nullptr;
+	AActor* SourceOwner = SourceASC ? SourceASC->GetOwnerActor() : nullptr;
+	AActor* TargetOwner = TargetASC ? TargetASC->GetOwnerActor() : nullptr;
+	const IPRCombatantInterface* SourceCombatant = Cast<IPRCombatantInterface>(SourceOwner);
+	const FName SourceId = SourceCombatant ? SourceCombatant->GetCombatantId() : NAME_None;
+	if (!GetWorld() || !IsValid(Source) || !IsValid(&Target) || !IsValid(&AbilitySource)
+		|| !SourceASC || !TargetASC || !SourceOwner || !TargetOwner || !SourceCombatant
+		|| SourceId.IsNone()
+		|| SourceASC->GetAvatarActor() != Source || TargetASC->GetAvatarActor() != &Target
+		|| Source->GetWorld() != GetWorld() || Target.GetWorld() != GetWorld()
+		|| !Source->HasAuthority() || !BurningEffectClass
+		|| TargetASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag())
+		|| !FMath::IsFinite(Fragment.BurningBaseDamage)
+		|| !FMath::IsFinite(Fragment.BurningAttackPowerScale)
+		|| !FMath::IsFinite(Fragment.BurningTickInterval)
+		|| Fragment.BurningBaseDamage < 0.0f || Fragment.BurningAttackPowerScale < 0.0f
+		|| Fragment.BurningTickInterval <= 0.0f || Fragment.BurningTickCount <= 0)
+	{
+		return false;
+	}
+
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddSourceObject(&AbilitySource);
+	const FGameplayEffectSpecHandle Spec = SourceASC->MakeOutgoingSpec(
+		BurningEffectClass,
+		1.0f,
+		Context);
+	if (!Spec.IsValid())
+	{
+		return false;
+	}
+	const FActiveGameplayEffectHandle NewHandle = SourceASC->ApplyGameplayEffectSpecToTarget(
+		*Spec.Data.Get(),
+		TargetASC);
+	if (!NewHandle.WasSuccessfullyApplied())
+	{
+		return false;
+	}
+
+	const TWeakObjectPtr<AActor> TargetKey(&Target);
+	FActiveBurning* Existing = ActiveBurning.Find(TargetKey);
+	if (Existing && Existing->EffectHandle.IsValid()
+		&& Existing->EffectHandle != NewHandle)
+	{
+		if (FOnActiveGameplayEffectRemoved_Info* Removed =
+			Existing->TargetASC.IsValid()
+				? Existing->TargetASC->OnGameplayEffectRemoved_InfoDelegate(Existing->EffectHandle)
+				: nullptr)
+		{
+			Removed->Remove(Existing->EffectRemovedHandle);
+		}
+		if (Existing->TargetASC.IsValid())
+		{
+			Existing->TargetASC->RemoveActiveGameplayEffect(Existing->EffectHandle);
+		}
+	}
+
+	FActiveBurning& Burning = ActiveBurning.FindOrAdd(TargetKey);
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(Burning.TimerHandle);
+	}
+	if (Burning.EffectHandle != NewHandle || !Burning.EffectRemovedHandle.IsValid())
+	{
+		Burning.EffectRemovedHandle.Reset();
+		if (FOnActiveGameplayEffectRemoved_Info* Removed =
+			TargetASC->OnGameplayEffectRemoved_InfoDelegate(NewHandle))
+		{
+			Burning.EffectRemovedHandle = Removed->AddUObject(
+				this,
+				&UPRPlayerSkillSubsystem::HandleBurningEffectRemoved,
+				TargetKey);
+		}
+	}
+	Burning.TargetASC = TargetASC;
+	Burning.TargetOwner = TargetOwner;
+	Burning.TargetAvatar = &Target;
+	Burning.SourceASC = SourceASC;
+	Burning.SourceOwner = SourceOwner;
+	Burning.SourceAvatar = Source;
+	Burning.AbilitySource = &AbilitySource;
+	Burning.SourceId = SourceId;
+	Burning.AbilityTag = Snapshot.AbilityTag;
+	Burning.AttackPower = Snapshot.AttackPower;
+	Burning.BaseDamage = Fragment.BurningBaseDamage;
+	Burning.AttackPowerScale = Fragment.BurningAttackPowerScale;
+	Burning.TickInterval = Fragment.BurningTickInterval;
+	Burning.AimFallback = Snapshot.AimDirection;
+	Burning.EffectHandle = NewHandle;
+	Burning.RemainingTicks = Fragment.BurningTickCount;
+	GetWorld()->GetTimerManager().SetTimer(
+		Burning.TimerHandle,
+		FTimerDelegate::CreateUObject(
+			this,
+			&UPRPlayerSkillSubsystem::HandleBurningTick,
+			TargetKey),
+		Burning.TickInterval,
+		false);
+	return true;
+}
+
+void UPRPlayerSkillSubsystem::HandleBurningTick(const TWeakObjectPtr<AActor> TargetAvatar)
+{
+	ExecuteBurningTick(TargetAvatar, false);
+}
+
+void UPRPlayerSkillSubsystem::HandleBurningEffectRemoved(
+	const FGameplayEffectRemovalInfo& RemovalInfo,
+	const TWeakObjectPtr<AActor> TargetAvatar)
+{
+	FActiveBurning* Burning = ActiveBurning.Find(TargetAvatar);
+	if (!Burning)
+	{
+		return;
+	}
+	Burning->EffectHandle.Invalidate();
+	Burning->EffectRemovedHandle.Reset();
+	if (!RemovalInfo.bPrematureRemoval && Burning->RemainingTicks == 1)
+	{
+		ExecuteBurningTick(TargetAvatar, true);
+		return;
+	}
+	CleanupBurning(TargetAvatar, false);
+}
+
+void UPRPlayerSkillSubsystem::ExecuteBurningTick(
+	const TWeakObjectPtr<AActor> TargetAvatar,
+	const bool bAllowExpiredEffect)
+{
+	FActiveBurning* Burning = ActiveBurning.Find(TargetAvatar);
+	if (!Burning || Burning->RemainingTicks <= 0)
+	{
+		CleanupBurning(TargetAvatar, false);
+		return;
+	}
+	if (!IsBurningBindingValid(*Burning))
+	{
+		CleanupBurning(TargetAvatar, true);
+		return;
+	}
+	if (!bAllowExpiredEffect && !Burning->EffectHandle.IsValid())
+	{
+		CleanupBurning(TargetAvatar, false);
+		return;
+	}
+
+	FPRPlayerSkillExecutionSnapshot Snapshot;
+	Snapshot.AbilityTag = Burning->AbilityTag;
+	Snapshot.SourceActor = Burning->SourceAvatar;
+	Snapshot.AimDirection = Burning->AimFallback;
+	Snapshot.AttackPower = Burning->AttackPower;
+	Snapshot.bCritical = false;
+	AActor* Target = Burning->TargetAvatar.Get();
+	AActor* Source = Burning->SourceAvatar.Get();
+	UObject* AbilitySource = Burning->AbilitySource.Get();
+	const EPRCombatRequestStatus Status = ApplySkillDamage(
+		Snapshot,
+		*Target,
+		*AbilitySource,
+		Source->GetActorLocation(),
+		Burning->BaseDamage,
+		Burning->AttackPowerScale,
+		false,
+		Burning->AimFallback,
+		Burning->SourceId);
+	if (Status == EPRCombatRequestStatus::Invalid)
+	{
+		CleanupBurning(TargetAvatar, true);
+		return;
+	}
+
+	--Burning->RemainingTicks;
+	if (Burning->RemainingTicks <= 0
+		|| Burning->TargetASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag()))
+	{
+		CleanupBurning(TargetAvatar, true);
+		return;
+	}
+	GetWorld()->GetTimerManager().SetTimer(
+		Burning->TimerHandle,
+		FTimerDelegate::CreateUObject(
+			this,
+			&UPRPlayerSkillSubsystem::HandleBurningTick,
+			TargetAvatar),
+		Burning->TickInterval,
+		false);
+}
+
+void UPRPlayerSkillSubsystem::CleanupBurning(
+	const TWeakObjectPtr<AActor> TargetAvatar,
+	const bool bRemoveEffect)
+{
+	FActiveBurning* BurningPtr = ActiveBurning.Find(TargetAvatar);
+	if (!BurningPtr)
+	{
+		return;
+	}
+	FActiveBurning Burning = *BurningPtr;
+	ActiveBurning.Remove(TargetAvatar);
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(Burning.TimerHandle);
+	}
+	if (Burning.TargetASC.IsValid() && Burning.EffectHandle.IsValid())
+	{
+		if (FOnActiveGameplayEffectRemoved_Info* Removed =
+			Burning.TargetASC->OnGameplayEffectRemoved_InfoDelegate(Burning.EffectHandle))
+		{
+			Removed->Remove(Burning.EffectRemovedHandle);
+		}
+		if (bRemoveEffect)
+		{
+			Burning.TargetASC->RemoveActiveGameplayEffect(Burning.EffectHandle);
+		}
+	}
+}
+
+void UPRPlayerSkillSubsystem::CleanupAllBurning(const bool bRemoveEffects)
+{
+	TArray<TWeakObjectPtr<AActor>> Targets;
+	ActiveBurning.GetKeys(Targets);
+	for (const TWeakObjectPtr<AActor>& Target : Targets)
+	{
+		CleanupBurning(Target, bRemoveEffects);
+	}
+}
+
+bool UPRPlayerSkillSubsystem::IsBurningBindingValid(const FActiveBurning& Burning) const
+{
+	return IsValid(Burning.TargetASC.Get()) && IsValid(Burning.SourceASC.Get())
+		&& IsValid(Burning.TargetOwner.Get()) && IsValid(Burning.SourceOwner.Get())
+		&& IsValid(Burning.TargetAvatar.Get()) && IsValid(Burning.SourceAvatar.Get())
+		&& IsValid(Burning.AbilitySource.Get())
+		&& Burning.TargetASC->GetOwnerActor() == Burning.TargetOwner.Get()
+		&& Burning.TargetASC->GetAvatarActor() == Burning.TargetAvatar.Get()
+		&& Burning.SourceASC->GetOwnerActor() == Burning.SourceOwner.Get()
+		&& Burning.SourceASC->GetAvatarActor() == Burning.SourceAvatar.Get()
+		&& Burning.TargetAvatar->GetWorld() == GetWorld()
+		&& Burning.SourceAvatar->GetWorld() == GetWorld()
+		&& !Burning.TargetASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag());
+}
+
 void UPRPlayerSkillSubsystem::HandleDisplacementMonitor(const FGuid RequestId)
 {
 	const FActiveDisplacement* Job = ActiveDisplacements.Find(RequestId);
@@ -513,6 +916,7 @@ void UPRPlayerSkillSubsystem::HandleWorldCleanup(
 	if (World == GetWorld())
 	{
 		CleanupAllDisplacements();
+		CleanupAllBurning(true);
 	}
 }
 
@@ -542,6 +946,10 @@ void UPRPlayerSkillSubsystem::FinishDisplacement(
 			{
 				Movement->RemoveRootMotionSourceByID(Job.RootMotionSourceId);
 			}
+			// MoveToForce leaves its final velocity on CharacterMovement after the
+			// source is removed. Clear that forced velocity so Recovery cannot drift
+			// beyond the validated endpoint (or continue after block/cancel cleanup).
+			Movement->StopMovementImmediately();
 		}
 	}
 	if (bBroadcast)

@@ -142,3 +142,10 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - ObjectTools 写入 `UGameplayEffectComponent` 的 instanced UObject 数组时，已验证的 JSON 表达是元素直接使用目标组件类 `refPath`；写入后必须逐项回读实际实例 Class、Tag 与数量。不要使用未经 Schema 验证的自造 `instance` 包装。
 - `UPRPlayerSkillDataAsset.Fragments` 使用 inline instanced UObject；ShadowThrust 的空 Fragment 合同以空数组/空引用表达，其他五项写入准确派生 Fragment Class 和冻结默认值。若类、字段或引用回读不一致，放弃事务并停止。
 - A 的创建顺序为 IA → Cost/Cooldown GE → GA BP → Skill DA → InputConfig/IMC；精确保存固定 31 项。`DA_DefaultAbilitySet` 和 Player Blueprint 只回读/编译，任何意外 Dirty 都是停止条件，不得 Save All 或静默清除。
+
+# v0.2.0-B Burning、AbilitySet 与固定 PIE 能力审计
+
+- 本轮官方 ObjectTools 通过准确 property schema 事务式写入并完整回读两个 `FPRAbilitySetEntry[]` 元素，包括 GA Class、Level、InputTag、初始化授予标记、空 GrantedSpecTags 与 Skill DA 引用；写前数组必须精确为空，写后必须验证顺序与全部字段。该能力只证明当前 UE5.8/Schema 的准确表达可用，不授权任意数组猜测式写入，也不得调用会 `Reset()` 正式集合的旧验证工具。
+- `GE_State_Burning` 与 Fire GA 先作为两项准确 Manifest 保存并重启回读，运行时/历史测试通过后才单独写入并保存 DefaultAbilitySet；总 Distinct Package 为三个。VFX/SFX、地图、MCPTest、Shadow GA、Skill DA、既有 Cost/Cooldown GE、Input 与 Player Blueprint 均未加入保存清单。
+- 官方 SceneTools 在 PIE active 时明确拒绝 Actor 创建；B 的测试代理声明为 transient/not-placeable，不能预先放入并保存正式地图。经用户单独批准，固定无参 Editor-only `RunPIEPlayerSkillCheckpointBSmoke()` 只在 authoritative PlayWorld 创建/清理 transient 目标和 WorldStatic 墙，注入正式键鼠/手柄映射，读取正式 Spec/Effect/CombatEvent，并在所有退出路径恢复输入、属性、Transform、TimeDilation、delegate、Timer 与临时 Actor；它不接受任意参数且不保存 Package。
+- 隐藏/后台 ProjectR Editor 即使设置 `Slate.bAllowThrottling=0`，本机 PIE 仍可能以约 0.3333 秒离散帧采样严格 Timer。失败结果只能用于识别环境限制，必须 StopPIE 并复查 Dirty，不能降低运行时断言。对不需要可见视口输入的既有 Combat smoke，可在新进程使用 UE 官方 `-Unattended -RenderOffScreen` 无窗口模式保持细时间步；本轮原 0.10 秒合同实测 0.1107/0.1108 秒 PASS。该模式没有顶层窗口，不得用于需要“正常关闭并重启”证据的资产生产阶段；资产作者阶段继续使用可正常 WM_CLOSE 的标准 Editor。

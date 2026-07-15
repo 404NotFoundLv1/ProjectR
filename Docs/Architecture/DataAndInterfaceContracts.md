@@ -158,6 +158,9 @@ date: "2026-07-10"
 - ASC 继续独占 Spec、AbilitySet、Held Input、Commit、Cost/Cooldown 与 Ability 生命周期；Component 只持有 Phase/Timer/当前位移，Subsystem 只做确定性目标查询、RootMotionSource 位移注册/清理并把 Outcome 转发 Combat。两者不得形成第二套授予、扣属性、输入或事件事实源。
 - 目标资格只通过 native `IPRAbilityTargetInterface::CanBeTargetedByAbility(AbilityTag)`；v0.2.0 不新增 Faction enum/Team Tag。查询和位移使用 Source 当前 Y 平面的 X/Z 投影、1 cm 容差、固定 LOS/排序/重复 TargetId 失败合同；World Cleanup、Subsystem Deinitialize、Avatar 失效、Dead/Stunned 和 EndPlay 必须幂等清理 Timer、delegate 与 RootMotionSource。
 - 六个正式 GA/DA/Cost/Cooldown GE 在 A 仅为空壳；六个 GA BP 无业务 Graph，`DA_DefaultAbilitySet` 仍为空。Shadow/Fire/Thunder/Afterimage/Hook/Wall 的具体逻辑、状态 GE、VFX/SFX 与授予均留给 B–E。
+- v0.2.0-B 在不扩展上述公共合同的前提下实现 ShadowThrust 与 FireSlash：具体 GA 只通过 Subsystem 私有适配器调用统一 Combat；Shadow 使用现有 ForwardSweep、AvatarComponent RootMotion 和每次激活 TargetId 去重，Fire 使用 ForwardArea 并以 WorldSubsystem 私有注册表维护唯一 Burning 实例。Burning 每 0.5 秒经 Combat 结算一次，共三次；刷新来源与快照但不叠加第二个 Effect/Timer。
+- B 的正式 `GE_State_Burning` 只授予 `State.Burning`，1.5 秒、无 Period、AggregateByTarget/StackLimit 1/成功应用刷新 Duration；Fire GA CDO 是该 GE 的唯一具体技能绑定。`DA_DefaultAbilitySet` 在 B 只含 ShadowThrust、FireSlash 两个 startup Entry，ASC 的 GrantId/SpecHandle/Input/Commit/Cost/Cooldown 所有权不变。
+- 正式侧视角色以 Mesh 的局部 Right 轴表达当前 X 方向朝向（相对 yaw -90 为 +X、+90 为 -X）；Shadow/Fire 只把该轴投影到 X/Z，禁止使用会落入 Y 轴的 Mesh Forward。受控位移结束、阻挡或取消时，移除 RootMotionSource 后必须清除其残余强制速度，避免 Recovery 漂出已验证终点。Shadow 若把原始 450 cm 路径裁到 WorldStatic 前的安全终点，即使公共位移请求到达该安全终点，具体 GA 仍按技能层 Blocked 处理且不得发布 `DisplacementApplied`。
 
 冻结项：四个公共枚举、四个公共结构字段顺序、InputTag 动态 Spec Tag 语义、AbilityTag、六个失败 Tag、AbilitySet PrimaryAssetId/Schema、GrantId 幂等语义、Commit 顺序和生命周期事件顺序。
 

@@ -16,6 +16,7 @@
 #include "InputCoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/DataValidation.h"
+#include "UObject/UnrealType.h"
 
 namespace PRPlayerSkillAssetAutomation
 {
@@ -154,7 +155,66 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("A mapping retains Negate"), Mappings[0].Modifiers[0]->IsA<UInputModifierNegate>());
 	}
 
-	TestEqual(TEXT("Default ability set remains empty in checkpoint A"), DefaultSet->GetAbilityEntries().Num(), 0);
+	const UClass* BurningEffectClass = LoadClass<UGameplayEffect>(
+		nullptr,
+		TEXT("/Game/ProjectR/Abilities/Effects/GE_State_Burning.GE_State_Burning_C"));
+	const UGameplayEffect* BurningEffect = BurningEffectClass
+		? BurningEffectClass->GetDefaultObject<UGameplayEffect>()
+		: nullptr;
+	if (TestNotNull(TEXT("Checkpoint B Burning effect exists"), BurningEffect))
+	{
+		float BurningDuration = 0.0f;
+		TestEqual(TEXT("Burning has duration"), BurningEffect->DurationPolicy,
+			EGameplayEffectDurationType::HasDuration);
+		TestTrue(TEXT("Burning duration is static"),
+			BurningEffect->DurationMagnitude.GetStaticMagnitudeIfPossible(1.0f, BurningDuration));
+		TestEqual(TEXT("Burning duration is 1.5 seconds"), BurningDuration, 1.5f);
+		TestEqual(TEXT("Burning has no period"), BurningEffect->Period.GetValueAtLevel(1.0f), 0.0f);
+		TestEqual(TEXT("Burning has no modifiers"), BurningEffect->Modifiers.Num(), 0);
+		TestEqual(TEXT("Burning has no executions"), BurningEffect->Executions.Num(), 0);
+		TestEqual(TEXT("Burning grants exactly one tag"), BurningEffect->GetGrantedTags().Num(), 1);
+		TestTrue(TEXT("Burning grants State.Burning"), BurningEffect->GetGrantedTags().HasTagExact(
+			FGameplayTag::RequestGameplayTag(TEXT("State.Burning"))));
+		TestEqual(TEXT("Burning aggregates by target"), BurningEffect->GetStackingType(),
+			EGameplayEffectStackingType::AggregateByTarget);
+		TestEqual(TEXT("Burning stack limit is one"), BurningEffect->StackLimitCount, 1);
+		TestEqual(TEXT("Burning refreshes duration"), BurningEffect->StackDurationRefreshPolicy,
+			EGameplayEffectStackingDurationPolicy::RefreshOnSuccessfulApplication);
+		TestEqual(TEXT("Burning never resets a period"), BurningEffect->StackPeriodResetPolicy,
+			EGameplayEffectStackingPeriodPolicy::NeverReset);
+		TestEqual(TEXT("Burning clears its entire stack"), BurningEffect->StackExpirationPolicy,
+			EGameplayEffectStackingExpirationPolicy::ClearEntireStack);
+	}
+
+	const TArray<FPRAbilitySetEntry>& StartupEntries = DefaultSet->GetAbilityEntries();
+	TestEqual(TEXT("Checkpoint B default ability set contains two entries"), StartupEntries.Num(), 2);
+	const TCHAR* ExpectedStartupSkills[] = {TEXT("ShadowThrust"), TEXT("FireSlash")};
+	const TCHAR* ExpectedStartupInputs[] = {
+		TEXT("Input.Skill.ShadowThrust"), TEXT("Input.Skill.FireSlash")};
+	for (int32 Index = 0; Index < FMath::Min(StartupEntries.Num(), 2); ++Index)
+	{
+		const FPRAbilitySetEntry& Entry = StartupEntries[Index];
+		const FString SkillName(ExpectedStartupSkills[Index]);
+		const UClass* ExpectedAbilityClass = LoadClass<UPRPlayerSkillGameplayAbility>(
+			nullptr,
+			*FString::Printf(TEXT("/Game/ProjectR/Abilities/Skills/GA_Skill_%s.GA_Skill_%s_C"),
+				*SkillName, *SkillName));
+		const UPRPlayerSkillDataAsset* ExpectedData = LoadObject<UPRPlayerSkillDataAsset>(
+			nullptr,
+			*FString::Printf(TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_%s.DA_Skill_%s"),
+				*SkillName, *SkillName));
+		TestTrue(*FString::Printf(TEXT("Startup entry %d ability"), Index),
+			Entry.AbilityClass.Get() == ExpectedAbilityClass);
+		TestEqual(*FString::Printf(TEXT("Startup entry %d level"), Index), Entry.AbilityLevel, 1);
+		TestEqual(*FString::Printf(TEXT("Startup entry %d input"), Index),
+			Entry.InputTag.ToString(), FString(ExpectedStartupInputs[Index]));
+		TestTrue(*FString::Printf(TEXT("Startup entry %d grants on initialization"), Index),
+			Entry.bGrantOnInitialization);
+		TestTrue(*FString::Printf(TEXT("Startup entry %d has no extra spec tags"), Index),
+			Entry.GrantedSpecTags.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("Startup entry %d data"), Index),
+			Entry.AbilityData.Get() == static_cast<const UPrimaryDataAsset*>(ExpectedData));
+	}
 	for (const FSkillExpectation& Expected : SkillExpectations)
 	{
 		const FString DataPath = FString::Printf(
@@ -201,6 +261,18 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 				AbilityCDO->GetCostGameplayEffect()->GetClass(), Skill->CostEffectClass.Get());
 			TestEqual(*FString::Printf(TEXT("%s DA to GA Cooldown"), Expected.Name),
 				AbilityCDO->GetCooldownGameplayEffect()->GetClass(), Skill->CooldownEffectClass.Get());
+			if (FString(Expected.Name) == TEXT("FireSlash"))
+			{
+				const FClassProperty* BurningProperty = FindFProperty<FClassProperty>(
+					AbilityCDO->GetClass(), TEXT("BurningEffectClass"));
+				if (TestNotNull(TEXT("FireSlash exposes its private Burning asset binding"), BurningProperty))
+				{
+					const UClass* ConfiguredBurningClass = Cast<UClass>(
+						BurningProperty->GetObjectPropertyValue_InContainer(AbilityCDO));
+					TestTrue(TEXT("FireSlash references formal Burning GE"),
+						ConfiguredBurningClass == BurningEffectClass);
+				}
+			}
 		}
 
 		const UGameplayEffect* Cost = Skill->CostEffectClass->GetDefaultObject<UGameplayEffect>();

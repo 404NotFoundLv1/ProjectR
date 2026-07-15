@@ -6,6 +6,7 @@
 #include "Abilities/Player/PRPlayerSkillGameplayAbility.h"
 #include "Characters/PRPlayerCharacter.h"
 #include "Core/PRCombatEventSubjectInterface.h"
+#include "GameplayEffect.h"
 
 #include "PRPlayerSkillTestTypes.generated.h"
 
@@ -68,6 +69,37 @@ private:
 	FGameplayTagContainer MitigationResponseTags;
 	mutable int32 MitigationEvaluationCount = 0;
 	mutable FVector LastIncomingDirection = FVector::ZeroVector;
+};
+
+/** Transient combat-capable target used to exercise formal player skill abilities. */
+UCLASS(Transient, NotPlaceable, NotBlueprintable)
+class PROJECTR_API APRPlayerSkillCombatTestCharacter final
+	: public APRPlayerCharacter
+	, public IPRAbilityTargetInterface
+{
+	GENERATED_BODY()
+
+public:
+	virtual FName GetAbilityTargetId() const override;
+	virtual FVector GetAbilityTargetPoint() const override;
+	virtual EPRAbilityTargetMobility GetAbilityTargetMobility() const override;
+	virtual bool CanBeTargetedByAbility(FGameplayTag AbilityTag) const override;
+
+	void ConfigureTarget(FName InTargetId, bool bInTargetable = true);
+
+private:
+	FName TargetId = TEXT("Automation.CombatTarget");
+	bool bTargetable = true;
+};
+
+/** In-memory Burning GE used before the formal checkpoint-B asset is authored. */
+UCLASS(Transient, NotBlueprintable)
+class PROJECTR_API UPRPlayerSkillBurningTestEffect final : public UGameplayEffect
+{
+	GENERATED_BODY()
+
+public:
+	UPRPlayerSkillBurningTestEffect(const FObjectInitializer& ObjectInitializer);
 };
 
 /** Transient ability that stays active until GAS lifecycle cancellation is exercised. */

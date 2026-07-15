@@ -185,6 +185,37 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 	MovementObstacle->SetTestCollisionObjectType(ECC_WorldStatic);
 	MovementObstacle->SetActorLocation(FVector(1000.0f, 0.0f, 1000.0f));
 
+	FVector ResolvedShadowEnd;
+	float ResolvedShadowDistance = 0.0f;
+	MovementObstacle->SetActorLocation(MoveTarget->GetActorLocation());
+	TestFalse(TEXT("Shadow path rejects a WorldStatic start penetration"),
+		Subsystem->ResolveShadowPath(
+			*MoveTarget,
+			FVector::ForwardVector,
+			450.0f,
+			75.0f,
+			ResolvedShadowEnd,
+			ResolvedShadowDistance,
+			FailureTag));
+	TestEqual(TEXT("Start penetration reports Obstructed"), FailureTag,
+		UPRTagLibrary::GetAbilityActivateFailObstructedTag());
+	MovementObstacle->SetActorLocation(MoveTarget->GetActorLocation() + FVector(200.0f, 0.0f, 0.0f));
+	TestTrue(TEXT("Shadow path resolves a safe endpoint before WorldStatic"),
+		Subsystem->ResolveShadowPath(
+			*MoveTarget,
+			FVector::ForwardVector,
+			450.0f,
+			75.0f,
+			ResolvedShadowEnd,
+			ResolvedShadowDistance,
+			FailureTag));
+	TestTrue(TEXT("Shadow safe endpoint remains before the obstacle"),
+		ResolvedShadowDistance > 0.0f && ResolvedShadowDistance < 200.0f
+			&& ResolvedShadowEnd.X < MovementObstacle->GetActorLocation().X);
+	TestEqual(TEXT("Shadow safe endpoint preserves the X/Z movement plane"),
+		ResolvedShadowEnd.Y, MoveTarget->GetActorLocation().Y);
+	MovementObstacle->SetActorLocation(FVector(1000.0f, 0.0f, 1000.0f));
+
 	TArray<FPRAbilityDisplacementResult> DisplacementResults;
 	const FDelegateHandle DisplacementHandle = Subsystem->OnDisplacementFinished().AddLambda(
 		[&DisplacementResults](const FPRAbilityDisplacementResult& Finished)
@@ -245,6 +276,7 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 	// RootMotionSource reaching its computed endpoint (120 - 20 stop distance)
 	// so this branch verifies the subsystem's Completed classification.
 	MoveTarget->SetActorLocation(Displacement.StartLocation + FVector(100.0f, 0.0f, 0.0f));
+	MoveTarget->GetCharacterMovement()->Velocity = FVector(2500.0f, 0.0f, 0.0f);
 	for (int32 TickIndex = 0; TickIndex < 12 && DisplacementResults.Num() < 3; ++TickIndex)
 	{
 		World.Tick(1.0f / 60.0f);
@@ -255,6 +287,8 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Completed end reason"), DisplacementResults[2].EndReason,
 			EPRAbilityDisplacementEndReason::Completed);
 	}
+	TestTrue(TEXT("Completed displacement clears residual forced movement velocity"),
+		MoveTarget->GetCharacterMovement()->Velocity.IsNearlyZero());
 
 	Displacement = MakeDisplacement(MoveTarget->GetActorLocation());
 	TestTrue(TEXT("World-cleanup displacement starts"),
