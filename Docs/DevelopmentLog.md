@@ -234,14 +234,14 @@ date: "2026-07-10"
 
 - 在 `CURRENT_VERSION.md` 继续指向 v0.2.0/In Progress 的前提下实现 ShadowThrust Startup/受控 RootMotion/路径扫描/单 TargetId 单次命中/阻挡 Recovery，以及 FireSlash 扇形首击和唯一 Burning 注册表；所有伤害仍只走 `UPRCombatSubsystem`，生产路径不随机暴击。
 - A 的 public/protected PlayerSkill、Target、Displacement、Combat、ASC、Input 和 Tag 合同未改变。新增方法、Timer、EffectHandle、Snapshot 与去重状态均为具体 GA 或 SkillSubsystem 私有实现；AttributeSet、PlayerCharacter、PlayerSkillComponent、Save 与 ProjectRDebug 未修改。
-- Unreal MCP 创建 `GE_State_Burning`，配置 Fire GA CDO，并把正式 DefaultAbilitySet 从空数组精确改为 ShadowThrust、FireSlash 两项。官方 ObjectTools 本轮可事务式写入并回读嵌套 `FPRAbilitySetEntry[]`，因此没有调用会清空正式集合的旧验证工具，也没有新增资产配置 Toolset。
+- Unreal MCP 创建 `/Game/ProjectR/Abilities/Effects/GE_State_Burning`，修改 `/Game/ProjectR/Abilities/Skills/GA_Skill_FireSlash` 与 `/Game/ProjectR/Abilities/DA_DefaultAbilitySet`，并把正式 DefaultAbilitySet 从空数组精确改为 ShadowThrust、FireSlash 两项。官方 ObjectTools 本轮可事务式写入并回读嵌套 `FPRAbilitySetEntry[]`，因此没有调用会清空正式集合的旧验证工具，也没有新增资产配置 Toolset。
 - 三个准确 Package 分阶段非空保存，保存后 Dirty=0；两次正常重启均回读类、CDO、Stacking/Tag、引用及 AbilitySet 顺序。十个相关 Blueprint warnings-as-errors 编译通过；Shadow GA、两个 Skill DA、四个既有 Cost/Cooldown GE、Input 和三个 Player Blueprint 未保存。
 - TDD RED 来自两个正式技能行为/资产缺失；固定 PIE 后续又以原生回归准确捕获正式 Mesh Forward 投影为零和 RootMotionSource 移除后残余速度未清的问题。`v020b-aim-regression-red-20260715` 与 `v020b-residual-velocity-red-20260715` 均只因目标行为失败，最小修复后对应 GREEN。最终 BuildEditor `v020b-fixedpie-blocked-outcome-green-20260715` PASS。
 - 用户单独批准固定无参 Editor-only `RunPIEPlayerSkillCheckpointBSmoke()`；Tool 只使用正式 AbilitySet/输入/GA/GE/Combat，在 PlayWorld 创建并清理 transient 目标与 WorldStatic 墙，不保存 Package、不接受任意参数。正式侧视朝向改为 Mesh Right 的 X/Z 投影；位移结束清除 RootMotion 残余速度；墙前安全终点在 Shadow 技能层按 Blocked 处理且不发布 Outcome。两个全新固定 B PIE 会话连续 PASS，结构化结果均为两个 Spec、四个键鼠/手柄场景、三种 Startup 取消和 RuntimeClean 全 true。
 - 既有 Input/Ability PIE smoke 在独立会话 PASS；既有 Combat smoke 先如实记录隐藏窗口 0.3333 秒采样失败，随后使用 UE 官方 `-Unattended -RenderOffScreen` 无窗口模式原阈值复测 PASS，两个 0.10 秒硬直实测 0.1107/0.1108 秒。所有会话均 StopPIE；无地图或测试资产保存。
 - 最终 `ProjectR.PlayerSkill` 5/5；Input/GAS/Combat/Ability/Save/Debug 原生回归为 3/3、4/4、4/4、5/5、5/5、12/12，Debug 使用冻结的 CombatGym `-game` 入口。十个 Blueprint warnings-as-errors PASS；全 `/Game` 注册 349 项中排除 54 个 ExternalObjects/Actors 后，295/295 可查询资产 Dirty=false；AutomationReport `v020b-final-report-20260715` 为 38/38 required PASS。
 - Future Compatibility Review：C 只能在现有两项后追加 Thunder/Afterimage，且使用独立状态注册表；D 继续通过 Mobility/Mitigation 扩展；E 才创建 VFX/SFX、补齐六项并运行完整 58 项。v0.2.1-v0.4.4 仅消费稳定接口、Tag、事件和 PrimaryAssetId，不读取或保存 Burning Timer/EffectHandle/Target/Snapshot。
-- 回滚顺序冻结为 DefaultAbilitySet 恢复空数组、Fire GA 清空 Burning 引用、经逐 Package 删除批准后删除 Burning GE，再反向撤销 C++/测试/文档并重跑 A 回归。未创建提交、未 push、未推进 `CURRENT_VERSION.md`。
+- 回滚顺序冻结为 DefaultAbilitySet 恢复空数组、Fire GA 清空 Burning 引用、经逐 Package 删除批准后删除 Burning GE，再反向撤销 C++/测试/文档并重跑 A 回归。`NetworkPIEReplication`、`PhysicalGamepad` 与 `HumanSkillFeelJudgment` 为 optional `NOT_RUN`，`ProjectRAuthoringToolExtension` 为 optional `PASS`，`Package = NOT_RUN`，GC 未执行。v0.2.0-B 正式实施提交为 `3fa0ddcdec141945a2b5537308aaeb97276f1c83`（`v0.2.0-B Implement ShadowThrust and FireSlash gameplay`），且该实施提交已与 `origin/main` 同步；公共 v0.2.0 未推进。
 
 # 版本记录模板
 
