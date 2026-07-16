@@ -6,6 +6,8 @@
 #include "Abilities/PRAttributeSet.h"
 #include "Abilities/Player/PRPlayerSkillComponent.h"
 #include "Abilities/Player/PRPlayerSkillDataAsset.h"
+#include "Abilities/Player/PRPlayerSkillFragment.h"
+#include "Abilities/Player/PRSkillDecoyActor.h"
 #include "Abilities/Player/Tests/PRPlayerSkillTestTypes.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Components/BoxComponent.h"
@@ -19,6 +21,7 @@
 #include "Editor.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/WorldSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/InputDeviceLibrary.h"
@@ -34,6 +37,10 @@ constexpr TCHAR ShadowDataPath[] =
 	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_ShadowThrust.DA_Skill_ShadowThrust");
 constexpr TCHAR FireDataPath[] =
 	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_FireSlash.DA_Skill_FireSlash");
+constexpr TCHAR ThunderDataPath[] =
+	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_ThunderDrop.DA_Skill_ThunderDrop");
+constexpr TCHAR AfterimageDataPath[] =
+	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_AfterimageDodge.DA_Skill_AfterimageDodge");
 
 enum class ESmokePhase : uint8
 {
@@ -493,7 +500,7 @@ private:
 
 	bool CheckFormalSpecContract() const
 	{
-		if (ASC->GetActivatableAbilities().Num() != 2)
+		if (ASC->GetActivatableAbilities().Num() < 2)
 		{
 			return false;
 		}
@@ -954,9 +961,772 @@ private:
 	bool bStunnedStartupCancelled = false;
 	bool bAvatarStartupCancelled = false;
 };
+
+enum class ECheckpointCSmokePhase : uint8
+{
+	ThunderStart,
+	ThunderEarlyWait,
+	ThunderImpactWait,
+	ThunderStatusExpiryWait,
+	ThunderCooldownWait,
+	ThunderInvalidTargetStart,
+	ThunderInvalidTargetWait,
+	AfterimageStart,
+	AfterimageWait,
+	CleanupWait,
+	Complete
+};
+
+class FPIEPlayerSkillCheckpointCRunner
+	: public TSharedFromThis<FPIEPlayerSkillCheckpointCRunner>
+{
+public:
+	static UToolCallAsyncResultString* Start()
+	{
+		TSharedRef<FPIEPlayerSkillCheckpointCRunner> Runner =
+			MakeShared<FPIEPlayerSkillCheckpointCRunner>();
+		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(
+			NewObject<UToolCallAsyncResultString>());
+		if (!Runner->Initialize())
+		{
+			return Runner->Result.Get();
+		}
+
+		Runner->PhaseStartTime = Runner->GetPlayWorldTimeSeconds();
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
+			[RunnerPtr = Runner.ToSharedPtr()](float) mutable
+			{
+				const bool bContinue = RunnerPtr->Tick();
+				if (!bContinue)
+				{
+					RunnerPtr.Reset();
+				}
+				return bContinue;
+			}));
+		return Runner->Result.Get();
+	}
+
+	~FPIEPlayerSkillCheckpointCRunner()
+	{
+		Cleanup();
+	}
+
+private:
+	bool Initialize()
+	{
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+		{
+			Fail(TEXT("RunPIEPlayerSkillCheckpointCSmoke requires an active authoritative in-process PIE world."));
+			return false;
+		}
+
+		World = PlayWorld;
+		Controller = Cast<APRPlayerController>(PlayWorld->GetFirstPlayerController());
+		Character = Controller.IsValid() ? Cast<APRPlayerCharacter>(Controller->GetPawn()) : nullptr;
+		PlayerState = Character.IsValid() ? Character->GetPlayerState<APRPlayerState>() : nullptr;
+		ASC = PlayerState.IsValid() ? PlayerState->GetProjectRAbilitySystemComponent() : nullptr;
+		Attributes = PlayerState.IsValid() ? PlayerState->GetAttributeSet() : nullptr;
+		SkillComponent = Character.IsValid() ? Character->GetPlayerSkillComponent() : nullptr;
+		CombatSubsystem = PlayWorld->GetSubsystem<UPRCombatSubsystem>();
+		Viewport = PlayWorld->GetGameViewport();
+		InputViewport = Viewport.IsValid() ? Viewport->GetGameViewport() : nullptr;
+		InputDevice = UInputDeviceLibrary::GetDefaultInputDevice();
+		ThunderData = LoadObject<UPRPlayerSkillDataAsset>(nullptr, ThunderDataPath);
+		AfterimageData = LoadObject<UPRPlayerSkillDataAsset>(nullptr, AfterimageDataPath);
+		if (!Controller.IsValid() || !Character.IsValid() || !PlayerState.IsValid()
+			|| !ASC.IsValid() || !Attributes || !SkillComponent.IsValid()
+			|| !CombatSubsystem.IsValid() || !Viewport.IsValid() || !InputViewport
+			|| !InputDevice.IsValid() || !ThunderData.IsValid() || !AfterimageData.IsValid())
+		{
+			Fail(TEXT("PIE is missing the formal player, checkpoint-C DataAssets, viewport, ASC, or combat objects."));
+			return false;
+		}
+
+		InitialTransform = Character->GetActorTransform();
+		InitialMovementMode = Character->GetCharacterMovement()->MovementMode;
+		InitialHealth = Attributes->GetHealth();
+		InitialShield = Attributes->GetShield();
+		InitialEnergy = Attributes->GetEnergy();
+		InitialAttackPower = Attributes->GetAttackPower();
+		InitialTimeDilation = PlayWorld->GetWorldSettings()->TimeDilation;
+
+		if (!CheckFormalSpecContract() || !CheckFrozenDataContract())
+		{
+			Fail(TEXT("The formal v0.2.0-C AbilitySet or skill data contract is not exact."));
+			return false;
+		}
+
+		AimDirection = Character->GetActorForwardVector();
+		if (const USkeletalMeshComponent* Mesh = Character->GetMesh())
+		{
+			AimDirection = Mesh->GetRightVector();
+		}
+		AimDirection.Y = 0.0f;
+		AimDirection = AimDirection.GetSafeNormal();
+		if (!AimDirection.IsNormalized() || FMath::Abs(AimDirection.X) < 0.99f
+			|| FMath::Abs(AimDirection.Z) > 0.01f)
+		{
+			Fail(TEXT("The formal player mesh does not expose a finite horizontal X/Z skill aim."));
+			return false;
+		}
+
+		TestOrigin = InitialTransform.GetLocation() + FVector(0.0f, 0.0f, 2000.0f);
+		SetAutomationTimeDilation(1.0f);
+		Character->SetActorLocation(TestOrigin, false, nullptr, ETeleportType::TeleportPhysics);
+		Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+		Character->GetCharacterMovement()->StopMovementImmediately();
+		SetAttributes(*ASC, 100.0f, 0.0f, 100.0f, 10.0f);
+
+		if (!SpawnCombatant(*PlayWorld, TestOrigin + AimDirection * 300.0f,
+			TEXT("PIE.Skill.CheckpointC.TargetA"), TargetA)
+			|| !SpawnCombatant(*PlayWorld, TestOrigin + AimDirection * 2000.0f,
+				TEXT("PIE.Skill.CheckpointC.TargetB"), TargetB))
+		{
+			Fail(TEXT("The fixed checkpoint-C PIE smoke could not spawn its transient combat targets."));
+			return false;
+		}
+
+		CombatEventHandle = CombatSubsystem->OnCombatEvent().AddLambda(
+			[WeakThis = TWeakPtr<FPIEPlayerSkillCheckpointCRunner>(AsShared())](
+				const FPRCombatEvent& Event)
+			{
+				if (TSharedPtr<FPIEPlayerSkillCheckpointCRunner> This = WeakThis.Pin())
+				{
+					This->CombatEvents.Add(Event);
+				}
+			});
+		LifecycleHandle = ASC->OnAbilityLifecycleEvent().AddLambda(
+			[WeakThis = TWeakPtr<FPIEPlayerSkillCheckpointCRunner>(AsShared())](
+				const FPRAbilityLifecycleEvent& Event)
+			{
+				if (TSharedPtr<FPIEPlayerSkillCheckpointCRunner> This = WeakThis.Pin())
+				{
+					This->LifecycleEvents.Add(Event);
+				}
+			});
+		Phase = ECheckpointCSmokePhase::ThunderStart;
+		return true;
+	}
+
+	bool Tick()
+	{
+		if (!World.IsValid() || !Character.IsValid() || !ASC.IsValid()
+			|| !CombatSubsystem.IsValid() || !GEditor || GEditor->PlayWorld != World.Get())
+		{
+			Fail(TEXT("PIE ended or ProjectR checkpoint-C objects became invalid during smoke."));
+			return false;
+		}
+
+		const double Elapsed = GetPlayWorldTimeSeconds() - PhaseStartTime;
+		switch (Phase)
+		{
+		case ECheckpointCSmokePhase::ThunderStart:
+			PrepareTarget(TargetA, Character->GetActorLocation() + AimDirection * 300.0f);
+			MoveFar(TargetB);
+			ThunderEventStart = CombatEvents.Num();
+			SendPressAndRelease(EKeys::O);
+			Advance(ECheckpointCSmokePhase::ThunderEarlyWait);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderEarlyWait:
+			if (Elapsed < 0.30)
+			{
+				break;
+			}
+			bThunderDelayPassed = FMath::IsNearlyEqual(TargetA.Attributes->GetHealth(), 100.0f, 0.1f)
+				&& FMath::IsNearlyEqual(Attributes->GetEnergy(), 70.0f, 0.1f)
+				&& CountCombatEvents(ThunderEventStart, ThunderData->AbilityTag,
+					UPRTagLibrary::GetCombatEventDamageTag()) == 0
+				&& IsAbilityActive(ThunderData->AbilityTag)
+				&& ASC->GetGameplayTagCount(ThunderCooldownTag()) == 1;
+			if (!bThunderDelayPassed)
+			{
+				const FString LastFailureTags = LifecycleEvents.IsEmpty()
+					? TEXT("None")
+					: LifecycleEvents.Last().FailureTags.ToStringSimple();
+				const int32 LastEventType = LifecycleEvents.IsEmpty()
+					? -1
+					: static_cast<int32>(LifecycleEvents.Last().EventType);
+				Fail(FString::Printf(
+					TEXT("ThunderDrop early gate mismatch: Energy=%.2f Health=%.2f Damage=%d Active=%s Cooldown=%d Phase=%d Lifecycle=%d LastType=%d FailureTags=%s."),
+					Attributes->GetEnergy(),
+					TargetA.Attributes->GetHealth(),
+					CountCombatEvents(ThunderEventStart, ThunderData->AbilityTag,
+						UPRTagLibrary::GetCombatEventDamageTag()),
+					IsAbilityActive(ThunderData->AbilityTag) ? TEXT("true") : TEXT("false"),
+					ASC->GetGameplayTagCount(ThunderCooldownTag()),
+					static_cast<int32>(SkillComponent->GetCurrentPhase()),
+					LifecycleEvents.Num(),
+					LastEventType,
+					*LastFailureTags));
+				return false;
+			}
+			Advance(ECheckpointCSmokePhase::ThunderImpactWait);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderImpactWait:
+			if (Elapsed < 0.40)
+			{
+				break;
+			}
+			bThunderImpactPassed = FMath::IsNearlyEqual(TargetA.Attributes->GetHealth(), 55.0f, 0.1f)
+				&& CountCombatEvents(ThunderEventStart, ThunderData->AbilityTag,
+					UPRTagLibrary::GetCombatEventDamageTag()) == 1
+				&& TargetA.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag())
+				&& !IsAbilityActive(ThunderData->AbilityTag)
+				&& ASC->GetGameplayTagCount(ThunderCooldownTag()) == 1;
+			if (!bThunderImpactPassed)
+			{
+				Fail(TEXT("ThunderDrop did not apply exactly one delayed 45 damage hit and Stunned state."));
+				return false;
+			}
+			Advance(ECheckpointCSmokePhase::ThunderStatusExpiryWait);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderStatusExpiryWait:
+			if (Elapsed < 0.85)
+			{
+				break;
+			}
+			bThunderStatusDurationPassed =
+				!TargetA.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag());
+			if (!bThunderStatusDurationPassed)
+			{
+				Fail(TEXT("ThunderDrop Stunned did not expire after its 0.75 second duration."));
+				return false;
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointCSmokePhase::ThunderCooldownWait);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderCooldownWait:
+			if (ASC->GetGameplayTagCount(ThunderCooldownTag()) != 0)
+			{
+				if (Elapsed > 8.0)
+				{
+					Fail(TEXT("ThunderDrop cooldown did not expire before target invalidation validation."));
+					return false;
+				}
+				break;
+			}
+			SetAutomationTimeDilation(1.0f);
+			Advance(ECheckpointCSmokePhase::ThunderInvalidTargetStart);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderInvalidTargetStart:
+			PrepareTarget(TargetA, Character->GetActorLocation() + AimDirection * 300.0f);
+			MoveFar(TargetB);
+			ThunderInvalidEventStart = CombatEvents.Num();
+			SendPressAndRelease(EKeys::O);
+			if (!FMath::IsNearlyEqual(Attributes->GetEnergy(), 40.0f, 0.1f)
+				|| ASC->GetGameplayTagCount(ThunderCooldownTag()) != 1)
+			{
+				Fail(TEXT("ThunderDrop target invalidation setup did not Commit exactly once."));
+				return false;
+			}
+			if (TargetA.Character.IsValid())
+			{
+				TargetA.Character->Destroy();
+				TargetA.Character.Reset();
+			}
+			Advance(ECheckpointCSmokePhase::ThunderInvalidTargetWait);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderInvalidTargetWait:
+			if (Elapsed < 0.75)
+			{
+				break;
+			}
+			bThunderInvalidTargetPassed =
+				CountCombatEvents(ThunderInvalidEventStart, ThunderData->AbilityTag,
+					UPRTagLibrary::GetCombatEventDamageTag()) == 0
+				&& !IsAbilityActive(ThunderData->AbilityTag)
+				&& !TargetB.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag());
+			if (!bThunderInvalidTargetPassed)
+			{
+				Fail(TEXT("ThunderDrop target invalidation produced damage, Stunned, or an active ability leak."));
+				return false;
+			}
+			Advance(ECheckpointCSmokePhase::AfterimageStart);
+			break;
+
+		case ECheckpointCSmokePhase::AfterimageStart:
+			PrepareTarget(TargetB, Character->GetActorLocation() + AimDirection * 300.0f);
+			AfterimageStartLocation = Character->GetActorLocation();
+			AfterimageEventStart = CombatEvents.Num();
+			SendPressAndRelease(EKeys::L);
+			if (APRSkillDecoyActor* Decoy = FindOwnedDecoy())
+			{
+				const bool bFirstConsume = Decoy->ConsumeAttackProxy(TargetB.Character.Get());
+				const bool bSecondConsume = Decoy->ConsumeAttackProxy(TargetB.Character.Get());
+				bDecoyConsumedOnce = bFirstConsume && !bSecondConsume;
+			}
+			bAfterimageStarted = FMath::IsNearlyEqual(Attributes->GetEnergy(), 25.0f, 0.1f)
+				&& ASC->GetGameplayTagCount(AfterimageCooldownTag()) == 1
+				&& ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag())
+				&& CountResponseEvents(AfterimageEventStart,
+					UPRTagLibrary::GetCombatResponseDecoyCreatedTag()) == 1
+				&& bDecoyConsumedOnce;
+			if (!bAfterimageStarted)
+			{
+				Fail(TEXT("AfterimageDodge did not Commit, apply Invulnerable, or create one consumable decoy."));
+				return false;
+			}
+			Advance(ECheckpointCSmokePhase::AfterimageWait);
+			break;
+
+		case ECheckpointCSmokePhase::AfterimageWait:
+			if (Elapsed < 0.40)
+			{
+				break;
+			}
+			{
+				const FVector Delta = Character->GetActorLocation() - AfterimageStartLocation;
+				const float AlongAim = FVector::DotProduct(Delta, AimDirection);
+				bAfterimagePassed = AlongAim >= 280.0f && AlongAim <= 320.0f
+					&& FMath::Abs(Delta.Y) <= 1.0f
+					&& !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag())
+					&& !IsAbilityActive(AfterimageData->AbilityTag)
+					&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle
+					&& !SkillComponent->GetActiveDisplacementRequestId().IsValid()
+					&& CountOwnedDecoys() == 0
+					&& CountResponseEvents(AfterimageEventStart,
+						UPRTagLibrary::GetCombatResponseDisplacementAppliedTag()) == 1
+					&& CountResponseEvents(AfterimageEventStart,
+						UPRTagLibrary::GetCombatResponseDecoyConsumedTag()) == 1
+					&& CountResponseEvents(AfterimageEventStart,
+						UPRTagLibrary::GetCombatResponsePerfectTimingTag()) == 1;
+			}
+			if (!bAfterimagePassed)
+			{
+				Fail(TEXT("AfterimageDodge displacement, duration, PerfectTiming, idempotence, or cleanup mismatch."));
+				return false;
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointCSmokePhase::CleanupWait);
+			break;
+
+		case ECheckpointCSmokePhase::CleanupWait:
+			if (ASC->GetGameplayTagCount(ThunderCooldownTag()) != 0
+				|| ASC->GetGameplayTagCount(AfterimageCooldownTag()) != 0)
+			{
+				if (Elapsed > 8.0)
+				{
+					Fail(TEXT("Checkpoint-C cooldowns did not expire before the runtime leak check."));
+					return false;
+				}
+				break;
+			}
+			SetAutomationTimeDilation(1.0f);
+			bRuntimeClean = CheckRuntimeClean();
+			if (!bRuntimeClean)
+			{
+				Fail(TEXT("Checkpoint-C left an ActiveEffect, timer-owned phase, decoy, displacement, tag, or Spec leak."));
+				return false;
+			}
+			Advance(ECheckpointCSmokePhase::Complete);
+			break;
+
+		case ECheckpointCSmokePhase::Complete:
+			return Finish();
+		}
+		return true;
+	}
+
+	bool CheckFormalSpecContract() const
+	{
+		if (ASC->GetActivatableAbilities().Num() != 4)
+		{
+			return false;
+		}
+		const TCHAR* ExpectedTags[] = {
+			TEXT("Skill.ShadowThrust"),
+			TEXT("Skill.FireSlash"),
+			TEXT("Skill.ThunderDrop"),
+			TEXT("Skill.AfterimageDodge")};
+		for (const TCHAR* TagName : ExpectedTags)
+		{
+			FPRAbilityRuntimeState State;
+			if (!ASC->GetAbilityRuntimeStateByAbilityTag(
+				FGameplayTag::RequestGameplayTag(TagName), State))
+			{
+				return false;
+			}
+		}
+		FPRAbilityRuntimeState ThunderState;
+		FPRAbilityRuntimeState AfterimageState;
+		return ASC->GetAbilityRuntimeStateByAbilityTag(ThunderData->AbilityTag, ThunderState)
+			&& ASC->GetAbilityRuntimeStateByAbilityTag(AfterimageData->AbilityTag, AfterimageState)
+			&& ThunderState.InputTag == ThunderData->InputTag
+			&& AfterimageState.InputTag == AfterimageData->InputTag;
+	}
+
+	bool CheckFrozenDataContract() const
+	{
+		const UPRThunderDropSkillFragment* ThunderFragment =
+			Cast<UPRThunderDropSkillFragment>(ThunderData->SkillFragment);
+		const UPRAfterimageDodgeSkillFragment* AfterimageFragment =
+			Cast<UPRAfterimageDodgeSkillFragment>(AfterimageData->SkillFragment);
+		return ThunderFragment && AfterimageFragment
+			&& ThunderData->InputTag == UPRTagLibrary::GetInputSkillThunderDropTag()
+			&& FMath::IsNearlyEqual(ThunderData->EnergyCost, 30.0f)
+			&& FMath::IsNearlyEqual(ThunderData->CooldownDuration, 7.0f)
+			&& FMath::IsNearlyEqual(ThunderData->ActiveDuration, 0.60f)
+			&& FMath::IsNearlyEqual(ThunderData->Range, 700.0f)
+			&& FMath::IsNearlyEqual(ThunderData->Radius, 220.0f)
+			&& FMath::IsNearlyEqual(ThunderData->StatusDuration, 0.75f)
+			&& FMath::IsNearlyEqual(ThunderFragment->FallbackDistance, 450.0f)
+			&& AfterimageData->InputTag == UPRTagLibrary::GetInputDodgeTag()
+			&& FMath::IsNearlyEqual(AfterimageData->EnergyCost, 15.0f)
+			&& FMath::IsNearlyEqual(AfterimageData->CooldownDuration, 2.5f)
+			&& FMath::IsNearlyEqual(AfterimageData->ActiveDuration, 0.18f)
+			&& FMath::IsNearlyEqual(AfterimageData->DisplacementDistance, 300.0f)
+			&& FMath::IsNearlyEqual(AfterimageData->StatusDuration, 0.22f)
+			&& FMath::IsNearlyEqual(AfterimageFragment->PerfectTimingWindow, 0.14f)
+			&& FMath::IsNearlyEqual(AfterimageFragment->DecoyLifetime, 1.5f);
+	}
+
+	void SetAttributes(
+		UPRAbilitySystemComponent& TargetASC,
+		const float Health,
+		const float Shield,
+		const float Energy,
+		const float AttackPower) const
+	{
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetMaxHealthAttribute(), 100.0f);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), Health);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetMaxShieldAttribute(), 100.0f);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetShieldAttribute(), Shield);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetMaxEnergyAttribute(), 100.0f);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetEnergyAttribute(), Energy);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetAttackPowerAttribute(), AttackPower);
+	}
+
+	void PrepareTarget(FTransientCombatant& Target, const FVector Location) const
+	{
+		if (!Target.Character.IsValid() || !Target.ASC.IsValid())
+		{
+			return;
+		}
+		Target.Character->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+		Target.Character->GetCharacterMovement()->StopMovementImmediately();
+		SetAttributes(*Target.ASC.Get(), 100.0f, 0.0f, 100.0f, 10.0f);
+	}
+
+	void MoveFar(FTransientCombatant& Target) const
+	{
+		PrepareTarget(Target, Character->GetActorLocation() + AimDirection * 2000.0f);
+	}
+
+	int32 CountCombatEvents(
+		const int32 FirstIndex,
+		const FGameplayTag AbilityTag,
+		const FGameplayTag EventTag) const
+	{
+		int32 Count = 0;
+		for (int32 Index = FirstIndex; Index < CombatEvents.Num(); ++Index)
+		{
+			const FPRCombatEvent& Event = CombatEvents[Index];
+			if (Event.AbilityTag == AbilityTag && Event.EventTag == EventTag)
+			{
+				++Count;
+			}
+		}
+		return Count;
+	}
+
+	int32 CountResponseEvents(const int32 FirstIndex, const FGameplayTag ResponseTag) const
+	{
+		int32 Count = 0;
+		for (int32 Index = FirstIndex; Index < CombatEvents.Num(); ++Index)
+		{
+			const FPRCombatEvent& Event = CombatEvents[Index];
+			if (Event.AbilityTag == AfterimageData->AbilityTag
+				&& Event.EventTag == UPRTagLibrary::GetCombatEventAbilityOutcomeTag()
+				&& Event.ResponseTags.HasTagExact(ResponseTag))
+			{
+				++Count;
+			}
+		}
+		return Count;
+	}
+
+	APRSkillDecoyActor* FindOwnedDecoy() const
+	{
+		if (!World.IsValid())
+		{
+			return nullptr;
+		}
+		for (TActorIterator<APRSkillDecoyActor> It(World.Get()); It; ++It)
+		{
+			if (IsValid(*It) && It->GetOwner() == Character.Get())
+			{
+				return *It;
+			}
+		}
+		return nullptr;
+	}
+
+	int32 CountOwnedDecoys() const
+	{
+		int32 Count = 0;
+		if (World.IsValid())
+		{
+			for (TActorIterator<APRSkillDecoyActor> It(World.Get()); It; ++It)
+			{
+				if (IsValid(*It) && It->GetOwner() == Character.Get())
+				{
+					++Count;
+				}
+			}
+		}
+		return Count;
+	}
+
+	bool CheckRuntimeClean() const
+	{
+		return CheckFormalSpecContract()
+			&& !IsAbilityActive(ThunderData->AbilityTag)
+			&& !IsAbilityActive(AfterimageData->AbilityTag)
+			&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle
+			&& !SkillComponent->GetActiveDisplacementRequestId().IsValid()
+			&& !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag())
+			&& ASC->GetGameplayTagCount(ThunderCooldownTag()) == 0
+			&& ASC->GetGameplayTagCount(AfterimageCooldownTag()) == 0
+			&& ASC->GetActiveEffects(FGameplayEffectQuery()).IsEmpty()
+			&& CountOwnedDecoys() == 0;
+	}
+
+	bool IsAbilityActive(const FGameplayTag AbilityTag) const
+	{
+		FPRAbilityRuntimeState State;
+		return ASC.IsValid()
+			&& ASC->GetAbilityRuntimeStateByAbilityTag(AbilityTag, State)
+			&& State.bActive;
+	}
+
+	static FGameplayTag ThunderCooldownTag()
+	{
+		return FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Skill.ThunderDrop"));
+	}
+
+	static FGameplayTag AfterimageCooldownTag()
+	{
+		return FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Skill.AfterimageDodge"));
+	}
+
+	void SendPressAndRelease(const FKey& Key)
+	{
+		SendKey(Key, IE_Pressed);
+		SendKey(Key, IE_Released);
+	}
+
+	void SendKey(const FKey& Key, const EInputEvent Event)
+	{
+		if (Viewport.IsValid() && InputViewport && Viewport->GetGameViewport() == InputViewport)
+		{
+			Viewport->InputKey(FInputKeyEventArgs::CreateSimulated(
+				Key, Event, 1.0f, -1, InputDevice, false, InputViewport));
+		}
+	}
+
+	void ReleaseInputs()
+	{
+		SendKey(EKeys::O, IE_Released);
+		SendKey(EKeys::L, IE_Released);
+	}
+
+	void SetAutomationTimeDilation(const float TimeDilation) const
+	{
+		if (World.IsValid() && IsValid(World->GetWorldSettings()))
+		{
+			World->GetWorldSettings()->SetTimeDilation(TimeDilation);
+		}
+	}
+
+	bool Finish()
+	{
+		const bool bPassed = bThunderDelayPassed && bThunderImpactPassed
+			&& bThunderStatusDurationPassed && bThunderInvalidTargetPassed
+			&& bAfterimageStarted && bDecoyConsumedOnce && bAfterimagePassed
+			&& bRuntimeClean && CheckFormalSpecContract();
+
+		TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
+		Json->SetStringField(TEXT("status"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+		Json->SetNumberField(TEXT("formalSpecCount"), ASC->GetActivatableAbilities().Num());
+		Json->SetBoolField(TEXT("thunderDelay"), bThunderDelayPassed);
+		Json->SetBoolField(TEXT("thunderImpact"), bThunderImpactPassed);
+		Json->SetBoolField(TEXT("thunderStatusDuration"), bThunderStatusDurationPassed);
+		Json->SetBoolField(TEXT("thunderInvalidTarget"), bThunderInvalidTargetPassed);
+		Json->SetBoolField(TEXT("afterimageStarted"), bAfterimageStarted);
+		Json->SetBoolField(TEXT("decoyConsumedOnce"), bDecoyConsumedOnce);
+		Json->SetBoolField(TEXT("afterimageDisplacementAndCleanup"), bAfterimagePassed);
+		Json->SetBoolField(TEXT("runtimeClean"), bRuntimeClean);
+		Json->SetNumberField(TEXT("finalEnergy"), Attributes->GetEnergy());
+		Json->SetNumberField(TEXT("combatEventCount"), CombatEvents.Num());
+		Json->SetNumberField(TEXT("lifecycleEventCount"), LifecycleEvents.Num());
+
+		FString JsonString;
+		TSharedRef<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> Writer =
+			TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&JsonString);
+		FJsonSerializer::Serialize(Json, Writer);
+		Cleanup();
+		if (bPassed)
+		{
+			Result->SetValue(JsonString);
+		}
+		else
+		{
+			Result->SetError(JsonString);
+		}
+		return false;
+	}
+
+	void Advance(const ECheckpointCSmokePhase NextPhase)
+	{
+		Phase = NextPhase;
+		PhaseStartTime = GetPlayWorldTimeSeconds();
+	}
+
+	double GetPlayWorldTimeSeconds() const
+	{
+		return World.IsValid() ? World->GetTimeSeconds() : 0.0;
+	}
+
+	static void DestroyCombatant(FTransientCombatant& Combatant)
+	{
+		if (Combatant.ASC.IsValid())
+		{
+			Combatant.ASC->CancelAllAbilities();
+			Combatant.ASC->SetLooseGameplayTagCount(
+				UPRTagLibrary::GetStateStunnedTag(), 0, EGameplayTagReplicationState::TagOnly);
+		}
+		if (Combatant.Controller.IsValid())
+		{
+			Combatant.Controller->UnPossess();
+		}
+		if (Combatant.Character.IsValid())
+		{
+			Combatant.Character->Destroy();
+		}
+		if (Combatant.Controller.IsValid())
+		{
+			Combatant.Controller->Destroy();
+		}
+		if (Combatant.PlayerState.IsValid())
+		{
+			Combatant.PlayerState->Destroy();
+		}
+		Combatant = FTransientCombatant();
+	}
+
+	void Cleanup()
+	{
+		ReleaseInputs();
+		SetAutomationTimeDilation(InitialTimeDilation);
+		if (CombatSubsystem.IsValid() && CombatEventHandle.IsValid())
+		{
+			CombatSubsystem->OnCombatEvent().Remove(CombatEventHandle);
+			CombatEventHandle.Reset();
+		}
+		if (ASC.IsValid() && LifecycleHandle.IsValid())
+		{
+			ASC->OnAbilityLifecycleEvent().Remove(LifecycleHandle);
+			LifecycleHandle.Reset();
+		}
+		if (World.IsValid())
+		{
+			for (TActorIterator<APRSkillDecoyActor> It(World.Get()); It; ++It)
+			{
+				if (IsValid(*It) && It->GetOwner() == Character.Get())
+				{
+					It->Destroy();
+				}
+			}
+		}
+		DestroyCombatant(TargetB);
+		DestroyCombatant(TargetA);
+		if (ASC.IsValid())
+		{
+			ASC->CancelAllAbilities();
+			FGameplayTagContainer CleanupTags;
+			CleanupTags.AddTag(ThunderCooldownTag());
+			CleanupTags.AddTag(AfterimageCooldownTag());
+			CleanupTags.AddTag(UPRTagLibrary::GetStateInvulnerableTag());
+			ASC->RemoveActiveEffectsWithTags(CleanupTags);
+			SetAttributes(*ASC.Get(), InitialHealth, InitialShield, InitialEnergy, InitialAttackPower);
+		}
+		if (Character.IsValid())
+		{
+			Character->SetActorTransform(InitialTransform, false, nullptr, ETeleportType::TeleportPhysics);
+			Character->GetCharacterMovement()->SetMovementMode(InitialMovementMode);
+			Character->GetCharacterMovement()->StopMovementImmediately();
+		}
+		InputViewport = nullptr;
+	}
+
+	void Fail(const FString& Message)
+	{
+		Cleanup();
+		if (Result.IsValid())
+		{
+			Result->SetError(Message);
+		}
+	}
+
+	TStrongObjectPtr<UToolCallAsyncResultString> Result;
+	TWeakObjectPtr<UWorld> World;
+	TWeakObjectPtr<APRPlayerController> Controller;
+	TWeakObjectPtr<APRPlayerCharacter> Character;
+	TWeakObjectPtr<APRPlayerState> PlayerState;
+	TWeakObjectPtr<UPRAbilitySystemComponent> ASC;
+	const UPRAttributeSet* Attributes = nullptr;
+	TWeakObjectPtr<UPRPlayerSkillComponent> SkillComponent;
+	TWeakObjectPtr<UPRCombatSubsystem> CombatSubsystem;
+	TWeakObjectPtr<UGameViewportClient> Viewport;
+	FViewport* InputViewport = nullptr;
+	FInputDeviceId InputDevice = INPUTDEVICEID_NONE;
+	TWeakObjectPtr<UPRPlayerSkillDataAsset> ThunderData;
+	TWeakObjectPtr<UPRPlayerSkillDataAsset> AfterimageData;
+	FTransientCombatant TargetA;
+	FTransientCombatant TargetB;
+	FDelegateHandle CombatEventHandle;
+	FDelegateHandle LifecycleHandle;
+	TArray<FPRCombatEvent> CombatEvents;
+	TArray<FPRAbilityLifecycleEvent> LifecycleEvents;
+	ECheckpointCSmokePhase Phase = ECheckpointCSmokePhase::ThunderStart;
+	double PhaseStartTime = 0.0;
+	FTransform InitialTransform = FTransform::Identity;
+	EMovementMode InitialMovementMode = MOVE_Walking;
+	FVector TestOrigin = FVector::ZeroVector;
+	FVector AimDirection = FVector::ForwardVector;
+	FVector AfterimageStartLocation = FVector::ZeroVector;
+	int32 ThunderEventStart = 0;
+	int32 ThunderInvalidEventStart = 0;
+	int32 AfterimageEventStart = 0;
+	float InitialHealth = 0.0f;
+	float InitialShield = 0.0f;
+	float InitialEnergy = 0.0f;
+	float InitialAttackPower = 0.0f;
+	float InitialTimeDilation = 1.0f;
+	bool bThunderDelayPassed = false;
+	bool bThunderImpactPassed = false;
+	bool bThunderStatusDurationPassed = false;
+	bool bThunderInvalidTargetPassed = false;
+	bool bAfterimageStarted = false;
+	bool bDecoyConsumedOnce = false;
+	bool bAfterimagePassed = false;
+	bool bRuntimeClean = false;
+};
 } // namespace PRPlayerSkillAutomationToolset
 
 UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointBSmoke()
 {
 	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointBRunner::Start();
+}
+
+UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointCSmoke()
+{
+	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointCRunner::Start();
 }
