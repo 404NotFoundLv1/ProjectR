@@ -243,6 +243,16 @@ date: "2026-07-10"
 - Future Compatibility Review：C 只能在现有两项后追加 Thunder/Afterimage，且使用独立状态注册表；D 继续通过 Mobility/Mitigation 扩展；E 才创建 VFX/SFX、补齐六项并运行完整 58 项。v0.2.1-v0.4.4 仅消费稳定接口、Tag、事件和 PrimaryAssetId，不读取或保存 Burning Timer/EffectHandle/Target/Snapshot。
 - 回滚顺序冻结为 DefaultAbilitySet 恢复空数组、Fire GA 清空 Burning 引用、经逐 Package 删除批准后删除 Burning GE，再反向撤销 C++/测试/文档并重跑 A 回归。`NetworkPIEReplication`、`PhysicalGamepad` 与 `HumanSkillFeelJudgment` 为 optional `NOT_RUN`，`ProjectRAuthoringToolExtension` 为 optional `PASS`，`Package = NOT_RUN`，GC 未执行。v0.2.0-B 正式实施提交为 `3fa0ddcdec141945a2b5537308aaeb97276f1c83`（`v0.2.0-B Implement ShadowThrust and FireSlash gameplay`），且该实施提交已与 `origin/main` 同步；公共 v0.2.0 未推进。
 
+# 2026-07-16 - v0.2.0-C 雷鸣落点与残影闪避（Completed）
+
+- 在 `CURRENT_VERSION.md` 与 VersionIndex 继续保持 v0.2.0/In Progress 的前提下完成内部检查点 C；公共版本未推进。正式实施提交为 `9cd0bc683cbd4530fb1a4fd8f368564d166989fe`（`v0.2.0-C Implement ThunderDrop and AfterimageDodge`），且该实施提交已与 `origin/main` 同步。
+- C 实现 ThunderDrop 的合法 GroundArea/450cm fallback、0.60s 延迟、220cm AoE、一次伤害、0.75s Stunned 和失效/World Cleanup；AfterimageDodge 实现 300cm/0.18s 平面位移、0.22s Invulnerable、单一残影、0.14s PerfectTiming、幂等消费与清理。所有伤害继续只走 `UPRCombatSubsystem`，没有修改 A/B 冻结公共合同。
+- 实际 Package 变化为修改 `/Game/ProjectR/Abilities/DA_DefaultAbilitySet`、`/Game/ProjectR/Abilities/Skills/GA_Skill_ThunderDrop`、`/Game/ProjectR/Abilities/Skills/GA_Skill_AfterimageDodge`，以及创建 `/Game/ProjectR/Abilities/Effects/GE_State_Stunned`、`/Game/ProjectR/Abilities/Effects/GE_State_Invulnerable`。DefaultAbilitySet 当前严格为 ShadowThrust、FireSlash、ThunderDrop、AfterimageDodge 四项；未创建 VFX/SFX、未保存地图或 MCPTest。
+- 完成门补验发现并关闭两个真实运行时边界：GroundArea 不能把合法 Pawn 的 Visibility 碰撞误判为 WorldStatic 阻挡；`MoveToForce` 在单帧超过 Duration 时必须归位至既有验证终点并作为 Completed，不能以越过终点误判 Blocked。补验提交为 `492b5cb227c4a0b673c7c5913267865a01df543a`（`v0.2.0-C Fix targeting obstruction and coarse-frame displacement`）；该提交尚未 push。
+- 最终补验 BuildEditor PASS；`ProjectR.PlayerSkill` 5/5，Input/GAS/Combat/Ability/Save/Debug 回归为 3/3、4/4、4/4、5/5、5/5、12/12（Combat 保留两条历史 Warning）。两个 GA、两个状态 GE 与三个 Player Blueprint warnings-as-errors 编译 PASS；重启回读 AbilitySet 的四项顺序和引用，相关 C Package、三个 Player Blueprint 与 `L_CombatGym` 均 Dirty=0。
+- 固定无参 `RunPIEPlayerSkillCheckpointCSmoke()` 实际 PASS：Thunder 延迟/命中/Stunned/失效清理、Afterimage 位移/无敌/单残影/PerfectTiming/清理以及四个正式 Spec 均通过；既有固定 B PIE 回归 PASS。Tool 只调用正式受控 Ability/Input/Combat API，不保存 Package、不接收任意参数。
+- 结构化补验 AutomationReport `v020c-supplement-final-report-20260716a` 为 15/15 required PASS。`NetworkPIEReplication`、`PhysicalGamepad`、`HumanSkillFeelJudgment` 与 `Package` 为 optional `NOT_RUN`，GC 未执行；没有必需人工步骤。Future Compatibility Review PASS：D 只能在四项后增量追加 Hook/Guard，v0.2.1–v0.4.4 继续只消费既有接口、Tag、事件和 PrimaryAssetId。
+
 # 版本记录模板
 
 ```text
