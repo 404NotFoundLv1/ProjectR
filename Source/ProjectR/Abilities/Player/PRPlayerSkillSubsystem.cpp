@@ -178,11 +178,13 @@ bool UPRPlayerSkillSubsystem::QueryTargets(
 			QueryCenter.Y = Source->GetActorLocation().Y;
 			FHitResult GroundPathHit;
 			FCollisionQueryParams GroundParams(SCENE_QUERY_STAT(PRPlayerSkillGroundPath), false, Source);
-			if (World->LineTraceSingleByChannel(
+			FCollisionObjectQueryParams WorldStaticObjects;
+			WorldStaticObjects.AddObjectTypesToQuery(ECC_WorldStatic);
+			if (World->LineTraceSingleByObjectType(
 				GroundPathHit,
 				Query.Origin,
 				QueryCenter,
-				ECC_Visibility,
+				WorldStaticObjects,
 				GroundParams))
 			{
 				OutFailureTag = UPRTagLibrary::GetAbilityActivateFailObstructedTag();
@@ -899,11 +901,28 @@ void UPRPlayerSkillSubsystem::HandleDisplacementMonitor(const FGuid RequestId)
 
 void UPRPlayerSkillSubsystem::HandleDisplacementDurationElapsed(const FGuid RequestId)
 {
-	const FActiveDisplacement* Job = ActiveDisplacements.Find(RequestId);
-	const ACharacter* Target = Job ? Job->TargetCharacter.Get() : nullptr;
-	const bool bReached = Target
+	FActiveDisplacement* Job = ActiveDisplacements.Find(RequestId);
+	ACharacter* Target = Job ? Job->TargetCharacter.Get() : nullptr;
+	bool bReached = Target
 		&& PRPlayerSkillTargeting::ToPlanar(Job->EffectiveEnd - Target->GetActorLocation()).Size()
 			<= PRPlayerSkillTargeting::DestinationTolerance;
+	if (Job && Target && !bReached)
+	{
+		const FVector PlannedDisplacement = PRPlayerSkillTargeting::ToPlanar(
+			Job->EffectiveEnd - Job->PlaneOrigin);
+		const float PlannedDistance = PlannedDisplacement.Size();
+		const FVector Direction = PlannedDisplacement.GetSafeNormal();
+		const float TravelledDistance = FVector::DotProduct(
+			PRPlayerSkillTargeting::ToPlanar(Target->GetActorLocation() - Job->PlaneOrigin), Direction);
+		if (PlannedDistance > UE_SMALL_NUMBER && TravelledDistance >= PlannedDistance)
+		{
+			// MoveToForce can advance past its target when one frame exceeds its
+			// duration. The movement path has already been swept by CharacterMovement,
+			// so clamp that legal coarse-frame overshoot to the validated endpoint.
+			Target->SetActorLocation(Job->EffectiveEnd, false, nullptr, ETeleportType::TeleportPhysics);
+			bReached = true;
+		}
+	}
 	FinishDisplacement(
 		RequestId,
 		bReached ? EPRAbilityDisplacementEndReason::Completed : EPRAbilityDisplacementEndReason::Blocked,

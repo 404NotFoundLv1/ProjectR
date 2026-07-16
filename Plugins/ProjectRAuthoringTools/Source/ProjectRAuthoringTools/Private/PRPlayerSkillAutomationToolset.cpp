@@ -970,8 +970,10 @@ enum class ECheckpointCSmokePhase : uint8
 	ThunderStatusExpiryWait,
 	ThunderCooldownWait,
 	ThunderInvalidTargetStart,
+	ThunderInvalidTargetCommitWait,
 	ThunderInvalidTargetWait,
 	AfterimageStart,
+	AfterimageCommitWait,
 	AfterimageWait,
 	CleanupWait,
 	Complete
@@ -1219,6 +1221,14 @@ private:
 			MoveFar(TargetB);
 			ThunderInvalidEventStart = CombatEvents.Num();
 			SendPressAndRelease(EKeys::O);
+			Advance(ECheckpointCSmokePhase::ThunderInvalidTargetCommitWait);
+			break;
+
+		case ECheckpointCSmokePhase::ThunderInvalidTargetCommitWait:
+			if (Elapsed < 0.15)
+			{
+				break;
+			}
 			if (!FMath::IsNearlyEqual(Attributes->GetEnergy(), 40.0f, 0.1f)
 				|| ASC->GetGameplayTagCount(ThunderCooldownTag()) != 1)
 			{
@@ -1256,6 +1266,14 @@ private:
 			AfterimageStartLocation = Character->GetActorLocation();
 			AfterimageEventStart = CombatEvents.Num();
 			SendPressAndRelease(EKeys::L);
+			Advance(ECheckpointCSmokePhase::AfterimageCommitWait);
+			break;
+
+		case ECheckpointCSmokePhase::AfterimageCommitWait:
+			if (Elapsed < 0.15)
+			{
+				break;
+			}
 			if (APRSkillDecoyActor* Decoy = FindOwnedDecoy())
 			{
 				const bool bFirstConsume = Decoy->ConsumeAttackProxy(TargetB.Character.Get());
@@ -1284,6 +1302,12 @@ private:
 			{
 				const FVector Delta = Character->GetActorLocation() - AfterimageStartLocation;
 				const float AlongAim = FVector::DotProduct(Delta, AimDirection);
+				const int32 DisplacementEvents = CountResponseEvents(AfterimageEventStart,
+					UPRTagLibrary::GetCombatResponseDisplacementAppliedTag());
+				const int32 DecoyConsumedEvents = CountResponseEvents(AfterimageEventStart,
+					UPRTagLibrary::GetCombatResponseDecoyConsumedTag());
+				const int32 PerfectTimingEvents = CountResponseEvents(AfterimageEventStart,
+					UPRTagLibrary::GetCombatResponsePerfectTimingTag());
 				bAfterimagePassed = AlongAim >= 280.0f && AlongAim <= 320.0f
 					&& FMath::Abs(Delta.Y) <= 1.0f
 					&& !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag())
@@ -1291,17 +1315,24 @@ private:
 					&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle
 					&& !SkillComponent->GetActiveDisplacementRequestId().IsValid()
 					&& CountOwnedDecoys() == 0
-					&& CountResponseEvents(AfterimageEventStart,
-						UPRTagLibrary::GetCombatResponseDisplacementAppliedTag()) == 1
-					&& CountResponseEvents(AfterimageEventStart,
-						UPRTagLibrary::GetCombatResponseDecoyConsumedTag()) == 1
-					&& CountResponseEvents(AfterimageEventStart,
-						UPRTagLibrary::GetCombatResponsePerfectTimingTag()) == 1;
-			}
-			if (!bAfterimagePassed)
-			{
-				Fail(TEXT("AfterimageDodge displacement, duration, PerfectTiming, idempotence, or cleanup mismatch."));
-				return false;
+					&& DisplacementEvents == 1
+					&& DecoyConsumedEvents == 1
+					&& PerfectTimingEvents == 1;
+				if (!bAfterimagePassed)
+				{
+					Fail(FString::Printf(
+						TEXT("AfterimageDodge cleanup mismatch: AlongAim=%.2f DeltaY=%.2f Invulnerable=%s Active=%s Phase=%d Displacement=%d DecoyConsumed=%d PerfectTiming=%d Decoys=%d."),
+						AlongAim,
+						Delta.Y,
+						ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag()) ? TEXT("true") : TEXT("false"),
+						IsAbilityActive(AfterimageData->AbilityTag) ? TEXT("true") : TEXT("false"),
+						static_cast<int32>(SkillComponent->GetCurrentPhase()),
+						DisplacementEvents,
+						DecoyConsumedEvents,
+						PerfectTimingEvents,
+						CountOwnedDecoys()));
+					return false;
+				}
 			}
 			SetAutomationTimeDilation(10.0f);
 			Advance(ECheckpointCSmokePhase::CleanupWait);

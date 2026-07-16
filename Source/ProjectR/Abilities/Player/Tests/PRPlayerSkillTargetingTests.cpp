@@ -127,6 +127,15 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Ground area resolves a legal point"), Subsystem->QueryTargets(Query, Result, FailureTag));
 	TestEqual(TEXT("Ground area projects to source Y plane"), Result.ResolvedPoint.Y, Source->GetActorLocation().Y);
 	TestTrue(TEXT("Ground area includes Near"), Result.Targets.Contains(Near));
+	Near->SetActorLocation(FVector(120.0f, 0.0f, 0.0f));
+	Query.AreaCenter = FVector(240.0f, 0.0f, 0.0f);
+	Query.Radius = 150.0f;
+	FailureTag = FGameplayTag();
+	TestTrue(TEXT("Ground area ignores an eligible Visibility-blocking pawn on its path"),
+		Subsystem->QueryTargets(Query, Result, FailureTag));
+	TestFalse(TEXT("Eligible ground-area pawn leaves no failure tag"), FailureTag.IsValid());
+	TestTrue(TEXT("Ground area still returns the pawn on its path"), Result.Targets.Contains(Near));
+	Near->SetActorLocation(FVector(100.0f, 0.0f, 50.0f));
 	Query.AreaCenter = FVector(300.0f, 0.0f, 0.0f);
 	Query.Radius = 10.0f;
 	TestTrue(TEXT("Legal empty ground area succeeds"), Subsystem->QueryTargets(Query, Result, FailureTag));
@@ -272,10 +281,13 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 		Subsystem->RequestDisplacement(Displacement, RequestId, FailureTag));
 	TestTrue(TEXT("Completion branch also uses RootMotionSource"),
 		MoveTarget->GetCharacterMovement()->CurrentRootMotion.HasActiveRootMotionSources());
-	// The minimal automation world has no game-mode movement loop. Simulate the
-	// RootMotionSource reaching its computed endpoint (120 - 20 stop distance)
-	// so this branch verifies the subsystem's Completed classification.
-	MoveTarget->SetActorLocation(Displacement.StartLocation + FVector(100.0f, 0.0f, 0.0f));
+	// The minimal automation world has no game-mode movement loop. Simulate a
+	// coarse runtime frame where MoveToForce advances beyond its computed endpoint
+	// (120 - 20 stop distance). The subsystem must clamp the legal overshoot back
+	// to that endpoint and still classify the displacement as Completed.
+	const FVector ExpectedCompletionLocation =
+		Displacement.StartLocation + FVector(100.0f, 0.0f, 0.0f);
+	MoveTarget->SetActorLocation(Displacement.StartLocation + FVector(180.0f, 0.0f, 0.0f));
 	MoveTarget->GetCharacterMovement()->Velocity = FVector(2500.0f, 0.0f, 0.0f);
 	for (int32 TickIndex = 0; TickIndex < 12 && DisplacementResults.Num() < 3; ++TickIndex)
 	{
@@ -287,6 +299,8 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Completed end reason"), DisplacementResults[2].EndReason,
 			EPRAbilityDisplacementEndReason::Completed);
 	}
+	TestTrue(TEXT("Coarse-frame displacement clamps to its validated endpoint"),
+		MoveTarget->GetActorLocation().Equals(ExpectedCompletionLocation, 0.1f));
 	TestTrue(TEXT("Completed displacement clears residual forced movement velocity"),
 		MoveTarget->GetCharacterMovement()->Velocity.IsNearlyZero());
 
