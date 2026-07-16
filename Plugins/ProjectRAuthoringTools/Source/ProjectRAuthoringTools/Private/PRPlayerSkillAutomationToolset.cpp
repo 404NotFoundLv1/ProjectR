@@ -13,6 +13,7 @@
 #include "Abilities/Player/Tests/PRPlayerSkillTestTypes.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Components/BoxComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Containers/Ticker.h"
@@ -31,6 +32,7 @@
 #include "InputCoreTypes.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
+#include "Sound/SoundBase.h"
 #include "ToolsetRegistry/ToolCallAsyncResultString.h"
 
 namespace PRPlayerSkillAutomationToolset
@@ -989,12 +991,13 @@ class FPIEPlayerSkillCheckpointCRunner
 	: public TSharedFromThis<FPIEPlayerSkillCheckpointCRunner>
 {
 public:
-	static UToolCallAsyncResultString* Start()
+	static UToolCallAsyncResultString* Start(const bool bInAllowExtendedAbilitySet = false)
 	{
 		TSharedRef<FPIEPlayerSkillCheckpointCRunner> Runner =
 			MakeShared<FPIEPlayerSkillCheckpointCRunner>();
 		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(
 			NewObject<UToolCallAsyncResultString>());
+		Runner->bAllowExtendedAbilitySet = bInAllowExtendedAbilitySet;
 		if (!Runner->Initialize())
 		{
 			return Runner->Result.Get();
@@ -1174,7 +1177,8 @@ private:
 			break;
 
 		case ECheckpointCSmokePhase::ThunderImpactWait:
-			if (Elapsed < 0.40)
+			if (Elapsed < 0.40
+				|| (bAllowExtendedAbilitySet && IsAbilityActive(ThunderData->AbilityTag) && Elapsed < 1.00))
 			{
 				break;
 			}
@@ -1186,7 +1190,14 @@ private:
 				&& ASC->GetGameplayTagCount(ThunderCooldownTag()) == 1;
 			if (!bThunderImpactPassed)
 			{
-				Fail(TEXT("ThunderDrop did not apply exactly one delayed 45 damage hit and Stunned state."));
+				Fail(FString::Printf(
+					TEXT("ThunderDrop impact mismatch: Energy=%.2f Health=%.2f Damage=%d Stunned=%s Active=%s Cooldown=%d."),
+					Attributes->GetEnergy(), TargetA.Attributes->GetHealth(),
+					CountCombatEvents(ThunderEventStart, ThunderData->AbilityTag,
+						UPRTagLibrary::GetCombatEventDamageTag()),
+					TargetA.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag()) ? TEXT("true") : TEXT("false"),
+					IsAbilityActive(ThunderData->AbilityTag) ? TEXT("true") : TEXT("false"),
+					ASC->GetGameplayTagCount(ThunderCooldownTag())));
 				return false;
 			}
 			Advance(ECheckpointCSmokePhase::ThunderStatusExpiryWait);
@@ -1373,7 +1384,8 @@ private:
 
 	bool CheckFormalSpecContract() const
 	{
-		if (ASC->GetActivatableAbilities().Num() != 4)
+		const int32 ExpectedSpecCount = bAllowExtendedAbilitySet ? 6 : 4;
+		if (ASC->GetActivatableAbilities().Num() != ExpectedSpecCount)
 		{
 			return false;
 		}
@@ -1754,6 +1766,7 @@ private:
 	bool bAfterimageStarted = false;
 	bool bDecoyConsumedOnce = false;
 	bool bAfterimagePassed = false;
+	bool bAllowExtendedAbilitySet = false;
 	bool bRuntimeClean = false;
 };
 
@@ -1795,12 +1808,13 @@ class FPIEPlayerSkillCheckpointDRunner
 	: public TSharedFromThis<FPIEPlayerSkillCheckpointDRunner>
 {
 public:
-	static UToolCallAsyncResultString* Start()
+	static UToolCallAsyncResultString* Start(const bool bInImmediateGuardPerfect = false)
 	{
 		TSharedRef<FPIEPlayerSkillCheckpointDRunner> Runner =
 			MakeShared<FPIEPlayerSkillCheckpointDRunner>();
 		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(
 			NewObject<UToolCallAsyncResultString>());
+		Runner->bImmediateGuardPerfect = bInImmediateGuardPerfect;
 		if (!Runner->Initialize())
 		{
 			return Runner->Result.Get();
@@ -2121,6 +2135,15 @@ private:
 		case ECheckpointDSmokePhase::GuardKeyboardStart:
 			GuardEventStart = CombatEvents.Num();
 			SendKey(EKeys::Semicolon, IE_Pressed);
+			if (bImmediateGuardPerfect)
+			{
+				if (!ValidateGuardOpeningBlock())
+				{
+					return false;
+				}
+				Advance(ECheckpointDSmokePhase::GuardKeyboardLate);
+				break;
+			}
 			Advance(ECheckpointDSmokePhase::GuardKeyboardPerfect);
 			break;
 
@@ -2129,18 +2152,9 @@ private:
 			{
 				break;
 			}
-			bGuardPress = ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
-				&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Active
-				&& FMath::IsNearlyEqual(Attributes->GetEnergy(), 80.0f, 0.1f);
-			if (!bGuardPress || !ApplyGuardDamage(-AimDirection, EPRCombatRequestStatus::RejectedBlocked))
+			if (!ValidateGuardOpeningBlock())
 			{
-				return FailAndStop(TEXT("CounterProofWall keyboard press did not commit one Guarding block."));
-			}
-			bGuardPerfect = LastDamageEventHas(UPRTagLibrary::GetCombatResponseGuardBlockedTag())
-				&& LastDamageEventHas(UPRTagLibrary::GetCombatResponsePerfectTimingTag());
-			if (!bGuardPerfect)
-			{
-				return FailAndStop(TEXT("CounterProofWall opening front block omitted GuardBlocked or PerfectTiming."));
+				return false;
 			}
 			Advance(ECheckpointDSmokePhase::GuardKeyboardLate);
 			break;
@@ -2489,6 +2503,30 @@ private:
 		return Request;
 	}
 
+	bool ValidateGuardOpeningBlock()
+	{
+		bGuardPress = ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+			&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Active
+			&& FMath::IsNearlyEqual(Attributes->GetEnergy(), 80.0f, 0.1f);
+		if (!bGuardPress || !ApplyGuardDamage(-AimDirection, EPRCombatRequestStatus::RejectedBlocked))
+		{
+			return FailAndStop(TEXT("CounterProofWall keyboard press did not commit one Guarding block."));
+		}
+		bGuardPerfect = LastDamageEventHas(UPRTagLibrary::GetCombatResponseGuardBlockedTag())
+			&& LastDamageEventHas(UPRTagLibrary::GetCombatResponsePerfectTimingTag());
+		if (!bGuardPerfect)
+		{
+			const FGameplayTagContainer LastTags = CombatEvents.IsEmpty()
+				? FGameplayTagContainer() : CombatEvents.Last().ResponseTags;
+			return FailAndStop(FString::Printf(
+				TEXT("CounterProofWall opening front block mismatch: Events=%d LastEvent=%s ResponseTags=%s."),
+				CombatEvents.Num(), CombatEvents.IsEmpty()
+					? TEXT("None") : *CombatEvents.Last().EventTag.ToString(),
+				*LastTags.ToStringSimple()));
+		}
+		return true;
+	}
+
 	bool ApplyGuardDamage(const FVector IncomingDirection, const EPRCombatRequestStatus Expected) const
 	{
 		return CombatSubsystem->ApplyDamage(MakeGuardDamage(IncomingDirection)) == Expected;
@@ -2781,7 +2819,293 @@ private:
 	bool bGuardGamepad = false;
 	bool bGuardMaximum = false;
 	bool bBCRegression = false;
+	bool bImmediateGuardPerfect = false;
 	bool bRuntimeClean = false;
+};
+
+enum class ECheckpointESmokePhase : uint8
+{
+	WaitForPreload,
+	AfterimageStart,
+	AfterimagePlaybackWait,
+	AfterimageCleanupWait,
+	Complete
+};
+
+/**
+ * Narrow E-only smoke. The existing B/C/D runners remain the exhaustive gameplay
+ * checks; this runner proves the shared data-driven presentation seam with formal
+ * six-skill data and a real locally controlled Afterimage activation.
+ */
+class FPIEPlayerSkillCheckpointERunner
+	: public TSharedFromThis<FPIEPlayerSkillCheckpointERunner>
+{
+public:
+	static UToolCallAsyncResultString* Start()
+	{
+		TSharedRef<FPIEPlayerSkillCheckpointERunner> Runner =
+			MakeShared<FPIEPlayerSkillCheckpointERunner>();
+		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(
+			NewObject<UToolCallAsyncResultString>());
+		if (!Runner->Initialize())
+		{
+			return Runner->Result.Get();
+		}
+
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
+			[RunnerPtr = Runner.ToSharedPtr()](float DeltaSeconds) mutable
+			{
+				const bool bContinue = RunnerPtr->Tick(DeltaSeconds);
+				if (!bContinue)
+				{
+					RunnerPtr.Reset();
+				}
+				return bContinue;
+			}));
+		return Runner->Result.Get();
+	}
+
+private:
+	bool Initialize()
+	{
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+		{
+			return Fail(TEXT("RunPIEPlayerSkillCheckpointESmoke requires an active authoritative in-process PIE world."));
+		}
+
+		World = PlayWorld;
+		Controller = Cast<APRPlayerController>(PlayWorld->GetFirstPlayerController());
+		Character = Controller.IsValid() ? Cast<APRPlayerCharacter>(Controller->GetPawn()) : nullptr;
+		PlayerState = Character.IsValid() ? Character->GetPlayerState<APRPlayerState>() : nullptr;
+		ASC = PlayerState.IsValid() ? PlayerState->GetProjectRAbilitySystemComponent() : nullptr;
+		SkillComponent = Character.IsValid() ? Character->GetPlayerSkillComponent() : nullptr;
+		AfterimageData = LoadObject<UPRPlayerSkillDataAsset>(nullptr, AfterimageDataPath);
+		const TCHAR* DataPaths[] = {
+			ShadowDataPath, FireDataPath, ThunderDataPath, AfterimageDataPath,
+			VectorHookDataPath, CounterProofWallDataPath};
+		for (const TCHAR* DataPath : DataPaths)
+		{
+			if (UPRPlayerSkillDataAsset* SkillData = LoadObject<UPRPlayerSkillDataAsset>(nullptr, DataPath))
+			{
+				SkillDataAssets.Add(SkillData);
+			}
+		}
+		if (!Controller.IsValid() || !Character.IsValid() || !PlayerState.IsValid() || !ASC.IsValid()
+			|| !SkillComponent.IsValid() || !AfterimageData.IsValid() || SkillDataAssets.Num() != 6)
+		{
+			return Fail(TEXT("PIE is missing the formal player, six Skill DataAssets, ASC, or PlayerSkillComponent."));
+		}
+		if (!CheckFormalSpecContract() || !CheckPresentationReferences())
+		{
+			return Fail(TEXT("The formal v0.2.0-E AbilitySet or six presentation references are not exact."));
+		}
+		PhaseStartTime = GetPlayWorldTimeSeconds();
+		return true;
+	}
+
+	bool Tick(float)
+	{
+		if (!World.IsValid() || !Character.IsValid() || !ASC.IsValid())
+		{
+			return FailAndStop(TEXT("The PIE world or formal player disappeared during checkpoint-E presentation smoke."));
+		}
+
+		const double Elapsed = GetPlayWorldTimeSeconds() - PhaseStartTime;
+		switch (Phase)
+		{
+		case ECheckpointESmokePhase::WaitForPreload:
+			if (ArePresentationAssetsLoaded())
+			{
+				bPreloadReady = true;
+				Advance(ECheckpointESmokePhase::AfterimageStart);
+			}
+			else if (Elapsed > 3.0)
+			{
+				return FailAndStop(TEXT("Checkpoint-E did not asynchronously preload all six VFX/SFX soft references."));
+			}
+			break;
+
+		case ECheckpointESmokePhase::AfterimageStart:
+			InitialNiagaraCount = CountAttachedNiagaraComponents();
+			InitialAudioCount = CountAttachedAudioComponents();
+			ASC->AbilityInputTagPressed(AfterimageData->InputTag);
+			ASC->AbilityInputTagReleased(AfterimageData->InputTag);
+			Advance(ECheckpointESmokePhase::AfterimagePlaybackWait);
+			break;
+
+		case ECheckpointESmokePhase::AfterimagePlaybackWait:
+			if (Elapsed >= 0.03)
+			{
+				bLocalPlayback = CountAttachedNiagaraComponents() > InitialNiagaraCount
+					&& CountAttachedAudioComponents() > InitialAudioCount;
+				if (!bLocalPlayback)
+				{
+					return FailAndStop(TEXT("Checkpoint-E did not create local Niagara and audio components after a committed formal skill."));
+				}
+				Advance(ECheckpointESmokePhase::AfterimageCleanupWait);
+			}
+			break;
+
+		case ECheckpointESmokePhase::AfterimageCleanupWait:
+			if (Elapsed >= 0.35)
+			{
+				bCleanup = CountAttachedNiagaraComponents() == InitialNiagaraCount
+					&& CountAttachedAudioComponents() == InitialAudioCount
+					&& !IsAbilityActive(AfterimageData->AbilityTag)
+					&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle;
+				if (!bCleanup)
+				{
+					return FailAndStop(TEXT("Checkpoint-E left a presentation component or active Afterimage state behind."));
+				}
+				Advance(ECheckpointESmokePhase::Complete);
+			}
+			break;
+
+		case ECheckpointESmokePhase::Complete:
+			return Finish();
+		}
+		return true;
+	}
+
+	bool CheckFormalSpecContract() const
+	{
+		if (!ASC.IsValid() || ASC->GetActivatableAbilities().Num() != 6)
+		{
+			return false;
+		}
+		const TCHAR* ExpectedTags[] = {
+			TEXT("Skill.ShadowThrust"), TEXT("Skill.FireSlash"), TEXT("Skill.ThunderDrop"),
+			TEXT("Skill.AfterimageDodge"), TEXT("Skill.VectorHook"), TEXT("Skill.CounterProofWall")};
+		const TArray<FGameplayAbilitySpec>& Specs = ASC->GetActivatableAbilities();
+		for (int32 Index = 0; Index < Specs.Num(); ++Index)
+		{
+			const UPRGameplayAbility* Ability = Cast<UPRGameplayAbility>(Specs[Index].Ability);
+			if (!Ability || Ability->GetProjectRAbilityTag().ToString() != ExpectedTags[Index])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool CheckPresentationReferences() const
+	{
+		if (SkillDataAssets.Num() != 6)
+		{
+			return false;
+		}
+		for (const UPRPlayerSkillDataAsset* SkillData : SkillDataAssets)
+		{
+			if (!IsValid(SkillData) || SkillData->VFX.IsNull() || SkillData->SFX.IsNull())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ArePresentationAssetsLoaded() const
+	{
+		for (const UPRPlayerSkillDataAsset* SkillData : SkillDataAssets)
+		{
+			if (!IsValid(SkillData) || !IsValid(SkillData->VFX.ToSoftObjectPath().ResolveObject())
+				|| !IsValid(SkillData->SFX.ToSoftObjectPath().ResolveObject()))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	int32 CountAttachedNiagaraComponents() const
+	{
+		TInlineComponentArray<UActorComponent*> Components(Character.Get());
+		return Components.FilterByPredicate([](const UActorComponent* Component)
+		{
+			return IsValid(Component) && Component->GetClass()->GetFName() == TEXT("NiagaraComponent");
+		}).Num();
+	}
+
+	int32 CountAttachedAudioComponents() const
+	{
+		TInlineComponentArray<UAudioComponent*> Components(Character.Get());
+		return Components.Num();
+	}
+
+	bool IsAbilityActive(const FGameplayTag AbilityTag) const
+	{
+		FPRAbilityRuntimeState State;
+		return ASC.IsValid() && ASC->GetAbilityRuntimeStateByAbilityTag(AbilityTag, State) && State.bActive;
+	}
+
+	void Advance(const ECheckpointESmokePhase NextPhase)
+	{
+		Phase = NextPhase;
+		PhaseStartTime = GetPlayWorldTimeSeconds();
+	}
+
+	double GetPlayWorldTimeSeconds() const
+	{
+		return World.IsValid() ? World->GetTimeSeconds() : 0.0;
+	}
+
+	bool Finish()
+	{
+		const bool bPassed = bPreloadReady && bLocalPlayback && bCleanup && CheckFormalSpecContract();
+		TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
+		Json->SetStringField(TEXT("status"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+		Json->SetNumberField(TEXT("formalSpecCount"), ASC.IsValid() ? ASC->GetActivatableAbilities().Num() : 0);
+		Json->SetBoolField(TEXT("sixPresentationReferences"), CheckPresentationReferences());
+		Json->SetBoolField(TEXT("preloadReady"), bPreloadReady);
+		Json->SetBoolField(TEXT("localPlayback"), bLocalPlayback);
+		Json->SetBoolField(TEXT("runtimeClean"), bCleanup);
+		FString JsonString;
+		TSharedRef<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> Writer =
+			TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&JsonString);
+		FJsonSerializer::Serialize(Json, Writer);
+		if (bPassed)
+		{
+			Result->SetValue(JsonString);
+		}
+		else
+		{
+			Result->SetError(JsonString);
+		}
+		return false;
+	}
+
+	bool Fail(const FString& Message)
+	{
+		Result->SetError(Message);
+		return false;
+	}
+
+	bool FailAndStop(const FString& Message)
+	{
+		if (ASC.IsValid())
+		{
+			ASC->CancelAllAbilities();
+		}
+		return Fail(Message);
+	}
+
+	TStrongObjectPtr<UToolCallAsyncResultString> Result;
+	TWeakObjectPtr<UWorld> World;
+	TWeakObjectPtr<APRPlayerController> Controller;
+	TWeakObjectPtr<APRPlayerCharacter> Character;
+	TWeakObjectPtr<APRPlayerState> PlayerState;
+	TWeakObjectPtr<UPRAbilitySystemComponent> ASC;
+	TWeakObjectPtr<UPRPlayerSkillComponent> SkillComponent;
+	TWeakObjectPtr<UPRPlayerSkillDataAsset> AfterimageData;
+	TArray<TObjectPtr<UPRPlayerSkillDataAsset>> SkillDataAssets;
+	ECheckpointESmokePhase Phase = ECheckpointESmokePhase::WaitForPreload;
+	double PhaseStartTime = 0.0;
+	int32 InitialNiagaraCount = 0;
+	int32 InitialAudioCount = 0;
+	bool bPreloadReady = false;
+	bool bLocalPlayback = false;
+	bool bCleanup = false;
 };
 } // namespace PRPlayerSkillAutomationToolset
 
@@ -2795,7 +3119,22 @@ UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCh
 	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointCRunner::Start();
 }
 
+UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointECRegressionSmoke()
+{
+	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointCRunner::Start(true);
+}
+
 UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointDSmoke()
 {
 	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointDRunner::Start();
+}
+
+UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointEDRegressionSmoke()
+{
+	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointDRunner::Start(true);
+}
+
+UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointESmoke()
+{
+	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointERunner::Start();
 }

@@ -267,13 +267,13 @@ date: "2026-07-10"
 
 **决策**：以 `UPRPlayerSkillDataAsset`/inline Fragment 冻结数据，以 `UPRPlayerSkillGameplayAbility` 从 Spec SourceObject 读取并锁定执行 Snapshot；`UPRPlayerSkillComponent` 只持有 Avatar 局部 Phase/Timer/位移 ID，`UPRPlayerSkillSubsystem` 只持有 World 级确定性查询和 RootMotionSource 位移注册表，ASC 继续独占 Spec/Input/Commit/Cost/Cooldown。目标资格由 native `IPRAbilityTargetInterface` 表达，不引入 Faction/Team 类型；所有几何使用 Source Y 平面的 X/Z 投影、固定 LOS、去重与稳定排序。Combat 只追加方向、Mitigation 和结构化 AbilityOutcome，不依赖具体技能。
 
-**后果**：B–D 可在不改公共查询签名和 Combat 依赖方向的前提下实现六技能；E 可在验证具体逻辑后填充默认 AbilitySet。A 创建 29 个空壳 Package、只修改 InputConfig/IMC 两项，默认 AbilitySet 继续为空，不创建状态 GE、VFX、SFX 或业务 Graph。
+**后果**：B–D 在不改公共查询签名和 Combat 依赖方向的前提下实现六技能；E 在不改变这些合同的前提下将六项严格填入默认 AbilitySet，并为六个 DataAsset 绑定安全占位 VFX/SFX。通用表现只在 Component 的异步、本地、可失败路径播放，不能成为第二套技能、输入、Cost/Cooldown、Combat 或生命周期事实源。
 
 **影响版本/合同**：v0.2.0-B–E、v0.2.1、v0.2.2、v0.2.3、v0.2.4、v0.3.2、v0.4.2、v0.4.4。既有 71 Tag、ASC/AttributeSet/Save/Debug、Combat 状态枚举旧值与 v0.1.0 输入前缀保持兼容。
 
 **迁移/回滚**：先准确恢复 InputConfig 六项和 IMC 13 项；只有获得逐 Package 删除批准后才删除 29 个 A 新 Package，再反向撤销 C++、GameplayTag Config 与文档。不得触碰 DefaultAbilitySet、地图、状态 GE、VFX/SFX、MCPTest、DefaultAttributes、GE_Damage、用户 Save 或 ProjectRDebug。
 
-**验证**：TDD RED 只因新公共类型/API 缺失；最终 BuildEditor、PlayerSkill 5/5、Input/GAS/Combat/Ability/Save/Debug 共 33/33、18 个 Blueprint warnings-as-errors 编译、31 项精确保存、Dirty=0 与重启回载均通过。v020A 报告汇总 37 个 required check；PIE、网络 PIE、物理手柄、人工手感和 Toolset 扩展按 A 范围保持 optional `NOT_RUN`。
+**验证**：A 的 TDD RED 只因新公共类型/API 缺失；A-D RED 证据在 E 中完成不可变完整性审计。最终 BuildEditor、PlayerSkill 5/5、Input/GAS/Combat/Ability/Save/Debug 共 33/33、六个 GA warnings-as-errors、精确保存、Dirty=0、正常重启回载、六技能固定 PIE 和 B/C/D 回归均实际通过。用户在 `L_CombatGym` 完成六技能手感 runbook 并明确回复 PASS；`v020e-final-report-20260717` 汇总为 58/58 required PASS。网络 PIE、物理手柄、Package 与 GC 未执行且未作为通过证据。
 
 # ADR 模板
 

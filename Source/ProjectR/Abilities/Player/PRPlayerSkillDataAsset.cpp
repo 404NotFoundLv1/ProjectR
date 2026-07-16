@@ -7,6 +7,8 @@
 #include "Abilities/Player/PRPlayerSkillGameplayAbility.h"
 #include "GameplayEffect.h"
 #include "Misc/DataValidation.h"
+#include "NiagaraSystem.h"
+#include "Sound/SoundBase.h"
 
 FPrimaryAssetId UPRPlayerSkillDataAsset::GetPrimaryAssetId() const
 {
@@ -143,6 +145,14 @@ EDataValidationResult UPRPlayerSkillDataAsset::IsDataValid(FDataValidationContex
 		{
 			AddError(TEXT("SkillFragment validation failed."));
 		}
+	}
+	if (!VFX.LoadSynchronous())
+	{
+		AddError(TEXT("VFX must reference a loadable UNiagaraSystem placeholder."));
+	}
+	if (!SFX.LoadSynchronous())
+	{
+		AddError(TEXT("SFX must reference a loadable USoundBase placeholder."));
 	}
 
 	return bValid ? EDataValidationResult::Valid : EDataValidationResult::Invalid;

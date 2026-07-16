@@ -263,6 +263,16 @@ date: "2026-07-10"
 - 独立结构化 AutomationReport `v020d-final-report-20260716` 结果为 PASS；`Package`、`PhysicalGamepad`、`HumanSkillFeelJudgment` 为 optional `NOT_RUN`，GC 未执行。
 - Future Compatibility Review PASS：D 不依赖具体敌人、Boss、HUD、QTE、Save 或 Debug 类型；v0.2.0-E 只追加表现、手感与完整 58 项报告，后续版本只消费稳定 Target/Mobility、AbilityOutcome/CombatEvent、DataAsset 与 AbilitySet Handle。没有必需人工步骤；Package、PhysicalGamepad、NetworkPIEReplication 与 HumanSkillFeelJudgment 保持不冒充 PASS。
 
+# 2026-07-17 - v0.2.0-E 六技能整合、占位表现与手感验收（Completed）
+
+- 公共 v0.2.0 已完成，`CURRENT_VERSION.md` 保持指向 v0.2.0 而仅将状态标记为 Completed；没有推进或开始 v0.2.1，也没有创建提交或推送。
+- 新增 `UPRPlayerSkillComponent` 的通用、安全表现缓存和播放路径：从已授予 Skill DataAsset 异步预加载软 `VFX`/`SFX`，仅在本地非 Dedicated Server 播放附着 Niagara/Audio；激活不做同步加载。缺失/失败只记录一次受控 Warning 并跳过表现，不能影响能力 Commit、伤害、位移、Cost、Cooldown、状态或 AbilityOutcome。EndAbility、Avatar replacement、World Cleanup 与 Component EndPlay 释放表现组件和流式句柄，无永久 Tick。
+- Unreal MCP 串行创建并精确保存六个 `/Game/ProjectR/VFX/Skills/VFX_*` 和六个 `/Game/ProjectR/Audio/Skills/SFX_*`，并仅为六个已有 `DA_Skill_*` 绑定软引用后精确保存。六个 GA warnings-as-errors 编译、全部 18 个 E 保存目标 Dirty=0，正常 Editor 重启后逐项回读引用。全版本唯一清单准确为 45 Create + 3 Modify；E 再保存的六个 DA 是 A 的 Create Package，不增加 Modify 计数。
+- 新增固定无参 E 表现 smoke，以及仅供六 Spec 最终环境使用的 C/D 兼容回归入口；B/C/D 原有公共入口不改语义。E smoke、B smoke、E-C 和 E-D 回归在 `L_CombatGym` 真实 PIE PASS；所有会话 StopPIE，运行时无额外 Effect、Spec、Tag、Timer、Delegate、RootMotion、残影、表现组件或 transient Actor 泄漏。
+- 新鲜自动化通过：`ProjectR.PlayerSkill` 5/5、Input 3/3、GAS 4/4、Combat 4/4、Ability 5/5、Save 5/5、Debug 12/12。`v020e-stage1-report-20260716` 如实记录人工项 NOT_RUN；用户在客观门均通过后按 `L_CombatGym` 六技能 runbook 实际验收并明确回复 PASS，最终 `Saved/AutomationReports/v020e-final-report-20260717/v020e-final-None/result.json` 为 58/58 required PASS。
+- Known Issues 未出现新的真实状态变化；KI-019 的 `.uplugin` 依赖元数据 Warning 和既有粗帧隔离流程仍按既有条目保持，不以修改 Forbidden path 掩盖。GameplayTagTaxonomy 无真实 Tag 变化，未修改。`Package`、`PhysicalGamepad`、`NetworkPIEReplication` 与 GC 未运行，未被记为完成证据。
+- Future Compatibility Review PASS：敌人/Boss 继续只实现稳定 Target/Combat/Mobility 和 Heavy/Anchored；HUD/QTE 只读 RuntimeState、AbilityOutcome/CombatEvent；v0.2.4 只替换 DataAsset 数值/表现软引用；Meta、QA、Shipping 只消费稳定 ID/Handle/固定输入。Save 和实时玩法不保存/依赖运行时 Handle、Target、Timer、Held Input、Delegate、RootMotion、Guarding、表现组件、网络或 LLM。
+
 # 版本记录模板
 
 ```text

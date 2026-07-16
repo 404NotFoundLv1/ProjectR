@@ -23,7 +23,19 @@ public:
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointCSmoke();
 
+	/** Runs the unchanged C sequence against the final six-skill AbilitySet without saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointECRegressionSmoke();
+
 	/** Runs the fixed VectorHook and CounterProofWall sequence without saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointDSmoke();
+
+	/** Runs the unchanged D sequence with an in-call-stack CounterProofWall perfect-block assertion. */
+	UFUNCTION(meta=(AICallable))
+	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointEDRegressionSmoke();
+
+	/** Runs the fixed six-skill presentation preload, local playback, and cleanup sequence without saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointESmoke();
 };

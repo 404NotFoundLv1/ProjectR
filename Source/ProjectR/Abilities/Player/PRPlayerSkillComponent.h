@@ -8,7 +8,15 @@
 #include "PRPlayerSkillComponent.generated.h"
 
 struct FPRDamageRequest;
+class APRPlayerCharacter;
+class UPRAbilitySystemComponent;
 class UPRGA_CounterProofWall;
+class UPRPlayerSkillDataAsset;
+class UNiagaraComponent;
+class UNiagaraSystem;
+class UAudioComponent;
+class USoundBase;
+struct FStreamableHandle;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FPRPlayerSkillPhaseExpiredNative,
@@ -46,10 +54,19 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	friend class APRPlayerCharacter;
 	friend class UPRGA_CounterProofWall;
+	friend class UPRPlayerSkillGameplayAbility;
 
 	bool BeginCounterProofGuard(FGameplayTag AbilityTag, float HalfAngleDegrees, double PerfectTimingEndTime);
 	void ClearCounterProofGuard(FGameplayTag AbilityTag);
+	void PreloadSkillPresentation(UPRAbilitySystemComponent* AbilitySystemComponent);
+	void PlaySkillPresentation(const UPRPlayerSkillDataAsset* SkillData);
+	void StopSkillPresentation(FGameplayTag AbilityTag);
+	void ClearSkillPresentation();
+	void HandlePresentationPreloadCompleted(uint32 LoadGeneration);
+	void WarnPresentationOnce(FName WarningKey, const FString& Message);
+	bool ShouldPlayLocalPresentation() const;
 	void HandlePhaseExpired();
 	void HandleDisplacementFinished(const FPRAbilityDisplacementResult& Result);
 	void EnsureSubsystemBinding();
@@ -69,4 +86,15 @@ private:
 	FDelegateHandle DisplacementFinishedHandle;
 	FPRPlayerSkillPhaseExpiredNative PhaseExpiredEvent;
 	FCounterProofGuardContext CounterProofGuard;
+	TSharedPtr<FStreamableHandle> PresentationLoadHandle;
+	uint32 PresentationLoadGeneration = 0;
+	UPROPERTY(Transient)
+	TMap<FGameplayTag, TObjectPtr<UPRPlayerSkillDataAsset>> PresentationDataByTag;
+	UPROPERTY(Transient)
+	TMap<FGameplayTag, TObjectPtr<UNiagaraSystem>> LoadedPresentationVFX;
+	UPROPERTY(Transient)
+	TMap<FGameplayTag, TObjectPtr<USoundBase>> LoadedPresentationSFX;
+	TMap<FGameplayTag, TWeakObjectPtr<UNiagaraComponent>> ActivePresentationVFX;
+	TMap<FGameplayTag, TWeakObjectPtr<UAudioComponent>> ActivePresentationSFX;
+	TSet<FName> PresentationWarningKeys;
 };

@@ -21,7 +21,7 @@ date: "2026-07-10"
 | v0.1.3 | 核心基础设施 | 技能授予、冷却、资源消耗和输入 Tag | Completed | v0.1.2 | Versions/v0.1.3.md |
 | v0.1.4 | 核心基础设施 | 本地 SaveGame 与版本化存档结构 | Completed | v0.1.3 | Versions/v0.1.4.md |
 | v0.1.5 | 核心基础设施 | Debug 菜单、日志分类和开发命令 | Completed | v0.1.4 | Versions/v0.1.5.md |
-| v0.2.0 | 战斗纵切片 | 实现 6 个 P0 玩家技能 | In Progress | v0.1.5 | Versions/v0.2.0.md |
+| v0.2.0 | 战斗纵切片 | 实现 6 个 P0 玩家技能 | Completed | v0.1.5 | Versions/v0.2.0.md |
 | v0.2.1 | 战斗纵切片 | 敌人基类、三种小怪和精英 | Planned | v0.2.0 | 进入阶段前生成 |
 | v0.2.2 | 战斗纵切片 | 审计者 Boss 纵切片 | Planned | v0.2.1 | 进入阶段前生成 |
 | v0.2.3 | 战斗纵切片 | 战斗 HUD 与技能反馈 | Planned | v0.2.2 | 进入阶段前生成 |

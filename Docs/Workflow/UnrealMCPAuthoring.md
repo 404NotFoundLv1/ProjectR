@@ -149,3 +149,9 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - `GE_State_Burning` 与 Fire GA 先作为两项准确 Manifest 保存并重启回读，运行时/历史测试通过后才单独写入并保存 DefaultAbilitySet；总 Distinct Package 为三个。VFX/SFX、地图、MCPTest、Shadow GA、Skill DA、既有 Cost/Cooldown GE、Input 与 Player Blueprint 均未加入保存清单。
 - 官方 SceneTools 在 PIE active 时明确拒绝 Actor 创建；B 的测试代理声明为 transient/not-placeable，不能预先放入并保存正式地图。经用户单独批准，固定无参 Editor-only `RunPIEPlayerSkillCheckpointBSmoke()` 只在 authoritative PlayWorld 创建/清理 transient 目标和 WorldStatic 墙，注入正式键鼠/手柄映射，读取正式 Spec/Effect/CombatEvent，并在所有退出路径恢复输入、属性、Transform、TimeDilation、delegate、Timer 与临时 Actor；它不接受任意参数且不保存 Package。
 - 隐藏/后台 ProjectR Editor 即使设置 `Slate.bAllowThrottling=0`，本机 PIE 仍可能以约 0.3333 秒离散帧采样严格 Timer。失败结果只能用于识别环境限制，必须 StopPIE 并复查 Dirty，不能降低运行时断言。对不需要可见视口输入的既有 Combat smoke，可在新进程使用 UE 官方 `-Unattended -RenderOffScreen` 无窗口模式保持细时间步；本轮原 0.10 秒合同实测 0.1107/0.1108 秒 PASS。该模式没有顶层窗口，不得用于需要“正常关闭并重启”证据的资产生产阶段；资产作者阶段继续使用可正常 WM_CLOSE 的标准 Editor。
+
+# v0.2.0-E 安全占位表现与六技能固定 PIE
+
+- 官方 Niagara 工具可创建合规 `UNiagaraSystem`；本轮以六个准确 `/Game/ProjectR/VFX/Skills/VFX_*` Package 创建安全占位系统，不创建 Manifest 外 Material、Emitter、地图或辅助 Package。官方通用工具没有一个能以固定、可审计方式生成六个无外部素材的 `USoundBase` 占位内容，因此经已批准的最小 Editor-only `UPRPlayerSkillPresentationToolset::CreateCheckpointEPlaceholderSounds()` 创建六个固定 PCM SoundWave Package；入口无参数、路径与波形固定、不接收任意代码/路径/音频数据、不删除不保存，仍由 MCP 对返回的准确 Package 逐项保存。
+- 该 Toolset 只服务 E 的 6 个 `/Game/ProjectR/Audio/Skills/SFX_*` Manifest 路径；不进入 Runtime/Shipping、不提供任意资产作者能力。因 Runtime 播放使用现有 `UPRPlayerSkillComponent` 的异步 DataAsset 软引用缓存，Toolset 不参与玩法、输入、Ability、Combat、Cost/Cooldown 或保存。
+- 原 B/C/D 固定 PIE 公共入口不改语义。六 Spec 的最终 E 环境通过新增固定无参 `RunPIEPlayerSkillCheckpointESmoke()`、`RunPIEPlayerSkillCheckpointECRegressionSmoke()`、`RunPIEPlayerSkillCheckpointEDRegressionSmoke()` 验收；入口仅使用 `L_CombatGym`、正式 AbilitySet、固定输入和 transient 代理，清理所有运行时对象且不保存 Package。C/D 兼容入口仅解决最终六 Spec/粗帧的观察边界，不能替代或改变各检查点的冻结入口。

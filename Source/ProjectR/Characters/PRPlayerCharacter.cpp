@@ -379,6 +379,10 @@ bool APRPlayerCharacter::InitializeAbilitySystem()
 	UPRAbilitySystemComponent* ASC = ProjectRPlayerState->GetProjectRAbilitySystemComponent();
 	BindMoveSpeed(ASC);
 	BoundPlayerState = ProjectRPlayerState;
+	if (PlayerSkillComponent)
+	{
+		PlayerSkillComponent->PreloadSkillPresentation(ASC);
+	}
 	if (ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag()))
 	{
 		HandleCombatLifeStateChanged(true);
@@ -388,6 +392,10 @@ bool APRPlayerCharacter::InitializeAbilitySystem()
 
 void APRPlayerCharacter::CleanupAbilitySystem()
 {
+	if (PlayerSkillComponent)
+	{
+		PlayerSkillComponent->ClearSkillPresentation();
+	}
 	UnbindMoveSpeed();
 	APRPlayerState* ProjectRPlayerState = BoundPlayerState.Get();
 	if (!ProjectRPlayerState)

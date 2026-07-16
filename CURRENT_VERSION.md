@@ -4,7 +4,7 @@ Version: v0.2.0
 
 Task file: `Docs/Versions/v0.2.0.md`
 
-Status: In Progress
+Status: Completed
 
 Only this version may be implemented.
 

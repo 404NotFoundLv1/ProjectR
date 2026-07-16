@@ -34,6 +34,10 @@ bool UPRPlayerSkillGameplayAbility::CommitAbility(
 		return false;
 	}
 	bSnapshotCommitted = true;
+	if (UPRPlayerSkillComponent* Component = GetPlayerSkillComponent())
+	{
+		Component->PlaySkillPresentation(GetSkillDataAsset());
+	}
 	return true;
 }
 
@@ -46,6 +50,10 @@ void UPRPlayerSkillGameplayAbility::EndAbility(
 {
 	if (UPRPlayerSkillComponent* Component = GetPlayerSkillComponent())
 	{
+		if (const UPRPlayerSkillDataAsset* SkillData = GetSkillDataAsset())
+		{
+			Component->StopSkillPresentation(SkillData->AbilityTag);
+		}
 		if (bWasCancelled)
 		{
 			Component->CancelExecution();

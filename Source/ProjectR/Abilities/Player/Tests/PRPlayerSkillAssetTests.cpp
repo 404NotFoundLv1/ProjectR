@@ -16,6 +16,8 @@
 #include "InputCoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/DataValidation.h"
+#include "NiagaraSystem.h"
+#include "Sound/SoundBase.h"
 #include "UObject/UnrealType.h"
 
 namespace PRPlayerSkillAssetAutomation
@@ -291,9 +293,21 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 		TestEqual(*FString::Printf(TEXT("%s status"), Expected.Name), Skill->StatusDuration, Expected.StatusDuration);
 		TestEqual(*FString::Printf(TEXT("%s fragment class"), Expected.Name),
 			Skill->SkillFragment ? Skill->SkillFragment->GetClass() : nullptr, Expected.FragmentClass);
-		TestTrue(*FString::Printf(TEXT("%s Montage empty in A"), Expected.Name), Skill->Montage.IsNull());
-		TestTrue(*FString::Printf(TEXT("%s VFX empty in A"), Expected.Name), Skill->VFX.IsNull());
-		TestTrue(*FString::Printf(TEXT("%s SFX empty in A"), Expected.Name), Skill->SFX.IsNull());
+		TestTrue(*FString::Printf(TEXT("%s Montage remains intentionally empty"), Expected.Name), Skill->Montage.IsNull());
+		const FString ExpectedVFXPath = FString::Printf(
+			TEXT("/Game/ProjectR/VFX/Skills/VFX_%s.VFX_%s"), Expected.Name, Expected.Name);
+		const FString ExpectedSFXPath = FString::Printf(
+			TEXT("/Game/ProjectR/Audio/Skills/SFX_%s.SFX_%s"), Expected.Name, Expected.Name);
+		TestFalse(*FString::Printf(TEXT("%s VFX reference is configured"), Expected.Name), Skill->VFX.IsNull());
+		TestEqual(*FString::Printf(TEXT("%s VFX soft path"), Expected.Name),
+			Skill->VFX.ToSoftObjectPath().ToString(), ExpectedVFXPath);
+		TestTrue(*FString::Printf(TEXT("%s VFX class"), Expected.Name),
+			Skill->VFX.LoadSynchronous() && Skill->VFX.Get()->IsA<UNiagaraSystem>());
+		TestFalse(*FString::Printf(TEXT("%s SFX reference is configured"), Expected.Name), Skill->SFX.IsNull());
+		TestEqual(*FString::Printf(TEXT("%s SFX soft path"), Expected.Name),
+			Skill->SFX.ToSoftObjectPath().ToString(), ExpectedSFXPath);
+		TestTrue(*FString::Printf(TEXT("%s SFX class"), Expected.Name),
+			Skill->SFX.LoadSynchronous() && Skill->SFX.Get()->IsA<USoundBase>());
 
 		const UPRPlayerSkillGameplayAbility* AbilityCDO = Skill->AbilityClass
 			? Skill->AbilityClass->GetDefaultObject<UPRPlayerSkillGameplayAbility>() : nullptr;

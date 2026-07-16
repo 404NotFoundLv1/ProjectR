@@ -161,6 +161,8 @@ date: "2026-07-10"
 - v0.2.0-B 在不扩展上述公共合同的前提下实现 ShadowThrust 与 FireSlash：具体 GA 只通过 Subsystem 私有适配器调用统一 Combat；Shadow 使用现有 ForwardSweep、AvatarComponent RootMotion 和每次激活 TargetId 去重，Fire 使用 ForwardArea 并以 WorldSubsystem 私有注册表维护唯一 Burning 实例。Burning 每 0.5 秒经 Combat 结算一次，共三次；刷新来源与快照但不叠加第二个 Effect/Timer。
 - B 的正式 `GE_State_Burning` 只授予 `State.Burning`，1.5 秒、无 Period、AggregateByTarget/StackLimit 1/成功应用刷新 Duration；Fire GA CDO 是该 GE 的唯一具体技能绑定。`DA_DefaultAbilitySet` 在 B 只含 ShadowThrust、FireSlash 两个 startup Entry，ASC 的 GrantId/SpecHandle/Input/Commit/Cost/Cooldown 所有权不变。
 - 正式侧视角色以 Mesh 的局部 Right 轴表达当前 X 方向朝向（相对 yaw -90 为 +X、+90 为 -X）；Shadow/Fire 只把该轴投影到 X/Z，禁止使用会落入 Y 轴的 Mesh Forward。受控位移结束、阻挡或取消时，移除 RootMotionSource 后必须清除其残余强制速度，避免 Recovery 漂出已验证终点。Shadow 若把原始 450 cm 路径裁到 WorldStatic 前的安全终点，即使公共位移请求到达该安全终点，具体 GA 仍按技能层 Blocked 处理且不得发布 `DisplacementApplied`。
+- v0.2.0-E 为六个已授予正式 Skill DataAsset 绑定安全占位 `VFX`/`SFX` 软引用。`UPRPlayerSkillComponent` 是唯一通用表现入口：在 Avatar 安全阶段异步预加载已授予 Skill DataAsset 的软引用，只在本地非 Dedicated Server 创建附着的 Niagara/Audio 组件；激活不得同步加载。软引用缺失或未加载时只记录一次受控 Warning 并跳过表现，绝不影响 Check/Commit、Combat、位移、Cost、Cooldown、状态或 AbilityOutcome。能力结束、取消、Avatar 替换、World Cleanup、Component EndPlay 与 Owner EndPlay 必须幂等停止/销毁表现组件并释放流式句柄。表现资产不得包含碰撞、伤害、GameplayTag、GameplayCue、执行逻辑或永久 Tick。
+- v0.2.0-E 没有新增 GameplayTag、Input、Save、Spec、GrantId、EffectHandle 或公共 PlayerSkill API；`DA_DefaultAbilitySet` 保持六项严格顺序。表现只可由 v0.2.4 通过 DataAsset 软引用替换，不得把运行时 Target、Timer、RootMotion、Held Input、Guarding 或 UObject 引用写入 Save。
 
 冻结项：四个公共枚举、四个公共结构字段顺序、InputTag 动态 Spec Tag 语义、AbilityTag、六个失败 Tag、AbilitySet PrimaryAssetId/Schema、GrantId 幂等语义、Commit 顺序和生命周期事件顺序。
 

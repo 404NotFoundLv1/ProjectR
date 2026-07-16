@@ -16,6 +16,7 @@ public class ProjectRAuthoringTools : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"AudioEditor",
 			"CoreUObject",
 			"AssetRegistry",
 			"Engine",
