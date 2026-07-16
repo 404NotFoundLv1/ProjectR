@@ -3,9 +3,11 @@
 #pragma once
 
 #include "Abilities/Player/PRAbilityTargetInterface.h"
+#include "Abilities/Player/PRGA_VectorHook.h"
 #include "Abilities/Player/PRPlayerSkillGameplayAbility.h"
 #include "Characters/PRPlayerCharacter.h"
 #include "Core/PRCombatEventSubjectInterface.h"
+#include "Core/PRPlayerState.h"
 #include "GameplayEffect.h"
 
 #include "PRPlayerSkillTestTypes.generated.h"
@@ -85,11 +87,22 @@ public:
 	virtual EPRAbilityTargetMobility GetAbilityTargetMobility() const override;
 	virtual bool CanBeTargetedByAbility(FGameplayTag AbilityTag) const override;
 
-	void ConfigureTarget(FName InTargetId, bool bInTargetable = true);
+	void ConfigureTarget(
+		FName InTargetId,
+		bool bInTargetable = true,
+		EPRAbilityTargetMobility InMobility = EPRAbilityTargetMobility::Light);
 
 private:
 	FName TargetId = TEXT("Automation.CombatTarget");
+	EPRAbilityTargetMobility Mobility = EPRAbilityTargetMobility::Light;
 	bool bTargetable = true;
+};
+
+/** Native PlayerState fixture with no Blueprint InitialAbilitySets. */
+UCLASS(Transient, NotPlaceable, NotBlueprintable)
+class PROJECTR_API APRPlayerSkillTestPlayerState final : public APRPlayerState
+{
+	GENERATED_BODY()
 };
 
 /** In-memory Burning GE used before the formal checkpoint-B asset is authored. */
@@ -117,4 +130,11 @@ protected:
 		const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData) override;
+};
+
+/** Non-abstract VectorHook host used only to exercise the native parent in automation. */
+UCLASS(Transient, NotBlueprintable)
+class PROJECTR_API UPRPlayerSkillVectorHookTestAbility final : public UPRGA_VectorHook
+{
+	GENERATED_BODY()
 };

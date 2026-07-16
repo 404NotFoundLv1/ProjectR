@@ -353,52 +353,12 @@ bool UPRPlayerSkillSubsystem::RequestDisplacement(
 	AActor* Source = Request.SourceActor.Get();
 	ACharacter* Target = Cast<ACharacter>(Request.TargetActor.Get());
 	UWorld* World = GetWorld();
-	if (!World || !IsValid(Source) || !IsValid(Target)
-		|| Source->GetWorld() != World || Target->GetWorld() != World
-		|| !Source->HasAuthority() || !Target->HasAuthority()
-		|| !Request.AbilityTag.IsValid() || !Request.AbilityTag.ToString().StartsWith(TEXT("Skill."))
-		|| !IsFiniteVector(Request.StartLocation) || !IsFiniteVector(Request.DesiredEndLocation)
-		|| !FMath::IsFinite(Request.Duration) || Request.Duration <= 0.0f
-		|| !FMath::IsFinite(Request.StopDistance) || Request.StopDistance < 0.0f
-		|| !Request.bSweep || !Request.bStopOnBlockingHit
-		|| !Target->GetActorLocation().Equals(Request.StartLocation, PlaneTolerance)
-		|| FMath::Abs(Request.StartLocation.Y - Request.DesiredEndLocation.Y) > PlaneTolerance
-		|| FMath::Abs(Request.StartLocation.Y - Source->GetActorLocation().Y) > PlaneTolerance)
+	FVector EffectiveEnd;
+	if (!World || !ValidateDisplacementRequest(Request, EffectiveEnd, OutFailureTag))
 	{
-		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
 		return false;
 	}
-
-	for (const TPair<FGuid, FActiveDisplacement>& Pair : ActiveDisplacements)
-	{
-		if (Pair.Value.TargetCharacter == Target)
-		{
-			OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
-			return false;
-		}
-	}
-
-	FVector Travel = ToPlanar(Request.DesiredEndLocation - Request.StartLocation);
-	const float Distance = Travel.Size();
-	if (Distance <= Request.StopDistance + UE_SMALL_NUMBER || !Travel.Normalize())
-	{
-		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
-		return false;
-	}
-	FVector EffectiveEnd = Request.DesiredEndLocation - Travel * Request.StopDistance;
-	EffectiveEnd.Y = Request.StartLocation.Y;
-	if (HasWorldStaticObstruction(*Target, Request.StartLocation, EffectiveEnd, Source))
-	{
-		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailObstructedTag();
-		return false;
-	}
-
-	UCharacterMovementComponent* Movement = Target->GetCharacterMovement();
-	if (!Movement || !Target->GetCapsuleComponent())
-	{
-		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
-		return false;
-	}
+	UCharacterMovementComponent* Movement = Target ? Target->GetCharacterMovement() : nullptr;
 
 	const FGuid RequestId = FGuid::NewGuid();
 	TSharedPtr<FRootMotionSource_MoveToForce> RootMotion = MakeShared<FRootMotionSource_MoveToForce>();
@@ -436,6 +396,57 @@ bool UPRPlayerSkillSubsystem::RequestDisplacement(
 		false);
 	ActiveDisplacements.Add(RequestId, Job);
 	OutRequestId = RequestId;
+	return true;
+}
+
+bool UPRPlayerSkillSubsystem::ValidateDisplacementRequest(
+	const FPRAbilityDisplacementRequest& Request,
+	FVector& OutEffectiveEnd,
+	FGameplayTag& OutFailureTag) const
+{
+	using namespace PRPlayerSkillTargeting;
+	OutEffectiveEnd = FVector::ZeroVector;
+	OutFailureTag = FGameplayTag();
+	AActor* Source = Request.SourceActor.Get();
+	ACharacter* Target = Cast<ACharacter>(Request.TargetActor.Get());
+	const UWorld* World = GetWorld();
+	if (!World || !IsValid(Source) || !IsValid(Target)
+		|| Source->GetWorld() != World || Target->GetWorld() != World
+		|| !Source->HasAuthority() || !Target->HasAuthority()
+		|| !Request.AbilityTag.IsValid() || !Request.AbilityTag.ToString().StartsWith(TEXT("Skill."))
+		|| !IsFiniteVector(Request.StartLocation) || !IsFiniteVector(Request.DesiredEndLocation)
+		|| !FMath::IsFinite(Request.Duration) || Request.Duration <= 0.0f
+		|| !FMath::IsFinite(Request.StopDistance) || Request.StopDistance < 0.0f
+		|| !Request.bSweep || !Request.bStopOnBlockingHit
+		|| !Target->GetActorLocation().Equals(Request.StartLocation, PlaneTolerance)
+		|| FMath::Abs(Request.StartLocation.Y - Request.DesiredEndLocation.Y) > PlaneTolerance
+		|| FMath::Abs(Request.StartLocation.Y - Source->GetActorLocation().Y) > PlaneTolerance
+		|| !Target->GetCharacterMovement() || !Target->GetCapsuleComponent())
+	{
+		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
+		return false;
+	}
+	for (const TPair<FGuid, FActiveDisplacement>& Pair : ActiveDisplacements)
+	{
+		if (Pair.Value.TargetCharacter == Target)
+		{
+			OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
+			return false;
+		}
+	}
+	FVector Travel = ToPlanar(Request.DesiredEndLocation - Request.StartLocation);
+	if (Travel.Size() <= Request.StopDistance + UE_SMALL_NUMBER || !Travel.Normalize())
+	{
+		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailInvalidMovementTag();
+		return false;
+	}
+	OutEffectiveEnd = Request.DesiredEndLocation - Travel * Request.StopDistance;
+	OutEffectiveEnd.Y = Request.StartLocation.Y;
+	if (HasWorldStaticObstruction(*Target, Request.StartLocation, OutEffectiveEnd, Source))
+	{
+		OutFailureTag = UPRTagLibrary::GetAbilityActivateFailObstructedTag();
+		return false;
+	}
 	return true;
 }
 
@@ -916,11 +927,21 @@ void UPRPlayerSkillSubsystem::HandleDisplacementDurationElapsed(const FGuid Requ
 			PRPlayerSkillTargeting::ToPlanar(Target->GetActorLocation() - Job->PlaneOrigin), Direction);
 		if (PlannedDistance > UE_SMALL_NUMBER && TravelledDistance >= PlannedDistance)
 		{
-			// MoveToForce can advance past its target when one frame exceeds its
-			// duration. The movement path has already been swept by CharacterMovement,
-			// so clamp that legal coarse-frame overshoot to the validated endpoint.
-			Target->SetActorLocation(Job->EffectiveEnd, false, nullptr, ETeleportType::TeleportPhysics);
-			bReached = true;
+			// A coarse frame can advance MoveToForce past its target. Correct only
+			// through CharacterMovement's swept path so D never teleports through a
+			// new WorldStatic obstruction introduced during that frame.
+			if (UCharacterMovementComponent* Movement = Target->GetCharacterMovement())
+			{
+				FHitResult Hit;
+				Movement->SafeMoveUpdatedComponent(
+					Job->EffectiveEnd - Target->GetActorLocation(),
+					Target->GetActorQuat(),
+					true,
+					Hit);
+				bReached = PRPlayerSkillTargeting::ToPlanar(
+					Job->EffectiveEnd - Target->GetActorLocation()).Size()
+					<= PRPlayerSkillTargeting::DestinationTolerance;
+			}
 		}
 	}
 	FinishDisplacement(

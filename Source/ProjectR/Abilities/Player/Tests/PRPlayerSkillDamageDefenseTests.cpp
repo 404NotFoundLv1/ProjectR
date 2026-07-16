@@ -5,6 +5,7 @@
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Abilities/Player/PRGA_FireSlash.h"
+#include "Abilities/Player/PRGA_CounterProofWall.h"
 #include "Abilities/Player/PRGA_ShadowThrust.h"
 #include "Abilities/Player/PRSkillDecoyActor.h"
 #include "Abilities/Player/PRPlayerSkillComponent.h"
@@ -125,10 +126,14 @@ FGameplayAbilitySpecHandle GrantFormalSkill(
 {
 	for (const FGameplayAbilitySpec& ExistingSpec : ASC.GetActivatableAbilities())
 	{
-		if (ExistingSpec.Ability
-			&& ExistingSpec.Ability->GetClass() == SkillData.AbilityClass.Get()
-			&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(SkillData.AbilityTag)
-			&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(SkillData.InputTag))
+		// The formal DefaultAbilitySet is granted by the PlayerState fixture. Its
+		// stable SourceObject is the definitive identity; adding a second spec
+		// would make input and CombatEvent assertions ambiguous.
+		if (ExistingSpec.SourceObject.Get() == &SkillData
+			|| (ExistingSpec.Ability
+				&& ExistingSpec.Ability->GetClass() == SkillData.AbilityClass.Get()
+				&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(SkillData.AbilityTag)
+				&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(SkillData.InputTag)))
 		{
 			return ExistingSpec.Handle;
 		}
@@ -392,6 +397,139 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 		SkillTarget.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag()));
 	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
 
+	const UPRPlayerSkillDataAsset* GuardData = LoadObject<UPRPlayerSkillDataAsset>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_CounterProofWall.DA_Skill_CounterProofWall"));
+	if (!TestNotNull(TEXT("Formal CounterProofWall data exists"), GuardData))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	UPRGA_CounterProofWall* GuardCDO = GuardData->AbilityClass
+		? Cast<UPRGA_CounterProofWall>(GuardData->AbilityClass->GetDefaultObject()) : nullptr;
+	if (!TestNotNull(TEXT("Formal CounterProofWall Blueprint uses the native guard parent"), GuardCDO))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	FCombatPlayer GuardPlayer;
+	FCombatPlayer GuardAttacker;
+	if (!TestTrue(TEXT("CounterProofWall player fixture spawns"), SpawnCombatPlayer(
+		World.Get(), FVector::ZeroVector, TEXT("Automation.GuardPlayer"), GuardPlayer))
+		|| !TestTrue(TEXT("CounterProofWall attacker fixture spawns"), SpawnCombatPlayer(
+			World.Get(), FVector(200.0f, 0.0f, 0.0f), TEXT("Automation.GuardAttacker"), GuardAttacker)))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	GuardPlayer.Character->GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	const FGameplayAbilitySpecHandle GuardHandle = GrantFormalSkill(*GuardPlayer.ASC, *GuardData);
+	if (!TestTrue(TEXT("Formal CounterProofWall spec grants"), GuardHandle.IsValid()))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	FGameplayTagContainer GuardingTags;
+	GuardingTags.AddTag(UPRTagLibrary::GetStateGuardingTag());
+	const FGameplayEffectQuery GuardingQuery =
+		FGameplayEffectQuery::MakeQuery_MatchAnyOwningTags(GuardingTags);
+	const float GuardInitialHealth = GuardPlayer.Attributes->GetHealth();
+	const float GuardInitialShield = GuardPlayer.Attributes->GetShield();
+	const int32 GuardEventStart = Events.Num();
+	GuardPlayer.ASC->AbilityInputTagPressed(GuardData->InputTag);
+	TestEqual(TEXT("CounterProofWall press enters guarding Active phase"),
+		GuardPlayer.Character->GetPlayerSkillComponent()->GetCurrentPhase(), EPRPlayerSkillPhase::Active);
+	TestTrue(TEXT("CounterProofWall grants State.Guarding"),
+		GuardPlayer.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag()));
+	TestEqual(TEXT("CounterProofWall press commits exactly 20 Energy"),
+		GuardPlayer.Attributes->GetEnergy(), 80.0f);
+	TestEqual(TEXT("CounterProofWall owns one Guarding effect"),
+		GuardPlayer.ASC->GetActiveEffects(GuardingQuery).Num(), 1);
+	GuardPlayer.ASC->AbilityInputTagPressed(GuardData->InputTag);
+	TestEqual(TEXT("Repeated CounterProofWall press does not recommit Energy"),
+		GuardPlayer.Attributes->GetEnergy(), 80.0f);
+	TestEqual(TEXT("Repeated CounterProofWall press does not stack Guarding"),
+		GuardPlayer.ASC->GetActiveEffects(GuardingQuery).Num(), 1);
+
+	FPRDamageRequest GuardDamage;
+	GuardDamage.SourceId = TEXT("Automation.GuardAttacker");
+	GuardDamage.DamageSource = GuardAttacker.PlayerState;
+	GuardDamage.Instigator = GuardAttacker.Character;
+	GuardDamage.Target = GuardPlayer.Character;
+	GuardDamage.AbilityTag = GuardData->AbilityTag;
+	GuardDamage.RawDamage = 10.0f;
+	GuardDamage.ImpactOrigin = GuardAttacker.Character->GetActorLocation();
+	// Source -> target travels along -X; target -> source therefore aligns with its +X facing.
+	GuardDamage.IncomingDirection = -FVector::ForwardVector;
+	TestEqual(TEXT("CounterProofWall blocks a legal front hit"),
+		Combat->ApplyDamage(GuardDamage), EPRCombatRequestStatus::RejectedBlocked);
+	TestEqual(TEXT("CounterProofWall first block preserves Health"),
+		GuardPlayer.Attributes->GetHealth(), GuardInitialHealth);
+	TestEqual(TEXT("CounterProofWall first block preserves Shield"),
+		GuardPlayer.Attributes->GetShield(), GuardInitialShield);
+	TestEqual(TEXT("CounterProofWall first block emits exactly one rejection"),
+		Events.Num(), GuardEventStart + 1);
+	if (Events.Num() == GuardEventStart + 1)
+	{
+		const FPRCombatEvent& PerfectBlock = Events.Last();
+		TestEqual(TEXT("CounterProofWall block is DamageRejected"),
+			PerfectBlock.EventTag, UPRTagLibrary::GetCombatEventDamageRejectedTag());
+		TestTrue(TEXT("CounterProofWall block carries GuardBlocked"),
+			PerfectBlock.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseGuardBlockedTag()));
+		TestTrue(TEXT("CounterProofWall opening block carries PerfectTiming"),
+			PerfectBlock.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponsePerfectTimingTag()));
+	}
+	TestEqual(TEXT("CounterProofWall blocks another legal hit in one activation"),
+		Combat->ApplyDamage(GuardDamage), EPRCombatRequestStatus::RejectedBlocked);
+	TestEqual(TEXT("CounterProofWall repeated block still preserves Health"),
+		GuardPlayer.Attributes->GetHealth(), GuardInitialHealth);
+	World.TickFor(0.16f);
+	const int32 PostPerfectEventStart = Events.Num();
+	TestEqual(TEXT("CounterProofWall remains active outside the perfect window"),
+		Combat->ApplyDamage(GuardDamage), EPRCombatRequestStatus::RejectedBlocked);
+	if (Events.Num() == PostPerfectEventStart + 1)
+	{
+		const FPRCombatEvent& NormalBlock = Events.Last();
+		TestTrue(TEXT("CounterProofWall later block retains GuardBlocked"),
+			NormalBlock.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseGuardBlockedTag()));
+		TestFalse(TEXT("CounterProofWall later block has no PerfectTiming"),
+			NormalBlock.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponsePerfectTimingTag()));
+	}
+	GuardDamage.IncomingDirection = FVector::ForwardVector;
+	TestEqual(TEXT("CounterProofWall permits a back hit through normal Combat"),
+		Combat->ApplyDamage(GuardDamage), EPRCombatRequestStatus::Applied);
+	TestEqual(TEXT("CounterProofWall back hit damages Health"),
+		GuardPlayer.Attributes->GetHealth(), GuardInitialHealth - 10.0f);
+	GuardPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), GuardInitialHealth);
+	FGameplayTagContainer InvalidDirectionTags;
+	GuardDamage.IncomingDirection = FVector::ZeroVector;
+	TestEqual(TEXT("CounterProofWall never blocks a zero incoming direction"),
+		GuardPlayer.Character->EvaluateIncomingDamage(GuardDamage, InvalidDirectionTags),
+		EPRCombatMitigationResult::NotHandled);
+	TestTrue(TEXT("CounterProofWall zero direction adds no response tags"), InvalidDirectionTags.IsEmpty());
+
+	GuardPlayer.ASC->AbilityInputTagReleased(GuardData->InputTag);
+	TestEqual(TEXT("CounterProofWall release returns the phase to Idle"),
+		GuardPlayer.Character->GetPlayerSkillComponent()->GetCurrentPhase(), EPRPlayerSkillPhase::Idle);
+	TestFalse(TEXT("CounterProofWall release clears State.Guarding"),
+		GuardPlayer.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag()));
+	TestEqual(TEXT("CounterProofWall release removes its Guarding effect"),
+		GuardPlayer.ASC->GetActiveEffects(GuardingQuery).Num(), 0);
+	GuardPlayer.ASC->AbilityInputTagReleased(GuardData->InputTag);
+	TestEqual(TEXT("Repeated CounterProofWall release remains idempotent"),
+		GuardPlayer.ASC->GetActiveEffects(GuardingQuery).Num(), 0);
+
+	World.TickFor(6.01f);
+	GuardPlayer.ASC->AbilityInputTagPressed(GuardData->InputTag);
+	TestTrue(TEXT("CounterProofWall can reactivate after its cooldown"),
+		GuardPlayer.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag()));
+	World.TickFor(1.01f);
+	TestEqual(TEXT("CounterProofWall held guard ends at the one second maximum"),
+		GuardPlayer.Character->GetPlayerSkillComponent()->GetCurrentPhase(), EPRPlayerSkillPhase::Idle);
+	TestFalse(TEXT("CounterProofWall maximum duration clears State.Guarding"),
+		GuardPlayer.ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag()));
+	TestEqual(TEXT("CounterProofWall maximum duration leaves no Guarding effect"),
+		GuardPlayer.ASC->GetActiveEffects(GuardingQuery).Num(), 0);
+
 	const UPRPlayerSkillDataAsset* FireData = LoadObject<UPRPlayerSkillDataAsset>(
 		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_FireSlash.DA_Skill_FireSlash"));
 	const UPRPlayerSkillDataAsset* ShadowData = LoadObject<UPRPlayerSkillDataAsset>(
@@ -459,6 +597,8 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 	for (int32 Index = FireEventStart; Index < Events.Num(); ++Index)
 	{
 		if (Events[Index].AbilityTag == FireData->AbilityTag
+			&& Events[Index].Instigator.Get() == SkillSource.Character
+			&& Events[Index].Target.Get() == SkillTarget.Character
 			&& Events[Index].EventTag == UPRTagLibrary::GetCombatEventDamageTag())
 		{
 			++FireDamageEvents;
@@ -584,6 +724,11 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 	for (int32 Index = ShadowEventStart; Index < Events.Num(); ++Index)
 	{
 		if (Events[Index].AbilityTag != ShadowData->AbilityTag)
+		{
+			continue;
+		}
+		if (Events[Index].Instigator.Get() != SkillSource.Character
+			|| Events[Index].Target.Get() != SkillTarget.Character)
 		{
 			continue;
 		}

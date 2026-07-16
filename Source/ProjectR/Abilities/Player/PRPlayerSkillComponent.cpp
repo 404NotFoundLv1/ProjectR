@@ -3,7 +3,13 @@
 #include "Abilities/Player/PRPlayerSkillComponent.h"
 
 #include "Abilities/Player/PRPlayerSkillSubsystem.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Combat/PRCombatTypes.h"
 #include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "Core/PRTagLibrary.h"
 #include "TimerManager.h"
 
 UPRPlayerSkillComponent::UPRPlayerSkillComponent()
@@ -69,6 +75,7 @@ void UPRPlayerSkillComponent::ClearExecution()
 		World->GetTimerManager().ClearTimer(PhaseTimerHandle);
 	}
 	CancelOwnedDisplacement();
+	ClearCounterProofGuard(CurrentAbilityTag);
 	CurrentAbilityTag = FGameplayTag();
 	CurrentPhase = EPRPlayerSkillPhase::Idle;
 }
@@ -131,7 +138,50 @@ EPRCombatMitigationResult UPRPlayerSkillComponent::EvaluateIncomingDamage(
 	const FPRDamageRequest& Request,
 	FGameplayTagContainer& OutResponseTags) const
 {
-	return EPRCombatMitigationResult::NotHandled;
+	if (!CounterProofGuard.bActive
+		|| CurrentAbilityTag != CounterProofGuard.AbilityTag
+		|| CurrentPhase != EPRPlayerSkillPhase::Active
+		|| !FMath::IsFinite(Request.IncomingDirection.X)
+		|| !FMath::IsFinite(Request.IncomingDirection.Y)
+		|| !FMath::IsFinite(Request.IncomingDirection.Z))
+	{
+		return EPRCombatMitigationResult::NotHandled;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(GetOwner());
+	const IAbilitySystemInterface* AbilityInterface = Cast<IAbilitySystemInterface>(GetOwner());
+	const UAbilitySystemComponent* ASC = AbilityInterface
+		? AbilityInterface->GetAbilitySystemComponent()
+		: nullptr;
+	const USkeletalMeshComponent* Mesh = Character ? Character->GetMesh() : nullptr;
+	if (!Character || !ASC || ASC->GetAvatarActor() != GetOwner()
+		|| !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag()) || !Mesh)
+	{
+		return EPRCombatMitigationResult::NotHandled;
+	}
+
+	FVector Facing = Mesh->GetRightVector();
+	Facing.Y = 0.0f;
+	FVector AttackDirection = -Request.IncomingDirection;
+	AttackDirection.Y = 0.0f;
+	if (!Facing.Normalize() || !AttackDirection.Normalize())
+	{
+		return EPRCombatMitigationResult::NotHandled;
+	}
+
+	const float MinimumFrontDot = FMath::Cos(FMath::DegreesToRadians(CounterProofGuard.HalfAngleDegrees));
+	if (FVector::DotProduct(Facing, AttackDirection) + UE_KINDA_SMALL_NUMBER < MinimumFrontDot)
+	{
+		return EPRCombatMitigationResult::NotHandled;
+	}
+
+	OutResponseTags.AddTag(UPRTagLibrary::GetCombatResponseGuardBlockedTag());
+	if (const UWorld* World = GetWorld(); World
+		&& World->GetTimeSeconds() <= CounterProofGuard.PerfectTimingEndTime + UE_KINDA_SMALL_NUMBER)
+	{
+		OutResponseTags.AddTag(UPRTagLibrary::GetCombatResponsePerfectTimingTag());
+	}
+	return EPRCombatMitigationResult::Blocked;
 }
 
 void UPRPlayerSkillComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -176,4 +226,32 @@ void UPRPlayerSkillComponent::EnsureSubsystemBinding()
 			this,
 			&UPRPlayerSkillComponent::HandleDisplacementFinished);
 	}
+}
+
+bool UPRPlayerSkillComponent::BeginCounterProofGuard(
+	const FGameplayTag AbilityTag,
+	const float HalfAngleDegrees,
+	const double PerfectTimingEndTime)
+{
+	if (!AbilityTag.IsValid() || CurrentAbilityTag != AbilityTag
+		|| CurrentPhase != EPRPlayerSkillPhase::Active
+		|| !FMath::IsFinite(HalfAngleDegrees) || HalfAngleDegrees < 0.0f || HalfAngleDegrees > 180.0f
+		|| !FMath::IsFinite(PerfectTimingEndTime))
+	{
+		return false;
+	}
+	CounterProofGuard.AbilityTag = AbilityTag;
+	CounterProofGuard.HalfAngleDegrees = HalfAngleDegrees;
+	CounterProofGuard.PerfectTimingEndTime = PerfectTimingEndTime;
+	CounterProofGuard.bActive = true;
+	return true;
+}
+
+void UPRPlayerSkillComponent::ClearCounterProofGuard(const FGameplayTag AbilityTag)
+{
+	if (!CounterProofGuard.bActive || CounterProofGuard.AbilityTag != AbilityTag)
+	{
+		return;
+	}
+	CounterProofGuard = FCounterProofGuardContext();
 }

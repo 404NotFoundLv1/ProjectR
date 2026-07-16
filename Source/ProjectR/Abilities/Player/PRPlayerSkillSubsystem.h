@@ -86,6 +86,10 @@ private:
 		FVector& OutEndLocation,
 		float& OutSafeDistance,
 		FGameplayTag& OutFailureTag) const;
+	bool ValidateDisplacementRequest(
+		const FPRAbilityDisplacementRequest& Request,
+		FVector& OutEffectiveEnd,
+		FGameplayTag& OutFailureTag) const;
 	EPRCombatRequestStatus ApplySkillDamage(
 		const FPRPlayerSkillExecutionSnapshot& Snapshot,
 		AActor& Target,
@@ -157,6 +161,7 @@ private:
 	friend class UPRGA_FireSlash;
 	friend class UPRGA_ThunderDrop;
 	friend class UPRGA_AfterimageDodge;
+	friend class UPRGA_VectorHook;
 	friend class FPRPlayerSkillDamageDefenseTest;
 	friend class FPRPlayerSkillLifecycleTest;
 	friend class FPRPlayerSkillTargetingTest;

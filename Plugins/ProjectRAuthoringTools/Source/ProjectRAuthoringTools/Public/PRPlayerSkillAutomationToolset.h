@@ -22,4 +22,8 @@ public:
 	/** Runs the fixed ThunderDrop, AfterimageDodge, status, decoy, and cleanup sequence without saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointCSmoke();
+
+	/** Runs the fixed VectorHook and CounterProofWall sequence without saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointDSmoke();
 };

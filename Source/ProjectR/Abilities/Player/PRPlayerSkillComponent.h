@@ -8,6 +8,7 @@
 #include "PRPlayerSkillComponent.generated.h"
 
 struct FPRDamageRequest;
+class UPRGA_CounterProofWall;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FPRPlayerSkillPhaseExpiredNative,
@@ -45,9 +46,21 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	friend class UPRGA_CounterProofWall;
+
+	bool BeginCounterProofGuard(FGameplayTag AbilityTag, float HalfAngleDegrees, double PerfectTimingEndTime);
+	void ClearCounterProofGuard(FGameplayTag AbilityTag);
 	void HandlePhaseExpired();
 	void HandleDisplacementFinished(const FPRAbilityDisplacementResult& Result);
 	void EnsureSubsystemBinding();
+
+	struct FCounterProofGuardContext
+	{
+		FGameplayTag AbilityTag;
+		float HalfAngleDegrees = 0.0f;
+		double PerfectTimingEndTime = 0.0;
+		bool bActive = false;
+	};
 
 	FGameplayTag CurrentAbilityTag;
 	EPRPlayerSkillPhase CurrentPhase = EPRPlayerSkillPhase::Idle;
@@ -55,4 +68,5 @@ private:
 	FGuid ActiveDisplacementRequestId;
 	FDelegateHandle DisplacementFinishedHandle;
 	FPRPlayerSkillPhaseExpiredNative PhaseExpiredEvent;
+	FCounterProofGuardContext CounterProofGuard;
 };

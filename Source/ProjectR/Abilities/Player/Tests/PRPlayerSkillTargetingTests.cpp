@@ -2,14 +2,24 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Abilities/PRAbilitySystemComponent.h"
+#include "Abilities/PRAttributeSet.h"
+#include "Abilities/Player/PRGA_VectorHook.h"
+#include "Abilities/Player/PRPlayerSkillComponent.h"
+#include "Abilities/Player/PRPlayerSkillDataAsset.h"
+#include "Abilities/Player/PRPlayerSkillFragment.h"
 #include "Abilities/Player/PRPlayerSkillSubsystem.h"
 #include "Abilities/Player/Tests/PRPlayerSkillTestTypes.h"
 #include "Core/PRTagLibrary.h"
+#include "Core/PRPlayerController.h"
+#include "Core/PRPlayerState.h"
+#include "Combat/PRCombatSubsystem.h"
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "CoreGlobals.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Misc/AutomationTest.h"
 
 namespace PRPlayerSkillTargetAutomation
@@ -52,6 +62,68 @@ public:
 private:
 	TObjectPtr<UWorld> World;
 };
+
+template <typename T>
+T* SpawnBlueprintActor(UWorld* World, const TCHAR* ClassPath)
+{
+	UClass* ActorClass = LoadClass<T>(nullptr, ClassPath);
+	return ActorClass ? World->SpawnActor<T>(ActorClass) : nullptr;
+}
+
+struct FHookPlayer
+{
+	APRPlayerState* PlayerState = nullptr;
+	APRPlayerController* Controller = nullptr;
+	APRPlayerSkillCombatTestCharacter* Character = nullptr;
+	UPRAbilitySystemComponent* ASC = nullptr;
+	const UPRAttributeSet* Attributes = nullptr;
+};
+
+bool SpawnHookPlayer(UWorld* World, const FVector Location, const FName TargetId, FHookPlayer& OutPlayer)
+{
+	OutPlayer.PlayerState = SpawnBlueprintActor<APRPlayerState>(
+		World, TEXT("/Game/ProjectR/Blueprints/Player/BP_PlayerState.BP_PlayerState_C"));
+	OutPlayer.Controller = SpawnBlueprintActor<APRPlayerController>(
+		World, TEXT("/Game/ProjectR/Blueprints/Player/BP_PlayerController.BP_PlayerController_C"));
+	OutPlayer.Character = World->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	if (!OutPlayer.PlayerState || !OutPlayer.Controller || !OutPlayer.Character)
+	{
+		return false;
+	}
+	OutPlayer.Character->SetActorLocation(Location);
+	OutPlayer.Character->ConfigureTarget(TargetId, true);
+	OutPlayer.Controller->SetPlayerState(OutPlayer.PlayerState);
+	OutPlayer.Controller->Possess(OutPlayer.Character);
+	OutPlayer.ASC = OutPlayer.PlayerState->GetProjectRAbilitySystemComponent();
+	OutPlayer.Attributes = OutPlayer.PlayerState->GetAttributeSet();
+	if (!OutPlayer.ASC || !OutPlayer.Attributes)
+	{
+		return false;
+	}
+	OutPlayer.Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetMaxHealthAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetMaxShieldAttribute(), 0.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetShieldAttribute(), 0.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetMaxEnergyAttribute(), 100.0f);
+	OutPlayer.ASC->SetNumericAttributeBase(UPRAttributeSet::GetEnergyAttribute(), 100.0f);
+	return true;
+}
+
+FGameplayAbilitySpecHandle GrantFormalHook(UPRAbilitySystemComponent& ASC, const UPRPlayerSkillDataAsset& Data)
+{
+	for (const FGameplayAbilitySpec& ExistingSpec : ASC.GetActivatableAbilities())
+	{
+		if (ExistingSpec.SourceObject.Get() == &Data)
+		{
+			return ExistingSpec.Handle;
+		}
+	}
+	FGameplayAbilitySpec Spec(Data.AbilityClass, 1, INDEX_NONE, const_cast<UPRPlayerSkillDataAsset*>(&Data));
+	Spec.GetDynamicSpecSourceTags().AddTag(Data.AbilityTag);
+	Spec.GetDynamicSpecSourceTags().AddTag(Data.InputTag);
+	return ASC.GiveAbility(Spec);
+}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -61,6 +133,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 {
+	using namespace PRPlayerSkillTargetAutomation;
 	PRPlayerSkillTargetAutomation::FScopedWorld World;
 	UPRPlayerSkillSubsystem* Subsystem = World.Get()->GetSubsystem<UPRPlayerSkillSubsystem>();
 	if (!TestNotNull(TEXT("Skill subsystem exists"), Subsystem))
@@ -313,6 +386,251 @@ bool FPRPlayerSkillTargetingTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("World cleanup does not broadcast into teardown"),
 		DisplacementResults.Num(), ResultCountBeforeCleanup);
 	Subsystem->OnDisplacementFinished().Remove(DisplacementHandle);
+
+	// RED for v0.2.0-D: Hook must discover NoTarget before Commit. The native
+	// parent is still a configuration shell at this point, so GAS incorrectly
+	// accepts the formal OnInputTriggered activation.
+	APRPlayerSkillCombatTestCharacter* HookSource =
+		World.Get()->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	if (!TestNotNull(TEXT("VectorHook source character spawned"), HookSource))
+	{
+		return false;
+	}
+	HookSource->SetActorLocation(FVector(0.0f, 0.0f, -300.0f));
+	HookSource->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	UPRAbilitySystemComponent* HookASC = NewObject<UPRAbilitySystemComponent>(HookSource);
+	HookASC->RegisterComponent();
+	HookASC->InitAbilityActorInfo(HookSource, HookSource);
+	UPRPlayerSkillDataAsset* HookData = NewObject<UPRPlayerSkillDataAsset>(HookASC);
+	HookData->AbilityTag = FGameplayTag::RequestGameplayTag(TEXT("Skill.VectorHook"));
+	HookData->InputTag = FGameplayTag::RequestGameplayTag(TEXT("Input.Skill.VectorHook"));
+	HookData->AbilityClass = UPRPlayerSkillVectorHookTestAbility::StaticClass();
+	HookData->ActivationPolicy = EPRAbilityActivationPolicy::OnInputTriggered;
+	HookData->TargetPolicy = EPRPlayerSkillTargetPolicy::SingleTarget;
+	HookData->Range = 800.0f;
+	HookData->HalfAngleDegrees = 45.0f;
+	HookData->ActiveDuration = 0.30f;
+	UPRVectorHookSkillFragment* HookFragment = NewObject<UPRVectorHookSkillFragment>(HookData);
+	HookFragment->StopDistance = 120.0f;
+	HookData->SkillFragment = HookFragment;
+	UPRPlayerSkillComponent* HookComponent = HookSource->GetPlayerSkillComponent();
+	if (!TestNotNull(TEXT("VectorHook source owns a skill component"), HookComponent))
+	{
+		HookASC->DestroyComponent();
+		return false;
+	}
+	FGameplayAbilitySpec HookSpec(UPRPlayerSkillVectorHookTestAbility::StaticClass(), 1, INDEX_NONE, HookData);
+	HookSpec.GetDynamicSpecSourceTags().AddTag(HookData->AbilityTag);
+	HookSpec.GetDynamicSpecSourceTags().AddTag(HookData->InputTag);
+	const FGameplayAbilitySpecHandle HookHandle = HookASC->GiveAbility(HookSpec);
+	TestTrue(TEXT("VectorHook test spec is granted"), HookHandle.IsValid());
+	TestFalse(TEXT("VectorHook NoTarget fails before Commit"), HookASC->TryActivateAbility(HookHandle));
+	TestEqual(TEXT("VectorHook NoTarget leaves the component idle"),
+		HookComponent->GetCurrentPhase(), EPRPlayerSkillPhase::Idle);
+	TestFalse(TEXT("VectorHook NoTarget leaves no owned displacement"),
+		HookComponent->GetActiveDisplacementRequestId().IsValid());
+	HookASC->DestroyComponent();
+
+	// v0.2.0-D: exercise the real VectorHook data/Cost/Cooldown and its native
+	// parent. Each fixture uses a distinct Z lane so deterministic target queries
+	// cannot accidentally select a prior scenario's actor.
+	const UPRPlayerSkillDataAsset* FormalHookData = LoadObject<UPRPlayerSkillDataAsset>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_VectorHook.DA_Skill_VectorHook"));
+	UPRCombatSubsystem* Combat = World.Get()->GetSubsystem<UPRCombatSubsystem>();
+	if (!TestNotNull(TEXT("Formal VectorHook data exists"), FormalHookData)
+		|| !TestNotNull(TEXT("Combat subsystem exists for VectorHook outcomes"), Combat))
+	{
+		return false;
+	}
+	TestEqual(TEXT("VectorHook damage remains zero by data contract"), FormalHookData->BaseDamage, 0.0f);
+	TestEqual(TEXT("VectorHook AttackPower scale remains zero by data contract"), FormalHookData->AttackPowerScale, 0.0f);
+	TArray<FPRCombatEvent> HookEvents;
+	const FDelegateHandle HookEventHandle = Combat->OnCombatEvent().AddLambda(
+		[&HookEvents](const FPRCombatEvent& Event)
+		{
+			if (Event.AbilityTag == FGameplayTag::RequestGameplayTag(TEXT("Skill.VectorHook")))
+			{
+				HookEvents.Add(Event);
+			}
+		});
+	auto ConfigureHookFacing = [](APRPlayerSkillCombatTestCharacter& Character)
+	{
+		Character.GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	};
+	auto HookCooldownActive = [](const UPRAbilitySystemComponent& ASC)
+	{
+		return ASC.HasMatchingGameplayTag(
+			FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Skill.VectorHook")));
+	};
+
+	FHookPlayer NoTargetPlayer;
+	if (!TestTrue(TEXT("VectorHook NoTarget formal player spawns"), SpawnHookPlayer(
+		World.Get(), FVector(0.0f, 0.0f, -1000.0f), TEXT("Hook.NoTarget.Source"), NoTargetPlayer)))
+	{
+		Combat->OnCombatEvent().Remove(HookEventHandle);
+		return false;
+	}
+	ConfigureHookFacing(*NoTargetPlayer.Character);
+	const FGameplayAbilitySpecHandle NoTargetHandle = GrantFormalHook(*NoTargetPlayer.ASC, *FormalHookData);
+	const float NoTargetEnergy = NoTargetPlayer.Attributes->GetEnergy();
+	TestFalse(TEXT("VectorHook formal NoTarget fails before Commit"),
+		NoTargetPlayer.ASC->TryActivateAbility(NoTargetHandle));
+	TestEqual(TEXT("VectorHook NoTarget does not consume Energy"),
+		NoTargetPlayer.Attributes->GetEnergy(), NoTargetEnergy);
+	TestFalse(TEXT("VectorHook NoTarget does not create Cooldown"), HookCooldownActive(*NoTargetPlayer.ASC));
+
+	FHookPlayer ObstructedPlayer;
+	APRPlayerSkillCombatTestCharacter* ObstructedTarget =
+		World.Get()->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	APRPlayerSkillTestTarget* PreCommitBlocker = World.Get()->SpawnActor<APRPlayerSkillTestTarget>();
+	if (!TestTrue(TEXT("VectorHook obstructed formal player spawns"), SpawnHookPlayer(
+		World.Get(), FVector(0.0f, 0.0f, -2000.0f), TEXT("Hook.Obstructed.Source"), ObstructedPlayer))
+		|| !TestNotNull(TEXT("VectorHook obstructed target spawns"), ObstructedTarget)
+		|| !TestNotNull(TEXT("VectorHook pre-Commit blocker spawns"), PreCommitBlocker))
+	{
+		Combat->OnCombatEvent().Remove(HookEventHandle);
+		return false;
+	}
+	ConfigureHookFacing(*ObstructedPlayer.Character);
+	ObstructedTarget->SetActorLocation(FVector(400.0f, 0.0f, -2000.0f));
+	ObstructedTarget->ConfigureTarget(TEXT("Hook.Obstructed.Target"), true, EPRAbilityTargetMobility::Heavy);
+	ObstructedTarget->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	PreCommitBlocker->ConfigureTarget(TEXT("Hook.Obstructed.Blocker"), false);
+	PreCommitBlocker->SetTestCollisionObjectType(ECC_WorldStatic);
+	PreCommitBlocker->SetActorLocation(FVector(120.0f, 0.0f, -2000.0f));
+	const FGameplayAbilitySpecHandle ObstructedHandle = GrantFormalHook(*ObstructedPlayer.ASC, *FormalHookData);
+	const float ObstructedEnergy = ObstructedPlayer.Attributes->GetEnergy();
+	TestFalse(TEXT("VectorHook LOS/path obstruction fails before Commit"),
+		ObstructedPlayer.ASC->TryActivateAbility(ObstructedHandle));
+	TestEqual(TEXT("VectorHook obstruction does not consume Energy"),
+		ObstructedPlayer.Attributes->GetEnergy(), ObstructedEnergy);
+	TestFalse(TEXT("VectorHook obstruction does not create Cooldown"), HookCooldownActive(*ObstructedPlayer.ASC));
+	PreCommitBlocker->SetActorLocation(FVector(10000.0f, 0.0f, 10000.0f));
+
+	auto CompleteHook = [&World](ACharacter& MovedCharacter, const FVector& EffectiveEnd)
+	{
+		// The isolated automation world has no full movement simulation. This is
+		// the same coarse-frame harness used by the frozen displacement tests: the
+		// subsystem owns completion/classification after the swept request starts.
+		MovedCharacter.SetActorLocation(EffectiveEnd);
+		MovedCharacter.GetCharacterMovement()->Velocity = FVector::ZeroVector;
+		for (int32 TickIndex = 0; TickIndex < 8; ++TickIndex)
+		{
+			World.Tick(1.0f / 60.0f);
+		}
+	};
+
+	FHookPlayer HeavyPlayer;
+	APRPlayerSkillCombatTestCharacter* HeavyTarget = World.Get()->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	if (!TestTrue(TEXT("VectorHook Heavy player spawns"), SpawnHookPlayer(
+		World.Get(), FVector(0.0f, 0.0f, -3000.0f), TEXT("Hook.Heavy.Source"), HeavyPlayer))
+		|| !TestNotNull(TEXT("VectorHook Heavy target spawns"), HeavyTarget))
+	{
+		Combat->OnCombatEvent().Remove(HookEventHandle);
+		return false;
+	}
+	ConfigureHookFacing(*HeavyPlayer.Character);
+	HeavyTarget->SetActorLocation(FVector(400.0f, 0.0f, -3000.0f));
+	HeavyTarget->ConfigureTarget(TEXT("Hook.Heavy.Target"), true, EPRAbilityTargetMobility::Heavy);
+	HeavyTarget->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	const FVector HeavyStart = HeavyPlayer.Character->GetActorLocation();
+	const FVector HeavyTargetStart = HeavyTarget->GetActorLocation();
+	const int32 HeavyEventStart = HookEvents.Num();
+	TestTrue(TEXT("VectorHook Heavy commits after target/path validation"),
+		HeavyPlayer.ASC->TryActivateAbility(GrantFormalHook(*HeavyPlayer.ASC, *FormalHookData)));
+	CompleteHook(*HeavyPlayer.Character, FVector(280.0f, 0.0f, -3000.0f));
+	TestTrue(TEXT("VectorHook Heavy moves the player to its 120cm stop distance"),
+		HeavyPlayer.Character->GetActorLocation().Equals(FVector(280.0f, 0.0f, -3000.0f), 0.1f));
+	TestEqual(TEXT("VectorHook Heavy leaves the target stationary"), HeavyTarget->GetActorLocation(), HeavyTargetStart);
+	TestEqual(TEXT("VectorHook Heavy preserves the source X/Z plane"),
+		HeavyPlayer.Character->GetActorLocation().Y, HeavyStart.Y);
+	TestEqual(TEXT("VectorHook Heavy publishes exactly one completed outcome"), HookEvents.Num(), HeavyEventStart + 1);
+	if (HookEvents.Num() == HeavyEventStart + 1)
+	{
+		TestEqual(TEXT("VectorHook completion is a zero-damage AbilityOutcome"),
+			HookEvents.Last().EventTag, UPRTagLibrary::GetCombatEventAbilityOutcomeTag());
+		TestEqual(TEXT("VectorHook completion RawDamage is zero"), HookEvents.Last().RawDamage, 0.0f);
+		TestTrue(TEXT("VectorHook completion has DisplacementApplied"), HookEvents.Last().ResponseTags.HasTagExact(
+			UPRTagLibrary::GetCombatResponseDisplacementAppliedTag()));
+	}
+
+	FHookPlayer LightPlayer;
+	APRPlayerSkillCombatTestCharacter* LightTarget = World.Get()->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	if (!TestTrue(TEXT("VectorHook Light player spawns"), SpawnHookPlayer(
+		World.Get(), FVector(0.0f, 0.0f, -4000.0f), TEXT("Hook.Light.Source"), LightPlayer))
+		|| !TestNotNull(TEXT("VectorHook Light target spawns"), LightTarget))
+	{
+		Combat->OnCombatEvent().Remove(HookEventHandle);
+		return false;
+	}
+	ConfigureHookFacing(*LightPlayer.Character);
+	LightTarget->SetActorLocation(FVector(400.0f, 0.0f, -4000.0f));
+	LightTarget->ConfigureTarget(TEXT("Hook.Light.Target"), true, EPRAbilityTargetMobility::Light);
+	LightTarget->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	const FVector LightSourceStart = LightPlayer.Character->GetActorLocation();
+	const FVector LightTargetStart = LightTarget->GetActorLocation();
+	TestTrue(TEXT("VectorHook Light commits against a character-backed Light target"),
+		LightPlayer.ASC->TryActivateAbility(GrantFormalHook(*LightPlayer.ASC, *FormalHookData)));
+	CompleteHook(*LightTarget, FVector(120.0f, 0.0f, -4000.0f));
+	TestEqual(TEXT("VectorHook Light leaves the player stationary"),
+		LightPlayer.Character->GetActorLocation(), LightSourceStart);
+	TestTrue(TEXT("VectorHook Light moves target to its 120cm stop distance"),
+		LightTarget->GetActorLocation().Equals(FVector(120.0f, 0.0f, -4000.0f), 0.1f));
+	TestEqual(TEXT("VectorHook Light preserves the target X/Z plane"),
+		LightTarget->GetActorLocation().Y, LightTargetStart.Y);
+
+	FHookPlayer AnchoredPlayer;
+	APRPlayerSkillCombatTestCharacter* AnchoredTarget = World.Get()->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	if (!TestTrue(TEXT("VectorHook Anchored player spawns"), SpawnHookPlayer(
+		World.Get(), FVector(0.0f, 0.0f, -5000.0f), TEXT("Hook.Anchored.Source"), AnchoredPlayer))
+		|| !TestNotNull(TEXT("VectorHook Anchored target spawns"), AnchoredTarget))
+	{
+		Combat->OnCombatEvent().Remove(HookEventHandle);
+		return false;
+	}
+	ConfigureHookFacing(*AnchoredPlayer.Character);
+	AnchoredTarget->SetActorLocation(FVector(400.0f, 0.0f, -5000.0f));
+	AnchoredTarget->ConfigureTarget(TEXT("Hook.Anchored.Target"), true, EPRAbilityTargetMobility::Anchored);
+	AnchoredTarget->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	const FVector AnchoredTargetStart = AnchoredTarget->GetActorLocation();
+	TestTrue(TEXT("VectorHook Anchored commits after validation"),
+		AnchoredPlayer.ASC->TryActivateAbility(GrantFormalHook(*AnchoredPlayer.ASC, *FormalHookData)));
+	CompleteHook(*AnchoredPlayer.Character, FVector(280.0f, 0.0f, -5000.0f));
+	TestTrue(TEXT("VectorHook Anchored pulls the player to 120cm"),
+		AnchoredPlayer.Character->GetActorLocation().Equals(FVector(280.0f, 0.0f, -5000.0f), 0.1f));
+	TestEqual(TEXT("VectorHook Anchored never moves the target"), AnchoredTarget->GetActorLocation(), AnchoredTargetStart);
+
+	FHookPlayer RuntimeBlockedPlayer;
+	APRPlayerSkillCombatTestCharacter* RuntimeBlockedTarget = World.Get()->SpawnActor<APRPlayerSkillCombatTestCharacter>();
+	APRPlayerSkillTestTarget* RuntimeBlocker = World.Get()->SpawnActor<APRPlayerSkillTestTarget>();
+	if (!TestTrue(TEXT("VectorHook runtime-blocked player spawns"), SpawnHookPlayer(
+		World.Get(), FVector(0.0f, 0.0f, -6000.0f), TEXT("Hook.RuntimeBlocked.Source"), RuntimeBlockedPlayer))
+		|| !TestNotNull(TEXT("VectorHook runtime-blocked target spawns"), RuntimeBlockedTarget)
+		|| !TestNotNull(TEXT("VectorHook runtime blocker spawns"), RuntimeBlocker))
+	{
+		Combat->OnCombatEvent().Remove(HookEventHandle);
+		return false;
+	}
+	ConfigureHookFacing(*RuntimeBlockedPlayer.Character);
+	RuntimeBlockedTarget->SetActorLocation(FVector(400.0f, 0.0f, -6000.0f));
+	RuntimeBlockedTarget->ConfigureTarget(TEXT("Hook.RuntimeBlocked.Target"), true, EPRAbilityTargetMobility::Heavy);
+	RuntimeBlockedTarget->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	const int32 RuntimeBlockedEventStart = HookEvents.Num();
+	TestTrue(TEXT("VectorHook starts before a runtime WorldStatic obstruction"),
+		RuntimeBlockedPlayer.ASC->TryActivateAbility(GrantFormalHook(*RuntimeBlockedPlayer.ASC, *FormalHookData)));
+	RuntimeBlocker->ConfigureTarget(TEXT("Hook.Runtime.Blocker"), false);
+	RuntimeBlocker->SetTestCollisionObjectType(ECC_WorldStatic);
+	RuntimeBlocker->SetActorLocation(FVector(120.0f, 0.0f, -6000.0f));
+	for (int32 TickIndex = 0; TickIndex < 8; ++TickIndex)
+	{
+		World.Tick(1.0f / 60.0f);
+	}
+	TestEqual(TEXT("VectorHook runtime WorldStatic block publishes no completion outcome"),
+		HookEvents.Num(), RuntimeBlockedEventStart);
+	TestEqual(TEXT("VectorHook runtime WorldStatic block clears active phase"),
+		RuntimeBlockedPlayer.Character->GetPlayerSkillComponent()->GetCurrentPhase(), EPRPlayerSkillPhase::Idle);
+
+	Combat->OnCombatEvent().Remove(HookEventHandle);
 
 	return true;
 }

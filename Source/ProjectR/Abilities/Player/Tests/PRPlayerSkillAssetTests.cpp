@@ -194,7 +194,8 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 	};
 	const FStateEffectExpectation StateEffects[] = {
 		{TEXT("Stunned"), 0.75f, TEXT("State.Stunned")},
-		{TEXT("Invulnerable"), 0.22f, TEXT("State.Invulnerable")}};
+		{TEXT("Invulnerable"), 0.22f, TEXT("State.Invulnerable")},
+		{TEXT("Guarding"), 1.0f, TEXT("State.Guarding")}};
 	const UClass* StateEffectClasses[UE_ARRAY_COUNT(StateEffects)] = {};
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(StateEffects); ++Index)
 	{
@@ -226,12 +227,15 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 	}
 
 	const TArray<FPRAbilitySetEntry>& StartupEntries = DefaultSet->GetAbilityEntries();
-	TestEqual(TEXT("Checkpoint C default ability set contains four entries"), StartupEntries.Num(), 4);
-	const TCHAR* ExpectedStartupSkills[] = {TEXT("ShadowThrust"), TEXT("FireSlash"), TEXT("ThunderDrop"), TEXT("AfterimageDodge")};
+	TestEqual(TEXT("Checkpoint D default ability set contains six entries"), StartupEntries.Num(), 6);
+	const TCHAR* ExpectedStartupSkills[] = {
+		TEXT("ShadowThrust"), TEXT("FireSlash"), TEXT("ThunderDrop"), TEXT("AfterimageDodge"),
+		TEXT("VectorHook"), TEXT("CounterProofWall")};
 	const TCHAR* ExpectedStartupInputs[] = {
 		TEXT("Input.Skill.ShadowThrust"), TEXT("Input.Skill.FireSlash"),
-		TEXT("Input.Skill.ThunderDrop"), TEXT("Input.Dodge")};
-	for (int32 Index = 0; Index < FMath::Min(StartupEntries.Num(), 4); ++Index)
+		TEXT("Input.Skill.ThunderDrop"), TEXT("Input.Dodge"),
+		TEXT("Input.Skill.VectorHook"), TEXT("Input.Skill.CounterProofWall")};
+	for (int32 Index = 0; Index < FMath::Min(StartupEntries.Num(), 6); ++Index)
 	{
 		const FPRAbilitySetEntry& Entry = StartupEntries[Index];
 		const FString SkillName(ExpectedStartupSkills[Index]);
@@ -314,17 +318,20 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 				}
 			}
 			else if (FString(Expected.Name) == TEXT("ThunderDrop")
-				|| FString(Expected.Name) == TEXT("AfterimageDodge"))
+				|| FString(Expected.Name) == TEXT("AfterimageDodge")
+				|| FString(Expected.Name) == TEXT("CounterProofWall"))
 			{
 				const bool bThunder = FString(Expected.Name) == TEXT("ThunderDrop");
+				const bool bDodge = FString(Expected.Name) == TEXT("AfterimageDodge");
 				const FClassProperty* StateProperty = FindFProperty<FClassProperty>(
-					AbilityCDO->GetClass(), bThunder ? TEXT("StunnedEffectClass") : TEXT("InvulnerableEffectClass"));
+					AbilityCDO->GetClass(), bThunder ? TEXT("StunnedEffectClass")
+						: bDodge ? TEXT("InvulnerableEffectClass") : TEXT("GuardingEffectClass"));
 				if (TestNotNull(*FString::Printf(TEXT("%s exposes its private State GE binding"), Expected.Name), StateProperty))
 				{
 					const UClass* ConfiguredStateClass = Cast<UClass>(
 						StateProperty->GetObjectPropertyValue_InContainer(AbilityCDO));
 					TestTrue(*FString::Printf(TEXT("%s references its formal State GE"), Expected.Name),
-						ConfiguredStateClass == StateEffectClasses[bThunder ? 0 : 1]);
+						ConfiguredStateClass == StateEffectClasses[bThunder ? 0 : bDodge ? 1 : 2]);
 				}
 			}
 		}

@@ -254,6 +254,15 @@ date: "2026-07-10"
 - 固定无参 `RunPIEPlayerSkillCheckpointCSmoke()` 实际 PASS：Thunder 延迟/命中/Stunned/失效清理、Afterimage 位移/无敌/单残影/PerfectTiming/清理以及四个正式 Spec 均通过；既有固定 B PIE 回归 PASS。Tool 只调用正式受控 Ability/Input/Combat API，不保存 Package、不接收任意参数。
 - 结构化补验 AutomationReport `v020c-supplement-final-report-20260716a` 为 15/15 required PASS。`NetworkPIEReplication`、`PhysicalGamepad`、`HumanSkillFeelJudgment` 与 `Package` 为 optional `NOT_RUN`，GC 未执行；没有必需人工步骤。Future Compatibility Review PASS：D 只能在四项后增量追加 Hook/Guard，v0.2.1–v0.4.4 继续只消费既有接口、Tag、事件和 PrimaryAssetId。
 
+# 2026-07-16 - v0.2.0-D 向量钩索与反证护壁（Completed）
+
+- 在 `CURRENT_VERSION.md` 与 VersionIndex 继续保持 v0.2.0/In Progress 的前提下完成内部检查点 D；没有创建提交或推进公共版本。
+- 实现 VectorHook 的 SingleTarget 预检、Commit 前 NoTarget/Obstructed、Light/Heavy/Anchored 受控 RootMotion 位移、120cm 停距、完成 Outcome 与 Commit 后失效清理；CounterProofWall 使用准确的 1.0s `GE_State_Guarding`、0.15s PerfectTiming、60°正面 Mitigation、多次阻断与全生命周期幂等清理。伤害继续只经过 `UPRCombatSubsystem`，Mitigation 保持早于 Invulnerable。
+- Unreal MCP 创建 `GE_State_Guarding`，配置 CounterProofWall GA CDO 并将 DefaultAbilitySet 精确扩展为六项；没有 Save All、地图、MCPTest、VFX/SFX 或 Config 写入。D 固定无参 PIE 工具只使用 `L_CombatGym` 和固定正式键/Tag，临时 Light 目标启用既有 CharacterMovement 无控制器 Tick 以真实执行 RootMotionSource，不保存 Package。
+- 最终 BuildEditor PASS；原生 `ProjectR.PlayerSkill` 5/5、Input 3/3、GAS 4/4、Combat 4/4、Ability 5/5、Save 5/5、Debug 12/12 全部 PASS。`RunPIEPlayerSkillCheckpointDSmoke()` 实际 PASS：六 Spec、Hook NoTarget/Obstructed/Light/Heavy/Anchored、Guard Press/Perfect/Multiple/Back/Release/Gamepad/Maximum、B/C 基线及运行时清理均为 true。
+- 独立结构化 AutomationReport `v020d-final-report-20260716` 结果为 PASS；`Package`、`PhysicalGamepad`、`HumanSkillFeelJudgment` 为 optional `NOT_RUN`，GC 未执行。
+- Future Compatibility Review PASS：D 不依赖具体敌人、Boss、HUD、QTE、Save 或 Debug 类型；v0.2.0-E 只追加表现、手感与完整 58 项报告，后续版本只消费稳定 Target/Mobility、AbilityOutcome/CombatEvent、DataAsset 与 AbilitySet Handle。没有必需人工步骤；Package、PhysicalGamepad、NetworkPIEReplication 与 HumanSkillFeelJudgment 保持不冒充 PASS。
+
 # 版本记录模板
 
 ```text

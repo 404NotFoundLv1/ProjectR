@@ -4,9 +4,11 @@
 
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
+#include "Abilities/PRGameplayAbility.h"
 #include "Abilities/Player/PRPlayerSkillComponent.h"
 #include "Abilities/Player/PRPlayerSkillDataAsset.h"
 #include "Abilities/Player/PRPlayerSkillFragment.h"
+#include "Abilities/Player/PRPlayerSkillSubsystem.h"
 #include "Abilities/Player/PRSkillDecoyActor.h"
 #include "Abilities/Player/Tests/PRPlayerSkillTestTypes.h"
 #include "Combat/PRCombatSubsystem.h"
@@ -41,6 +43,10 @@ constexpr TCHAR ThunderDataPath[] =
 	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_ThunderDrop.DA_Skill_ThunderDrop");
 constexpr TCHAR AfterimageDataPath[] =
 	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_AfterimageDodge.DA_Skill_AfterimageDodge");
+constexpr TCHAR VectorHookDataPath[] =
+	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_VectorHook.DA_Skill_VectorHook");
+constexpr TCHAR CounterProofWallDataPath[] =
+	TEXT("/Game/ProjectR/Abilities/Skills/DA_Skill_CounterProofWall.DA_Skill_CounterProofWall");
 
 enum class ESmokePhase : uint8
 {
@@ -1750,6 +1756,1033 @@ private:
 	bool bAfterimagePassed = false;
 	bool bRuntimeClean = false;
 };
+
+enum class ECheckpointDSmokePhase : uint8
+{
+	HookNoTargetStart,
+	HookNoTargetWait,
+	HookObstructedStart,
+	HookObstructedWait,
+	HookLightStart,
+	HookLightInputRelease,
+	HookLightWait,
+	HookCooldownAfterLight,
+	HookHeavyStart,
+	HookHeavyWait,
+	HookCooldownAfterHeavy,
+	HookAnchoredStart,
+	HookAnchoredWait,
+	HookCooldownAfterAnchored,
+	GuardKeyboardStart,
+	GuardKeyboardPerfect,
+	GuardKeyboardLate,
+	GuardKeyboardRelease,
+	GuardCooldownAfterKeyboard,
+	GuardGamepadStart,
+	GuardGamepadRelease,
+	GuardCooldownAfterGamepad,
+	GuardMaximumStart,
+	GuardMaximumWait,
+	CleanupWait,
+	Complete
+};
+
+/**
+ * Fixed checkpoint-D PIE evidence.  It deliberately uses only the formal player,
+ * the L_CombatGym PIE world, and transient native actors; no package can be saved.
+ */
+class FPIEPlayerSkillCheckpointDRunner
+	: public TSharedFromThis<FPIEPlayerSkillCheckpointDRunner>
+{
+public:
+	static UToolCallAsyncResultString* Start()
+	{
+		TSharedRef<FPIEPlayerSkillCheckpointDRunner> Runner =
+			MakeShared<FPIEPlayerSkillCheckpointDRunner>();
+		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(
+			NewObject<UToolCallAsyncResultString>());
+		if (!Runner->Initialize())
+		{
+			return Runner->Result.Get();
+		}
+		Runner->PhaseStartTime = Runner->GetPlayWorldTimeSeconds();
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
+			[RunnerPtr = Runner.ToSharedPtr()](float) mutable
+			{
+				const bool bContinue = RunnerPtr->Tick();
+				if (!bContinue)
+				{
+					RunnerPtr.Reset();
+				}
+				return bContinue;
+			}));
+		return Runner->Result.Get();
+	}
+
+	~FPIEPlayerSkillCheckpointDRunner()
+	{
+		Cleanup();
+	}
+
+private:
+	bool Initialize()
+	{
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+		{
+			Fail(TEXT("RunPIEPlayerSkillCheckpointDSmoke requires an active authoritative in-process PIE world."));
+			return false;
+		}
+		World = PlayWorld;
+		Controller = Cast<APRPlayerController>(PlayWorld->GetFirstPlayerController());
+		Character = Controller.IsValid() ? Cast<APRPlayerCharacter>(Controller->GetPawn()) : nullptr;
+		PlayerState = Character.IsValid() ? Character->GetPlayerState<APRPlayerState>() : nullptr;
+		ASC = PlayerState.IsValid() ? PlayerState->GetProjectRAbilitySystemComponent() : nullptr;
+		Attributes = PlayerState.IsValid() ? PlayerState->GetAttributeSet() : nullptr;
+		SkillComponent = Character.IsValid() ? Character->GetPlayerSkillComponent() : nullptr;
+		CombatSubsystem = PlayWorld->GetSubsystem<UPRCombatSubsystem>();
+		Viewport = PlayWorld->GetGameViewport();
+		InputViewport = Viewport.IsValid() ? Viewport->GetGameViewport() : nullptr;
+		InputDevice = UInputDeviceLibrary::GetDefaultInputDevice();
+		VectorHookData = LoadObject<UPRPlayerSkillDataAsset>(nullptr, VectorHookDataPath);
+		CounterProofWallData = LoadObject<UPRPlayerSkillDataAsset>(nullptr, CounterProofWallDataPath);
+		if (!Controller.IsValid() || !Character.IsValid() || !PlayerState.IsValid()
+			|| !ASC.IsValid() || !Attributes || !SkillComponent.IsValid() || !CombatSubsystem.IsValid()
+			|| !Viewport.IsValid() || !InputViewport || !InputDevice.IsValid()
+			|| !VectorHookData.IsValid() || !CounterProofWallData.IsValid())
+		{
+			Fail(TEXT("PIE is missing the formal player, checkpoint-D DataAssets, viewport, ASC, or combat objects."));
+			return false;
+		}
+		if (!CheckFormalSpecContract() || !CheckFrozenDataContract())
+		{
+			Fail(TEXT("The formal v0.2.0-D AbilitySet or skill data contract is not exact."));
+			return false;
+		}
+
+		InitialTransform = Character->GetActorTransform();
+		InitialMovementMode = Character->GetCharacterMovement()->MovementMode;
+		InitialHealth = Attributes->GetHealth();
+		InitialShield = Attributes->GetShield();
+		InitialEnergy = Attributes->GetEnergy();
+		InitialAttackPower = Attributes->GetAttackPower();
+		InitialTimeDilation = PlayWorld->GetWorldSettings()->TimeDilation;
+		AimDirection = Character->GetMesh() ? Character->GetMesh()->GetRightVector()
+			: Character->GetActorForwardVector();
+		AimDirection.Y = 0.0f;
+		AimDirection = AimDirection.GetSafeNormal();
+		if (!AimDirection.IsNormalized() || FMath::Abs(AimDirection.X) < 0.99f
+			|| FMath::Abs(AimDirection.Z) > 0.01f)
+		{
+			Fail(TEXT("The formal player mesh does not expose a finite horizontal X/Z skill aim."));
+			return false;
+		}
+		TestOrigin = InitialTransform.GetLocation() + FVector(0.0f, 0.0f, 3000.0f);
+		Character->SetActorLocation(TestOrigin, false, nullptr, ETeleportType::TeleportPhysics);
+		Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+		Character->GetCharacterMovement()->StopMovementImmediately();
+		SetAttributes(*ASC.Get(), 100.0f, 0.0f, 100.0f, 10.0f);
+		if (!SpawnCombatant(*PlayWorld, TestOrigin + AimDirection * 600.0f,
+			TEXT("PIE.Skill.CheckpointD.TargetA"), TargetA)
+			|| !SpawnCombatant(*PlayWorld, TestOrigin + AimDirection * 2000.0f,
+				TEXT("PIE.Skill.CheckpointD.TargetB"), TargetB))
+		{
+			Fail(TEXT("The fixed checkpoint-D PIE smoke could not spawn its transient combat targets."));
+			return false;
+		}
+		CombatEventHandle = CombatSubsystem->OnCombatEvent().AddLambda(
+			[WeakThis = TWeakPtr<FPIEPlayerSkillCheckpointDRunner>(AsShared())](const FPRCombatEvent& Event)
+			{
+				if (TSharedPtr<FPIEPlayerSkillCheckpointDRunner> This = WeakThis.Pin())
+				{
+					This->CombatEvents.Add(Event);
+				}
+			});
+		Phase = ECheckpointDSmokePhase::HookNoTargetStart;
+		return true;
+	}
+
+	bool Tick()
+	{
+		if (!World.IsValid() || !Character.IsValid() || !ASC.IsValid() || !CombatSubsystem.IsValid()
+			|| !GEditor || GEditor->PlayWorld != World.Get())
+		{
+			Fail(TEXT("PIE ended or ProjectR checkpoint-D objects became invalid during smoke."));
+			return false;
+		}
+		const double Elapsed = GetPlayWorldTimeSeconds() - PhaseStartTime;
+		switch (Phase)
+		{
+		case ECheckpointDSmokePhase::HookNoTargetStart:
+			MoveFar(TargetA);
+			MoveFar(TargetB);
+			SetAttributes(*ASC.Get(), 100.0f, 0.0f, 100.0f, 10.0f);
+			SendPressAndRelease(EKeys::H);
+			Advance(ECheckpointDSmokePhase::HookNoTargetWait);
+			break;
+
+		case ECheckpointDSmokePhase::HookNoTargetWait:
+			if (Elapsed < 0.10)
+			{
+				break;
+			}
+			bHookNoTarget = FMath::IsNearlyEqual(Attributes->GetEnergy(), 100.0f, 0.1f)
+				&& !IsAbilityActive(VectorHookData->AbilityTag)
+				&& ASC->GetGameplayTagCount(HookCooldownTag()) == 0;
+			if (!bHookNoTarget)
+			{
+				return FailAndStop(TEXT("VectorHook NoTarget committed Energy, Cooldown, or an active execution."));
+			}
+			Advance(ECheckpointDSmokePhase::HookObstructedStart);
+			break;
+
+		case ECheckpointDSmokePhase::HookObstructedStart:
+			PrepareTarget(TargetA, TestOrigin + AimDirection * 600.0f, EPRAbilityTargetMobility::Light);
+			MoveFar(TargetB);
+			if (!CreateWall(TestOrigin + AimDirection * 300.0f))
+			{
+				return false;
+			}
+			SendPressAndRelease(EKeys::H);
+			Advance(ECheckpointDSmokePhase::HookObstructedWait);
+			break;
+
+		case ECheckpointDSmokePhase::HookObstructedWait:
+			if (Elapsed < 0.10)
+			{
+				break;
+			}
+			bHookObstructed = FMath::IsNearlyEqual(Attributes->GetEnergy(), 100.0f, 0.1f)
+				&& !IsAbilityActive(VectorHookData->AbilityTag)
+				&& ASC->GetGameplayTagCount(HookCooldownTag()) == 0;
+			DestroyWall();
+			if (!bHookObstructed)
+			{
+				return FailAndStop(TEXT("VectorHook obstruction committed Energy, Cooldown, or an active execution."));
+			}
+			Advance(ECheckpointDSmokePhase::HookLightStart);
+			break;
+
+		case ECheckpointDSmokePhase::HookLightStart:
+			ResetPlayerAtOrigin();
+			// The transient target is a normal character target, not a second
+			// locally possessed player. Release its fixture controller before the
+			// controlled RootMotionSource moves it.
+			if (TargetA.Controller.IsValid())
+			{
+				TargetA.Controller->UnPossess();
+			}
+			PrepareTarget(TargetA, TestOrigin + AimDirection * 600.0f, EPRAbilityTargetMobility::Light);
+			MoveFar(TargetB);
+			HookTargetStart = TargetA.Character->GetActorLocation();
+			HookPlayerStart = Character->GetActorLocation();
+			HookEventStart = CombatEvents.Num();
+			// Enhanced Input samples a triggered action on the following game
+			// tick. Keep the synthetic press across that boundary so the fixed
+			// D-pad mapping is exercised rather than being released in the same
+			// editor tick.
+			SendKey(EKeys::Gamepad_DPad_Up, IE_Pressed);
+			Advance(ECheckpointDSmokePhase::HookLightInputRelease);
+			break;
+
+		case ECheckpointDSmokePhase::HookLightInputRelease:
+			if (Elapsed < 0.05)
+			{
+				break;
+			}
+			SendKey(EKeys::Gamepad_DPad_Up, IE_Released);
+			Advance(ECheckpointDSmokePhase::HookLightWait);
+			break;
+
+		case ECheckpointDSmokePhase::HookLightWait:
+			if (IsAbilityActive(VectorHookData->AbilityTag) || SkillComponent->GetActiveDisplacementRequestId().IsValid())
+			{
+				if (Elapsed < 1.0)
+				{
+					break;
+				}
+			}
+			bHookLight = VerifyHookResult(true, HookTargetStart, HookPlayerStart);
+			if (!bHookLight)
+			{
+				const FVector PlayerEnd = Character->GetActorLocation();
+				const FVector TargetEnd = TargetA.Character.IsValid()
+					? TargetA.Character->GetActorLocation() : FVector::ZeroVector;
+				return FailAndStop(FString::Printf(
+					TEXT("VectorHook Light mismatch. PlayerStart=%s TargetStart=%s PlayerEnd=%s TargetEnd=%s Energy=%.2f Cooldown=%d Outcomes=%d Active=%s Request=%s %s."),
+					*HookPlayerStart.ToString(), *HookTargetStart.ToString(), *PlayerEnd.ToString(),
+					*TargetEnd.ToString(), Attributes->GetEnergy(), ASC->GetGameplayTagCount(HookCooldownTag()), CountResponseEvents(HookEventStart, VectorHookData->AbilityTag,
+						UPRTagLibrary::GetCombatResponseDisplacementAppliedTag()),
+					IsAbilityActive(VectorHookData->AbilityTag) ? TEXT("true") : TEXT("false"),
+					SkillComponent->GetActiveDisplacementRequestId().IsValid() ? TEXT("true") : TEXT("false"),
+					*DescribeHookPreflight()));
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointDSmokePhase::HookCooldownAfterLight);
+			break;
+
+		case ECheckpointDSmokePhase::HookCooldownAfterLight:
+			if (ASC->GetGameplayTagCount(HookCooldownTag()) != 0)
+			{
+				if (Elapsed < 8.0)
+				{
+					break;
+				}
+				return FailAndStop(TEXT("VectorHook cooldown did not expire before Heavy validation."));
+			}
+			SetAutomationTimeDilation(1.0f);
+			Advance(ECheckpointDSmokePhase::HookHeavyStart);
+			break;
+
+		case ECheckpointDSmokePhase::HookHeavyStart:
+			ResetPlayerAtOrigin();
+			PrepareTarget(TargetA, TestOrigin + AimDirection * 600.0f, EPRAbilityTargetMobility::Heavy);
+			HookTargetStart = TargetA.Character->GetActorLocation();
+			HookPlayerStart = Character->GetActorLocation();
+			HookEventStart = CombatEvents.Num();
+			SendPressAndRelease(EKeys::H);
+			Advance(ECheckpointDSmokePhase::HookHeavyWait);
+			break;
+
+		case ECheckpointDSmokePhase::HookHeavyWait:
+			if (IsAbilityActive(VectorHookData->AbilityTag) || SkillComponent->GetActiveDisplacementRequestId().IsValid())
+			{
+				if (Elapsed < 1.0)
+				{
+					break;
+				}
+			}
+			bHookHeavy = VerifyHookResult(false, HookTargetStart, HookPlayerStart);
+			if (!bHookHeavy)
+			{
+				return FailAndStop(TEXT("VectorHook Heavy did not move only the player to the 120cm stop distance."));
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointDSmokePhase::HookCooldownAfterHeavy);
+			break;
+
+		case ECheckpointDSmokePhase::HookCooldownAfterHeavy:
+			if (ASC->GetGameplayTagCount(HookCooldownTag()) != 0)
+			{
+				if (Elapsed < 8.0)
+				{
+					break;
+				}
+				return FailAndStop(TEXT("VectorHook cooldown did not expire before Anchored validation."));
+			}
+			SetAutomationTimeDilation(1.0f);
+			Advance(ECheckpointDSmokePhase::HookAnchoredStart);
+			break;
+
+		case ECheckpointDSmokePhase::HookAnchoredStart:
+			ResetPlayerAtOrigin();
+			PrepareTarget(TargetA, TestOrigin + AimDirection * 600.0f, EPRAbilityTargetMobility::Anchored);
+			HookTargetStart = TargetA.Character->GetActorLocation();
+			HookPlayerStart = Character->GetActorLocation();
+			HookEventStart = CombatEvents.Num();
+			SendPressAndRelease(EKeys::H);
+			Advance(ECheckpointDSmokePhase::HookAnchoredWait);
+			break;
+
+		case ECheckpointDSmokePhase::HookAnchoredWait:
+			if (IsAbilityActive(VectorHookData->AbilityTag) || SkillComponent->GetActiveDisplacementRequestId().IsValid())
+			{
+				if (Elapsed < 1.0)
+				{
+					break;
+				}
+			}
+			bHookAnchored = VerifyHookResult(false, HookTargetStart, HookPlayerStart)
+				&& TargetA.Character->GetActorLocation().Equals(HookTargetStart, 1.0f);
+			if (!bHookAnchored)
+			{
+				return FailAndStop(TEXT("VectorHook Anchored moved its target or failed its player pull."));
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointDSmokePhase::HookCooldownAfterAnchored);
+			break;
+
+		case ECheckpointDSmokePhase::HookCooldownAfterAnchored:
+			if (ASC->GetGameplayTagCount(HookCooldownTag()) != 0)
+			{
+				if (Elapsed < 8.0)
+				{
+					break;
+				}
+				return FailAndStop(TEXT("VectorHook cooldown did not expire before CounterProofWall validation."));
+			}
+			SetAutomationTimeDilation(1.0f);
+			SetAttributes(*ASC.Get(), 100.0f, 0.0f, 100.0f, 10.0f);
+			ResetPlayerAtOrigin();
+			PrepareTarget(TargetA, TestOrigin + AimDirection * 200.0f, EPRAbilityTargetMobility::Light);
+			Advance(ECheckpointDSmokePhase::GuardKeyboardStart);
+			break;
+
+		case ECheckpointDSmokePhase::GuardKeyboardStart:
+			GuardEventStart = CombatEvents.Num();
+			SendKey(EKeys::Semicolon, IE_Pressed);
+			Advance(ECheckpointDSmokePhase::GuardKeyboardPerfect);
+			break;
+
+		case ECheckpointDSmokePhase::GuardKeyboardPerfect:
+			if (Elapsed < 0.05)
+			{
+				break;
+			}
+			bGuardPress = ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+				&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Active
+				&& FMath::IsNearlyEqual(Attributes->GetEnergy(), 80.0f, 0.1f);
+			if (!bGuardPress || !ApplyGuardDamage(-AimDirection, EPRCombatRequestStatus::RejectedBlocked))
+			{
+				return FailAndStop(TEXT("CounterProofWall keyboard press did not commit one Guarding block."));
+			}
+			bGuardPerfect = LastDamageEventHas(UPRTagLibrary::GetCombatResponseGuardBlockedTag())
+				&& LastDamageEventHas(UPRTagLibrary::GetCombatResponsePerfectTimingTag());
+			if (!bGuardPerfect)
+			{
+				return FailAndStop(TEXT("CounterProofWall opening front block omitted GuardBlocked or PerfectTiming."));
+			}
+			Advance(ECheckpointDSmokePhase::GuardKeyboardLate);
+			break;
+
+		case ECheckpointDSmokePhase::GuardKeyboardLate:
+		{
+			if (Elapsed < 0.16)
+			{
+				break;
+			}
+			bGuardMultipleBlocks = ApplyGuardDamage(-AimDirection, EPRCombatRequestStatus::RejectedBlocked)
+				&& LastDamageEventHas(UPRTagLibrary::GetCombatResponseGuardBlockedTag())
+				&& !LastDamageEventHas(UPRTagLibrary::GetCombatResponsePerfectTimingTag());
+			const float HealthBeforeBack = Attributes->GetHealth();
+			bGuardBackAndInvalid = ApplyGuardDamage(AimDirection, EPRCombatRequestStatus::Applied)
+				&& Attributes->GetHealth() < HealthBeforeBack;
+			SetAttributes(*ASC.Get(), 100.0f, 0.0f, 80.0f, 10.0f);
+			FPRDamageRequest ZeroRequest = MakeGuardDamage(FVector::ZeroVector);
+			FGameplayTagContainer ZeroTags;
+			bGuardBackAndInvalid = bGuardBackAndInvalid
+				&& Character->EvaluateIncomingDamage(ZeroRequest, ZeroTags) == EPRCombatMitigationResult::NotHandled
+				&& ZeroTags.IsEmpty();
+			if (!bGuardMultipleBlocks || !bGuardBackAndInvalid)
+			{
+				return FailAndStop(TEXT("CounterProofWall multiple, back, or invalid-direction mitigation was incorrect."));
+			}
+			Advance(ECheckpointDSmokePhase::GuardKeyboardRelease);
+			break;
+		}
+
+		case ECheckpointDSmokePhase::GuardKeyboardRelease:
+			SendKey(EKeys::Semicolon, IE_Released);
+			if (Elapsed < 0.05)
+			{
+				break;
+			}
+			bGuardRelease = !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+				&& !IsAbilityActive(CounterProofWallData->AbilityTag)
+				&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle;
+			if (!bGuardRelease)
+			{
+				return FailAndStop(TEXT("CounterProofWall keyboard release left Guarding or an active phase behind."));
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointDSmokePhase::GuardCooldownAfterKeyboard);
+			break;
+
+		case ECheckpointDSmokePhase::GuardCooldownAfterKeyboard:
+			if (ASC->GetGameplayTagCount(GuardCooldownTag()) != 0)
+			{
+				if (Elapsed < 10.0)
+				{
+					break;
+				}
+				return FailAndStop(TEXT("CounterProofWall cooldown did not expire before D-Pad validation."));
+			}
+			SetAutomationTimeDilation(1.0f);
+			Advance(ECheckpointDSmokePhase::GuardGamepadStart);
+			break;
+
+		case ECheckpointDSmokePhase::GuardGamepadStart:
+			SendKey(EKeys::Gamepad_DPad_Down, IE_Pressed);
+			Advance(ECheckpointDSmokePhase::GuardGamepadRelease);
+			break;
+
+		case ECheckpointDSmokePhase::GuardGamepadRelease:
+			if (Elapsed < 0.05)
+			{
+				break;
+			}
+			bGuardGamepad = ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+				&& FMath::IsNearlyEqual(Attributes->GetEnergy(), 60.0f, 0.1f);
+			SendKey(EKeys::Gamepad_DPad_Down, IE_Released);
+			if (!bGuardGamepad)
+			{
+				return FailAndStop(TEXT("CounterProofWall D-Pad Down did not reach its unique formal Spec."));
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointDSmokePhase::GuardCooldownAfterGamepad);
+			break;
+
+		case ECheckpointDSmokePhase::GuardCooldownAfterGamepad:
+			if (ASC->GetGameplayTagCount(GuardCooldownTag()) != 0)
+			{
+				if (Elapsed < 10.0)
+				{
+					break;
+				}
+				return FailAndStop(TEXT("CounterProofWall cooldown did not expire before maximum-held validation."));
+			}
+			SetAutomationTimeDilation(1.0f);
+			Advance(ECheckpointDSmokePhase::GuardMaximumStart);
+			break;
+
+		case ECheckpointDSmokePhase::GuardMaximumStart:
+			SendKey(EKeys::Semicolon, IE_Pressed);
+			Advance(ECheckpointDSmokePhase::GuardMaximumWait);
+			break;
+
+		case ECheckpointDSmokePhase::GuardMaximumWait:
+			if (Elapsed < 1.05)
+			{
+				break;
+			}
+			SendKey(EKeys::Semicolon, IE_Released);
+			bGuardMaximum = !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+				&& !IsAbilityActive(CounterProofWallData->AbilityTag)
+				&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle;
+			if (!bGuardMaximum)
+			{
+				return FailAndStop(TEXT("CounterProofWall exceeded its one-second held maximum."));
+			}
+			SetAutomationTimeDilation(10.0f);
+			Advance(ECheckpointDSmokePhase::CleanupWait);
+			break;
+
+		case ECheckpointDSmokePhase::CleanupWait:
+			if (ASC->GetGameplayTagCount(HookCooldownTag()) != 0
+				|| ASC->GetGameplayTagCount(GuardCooldownTag()) != 0)
+			{
+				if (Elapsed < 10.0)
+				{
+					break;
+				}
+				return FailAndStop(TEXT("Checkpoint-D cooldowns did not expire before runtime leak validation."));
+			}
+			SetAutomationTimeDilation(1.0f);
+			bBCRegression = CheckBCRegression();
+			bRuntimeClean = CheckRuntimeClean();
+			if (!bBCRegression || !bRuntimeClean)
+			{
+				return FailAndStop(TEXT("Checkpoint-D B/C regression or runtime cleanup validation failed."));
+			}
+			Advance(ECheckpointDSmokePhase::Complete);
+			break;
+
+		case ECheckpointDSmokePhase::Complete:
+			return Finish();
+		}
+		return true;
+	}
+
+	bool CheckFormalSpecContract() const
+	{
+		if (!ASC.IsValid() || ASC->GetActivatableAbilities().Num() != 6)
+		{
+			return false;
+		}
+		const TCHAR* ExpectedTags[] = {
+			TEXT("Skill.ShadowThrust"), TEXT("Skill.FireSlash"), TEXT("Skill.ThunderDrop"),
+			TEXT("Skill.AfterimageDodge"), TEXT("Skill.VectorHook"), TEXT("Skill.CounterProofWall")};
+		const TArray<FGameplayAbilitySpec>& Specs = ASC->GetActivatableAbilities();
+		if (Specs.Num() != UE_ARRAY_COUNT(ExpectedTags))
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < Specs.Num(); ++Index)
+		{
+			const UPRGameplayAbility* Ability = Cast<UPRGameplayAbility>(Specs[Index].Ability);
+			FPRAbilityRuntimeState State;
+			if (!Ability || Ability->GetProjectRAbilityTag().ToString() != ExpectedTags[Index]
+				|| !ASC->GetAbilityRuntimeStateByAbilityTag(Ability->GetProjectRAbilityTag(), State)
+				|| State.InputTag != (Index == 4 ? VectorHookData->InputTag
+					: Index == 5 ? CounterProofWallData->InputTag : State.InputTag))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool CheckFrozenDataContract() const
+	{
+		const UPRVectorHookSkillFragment* HookFragment =
+			Cast<UPRVectorHookSkillFragment>(VectorHookData->SkillFragment);
+		const UPRCounterProofWallSkillFragment* GuardFragment =
+			Cast<UPRCounterProofWallSkillFragment>(CounterProofWallData->SkillFragment);
+		return HookFragment && GuardFragment
+			&& VectorHookData->InputTag == UPRTagLibrary::GetInputSkillVectorHookTag()
+			&& VectorHookData->ActivationPolicy == EPRAbilityActivationPolicy::OnInputTriggered
+			&& VectorHookData->TargetPolicy == EPRPlayerSkillTargetPolicy::SingleTarget
+			&& FMath::IsNearlyEqual(VectorHookData->EnergyCost, 15.0f)
+			&& FMath::IsNearlyEqual(VectorHookData->CooldownDuration, 4.0f)
+			&& FMath::IsNearlyZero(VectorHookData->BaseDamage)
+			&& FMath::IsNearlyZero(VectorHookData->AttackPowerScale)
+			&& FMath::IsNearlyEqual(VectorHookData->ActiveDuration, 0.30f)
+			&& FMath::IsNearlyEqual(VectorHookData->Range, 800.0f)
+			&& FMath::IsNearlyEqual(VectorHookData->HalfAngleDegrees, 45.0f)
+			&& FMath::IsNearlyEqual(HookFragment->StopDistance, 120.0f)
+			&& CounterProofWallData->InputTag == UPRTagLibrary::GetInputSkillCounterProofWallTag()
+			&& CounterProofWallData->ActivationPolicy == EPRAbilityActivationPolicy::WhileInputActive
+			&& CounterProofWallData->TargetPolicy == EPRPlayerSkillTargetPolicy::Self
+			&& FMath::IsNearlyEqual(CounterProofWallData->EnergyCost, 20.0f)
+			&& FMath::IsNearlyEqual(CounterProofWallData->CooldownDuration, 6.0f)
+			&& FMath::IsNearlyZero(CounterProofWallData->BaseDamage)
+			&& FMath::IsNearlyEqual(CounterProofWallData->ActiveDuration, 1.0f)
+			&& FMath::IsNearlyEqual(CounterProofWallData->HalfAngleDegrees, 60.0f)
+			&& FMath::IsNearlyEqual(GuardFragment->PerfectTimingWindow, 0.15f);
+	}
+
+	bool CheckBCRegression() const
+	{
+		const TCHAR* FrozenTags[] = {
+			TEXT("Skill.ShadowThrust"), TEXT("Skill.FireSlash"),
+			TEXT("Skill.ThunderDrop"), TEXT("Skill.AfterimageDodge")};
+		for (const TCHAR* TagName : FrozenTags)
+		{
+			FPRAbilityRuntimeState State;
+			if (!ASC->GetAbilityRuntimeStateByAbilityTag(FGameplayTag::RequestGameplayTag(TagName), State)
+				|| State.bActive)
+			{
+				return false;
+			}
+		}
+		return !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag())
+			&& !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateInvulnerableTag());
+	}
+
+	void SetAttributes(UPRAbilitySystemComponent& TargetASC, const float Health, const float Shield,
+		const float Energy, const float AttackPower) const
+	{
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetMaxHealthAttribute(), 100.0f);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), Health);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetMaxShieldAttribute(), 100.0f);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetShieldAttribute(), Shield);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetMaxEnergyAttribute(), 100.0f);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetEnergyAttribute(), Energy);
+		TargetASC.SetNumericAttributeBase(UPRAttributeSet::GetAttackPowerAttribute(), AttackPower);
+	}
+
+	void ResetPlayerAtOrigin() const
+	{
+		Character->SetActorLocation(TestOrigin, false, nullptr, ETeleportType::TeleportPhysics);
+		Character->GetCharacterMovement()->StopMovementImmediately();
+	}
+
+	void PrepareTarget(FTransientCombatant& Target, const FVector Location,
+		const EPRAbilityTargetMobility Mobility) const
+	{
+		if (!Target.Character.IsValid() || !Target.ASC.IsValid())
+		{
+			return;
+		}
+		Target.Character->ConfigureTarget(TEXT("PIE.Skill.CheckpointD.TargetA"), true, Mobility);
+		Target.Character->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+		Target.Character->GetCharacterMovement()->bRunPhysicsWithNoController = true;
+		Target.Character->GetCharacterMovement()->StopMovementImmediately();
+		SetAttributes(*Target.ASC.Get(), 100.0f, 0.0f, 100.0f, 10.0f);
+	}
+
+	void MoveFar(FTransientCombatant& Target) const
+	{
+		PrepareTarget(Target, Character->GetActorLocation() + AimDirection * 2000.0f,
+			EPRAbilityTargetMobility::Light);
+	}
+
+	bool CreateWall(const FVector Location)
+	{
+		DestroyWall();
+		AActor* NewWall = World->SpawnActor<AActor>();
+		if (!NewWall)
+		{
+			Fail(TEXT("The fixed checkpoint-D PIE smoke could not spawn its transient WorldStatic wall."));
+			return false;
+		}
+		UBoxComponent* Box = NewObject<UBoxComponent>(NewWall, TEXT("CheckpointDWall"));
+		if (!Box)
+		{
+			NewWall->Destroy();
+			Fail(TEXT("The fixed checkpoint-D PIE smoke could not create its transient wall collision."));
+			return false;
+		}
+		NewWall->SetRootComponent(Box);
+		Box->SetBoxExtent(FVector(10.0f, 200.0f, 200.0f));
+		Box->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		Box->SetCollisionObjectType(ECC_WorldStatic);
+		Box->SetCollisionResponseToAllChannels(ECR_Block);
+		Box->RegisterComponent();
+		NewWall->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+		Wall = NewWall;
+		return true;
+	}
+
+	bool VerifyHookResult(const bool bTargetMoves, const FVector TargetStart,
+		const FVector PlayerStart) const
+	{
+		if (!TargetA.Character.IsValid())
+		{
+			return false;
+		}
+		// ProjectR's 2.5D gameplay plane is X/Z; FVector::Size2D measures X/Y
+		// and would silently ignore vertical-in-world hook travel.
+		const auto PlanarMagnitude = [](const FVector& Vector)
+		{
+			return FVector(Vector.X, 0.0f, Vector.Z).Size();
+		};
+		const float Distance = PlanarMagnitude(
+			Character->GetActorLocation() - TargetA.Character->GetActorLocation());
+		const FVector PlayerDelta = Character->GetActorLocation() - PlayerStart;
+		const FVector TargetDelta = TargetA.Character->GetActorLocation() - TargetStart;
+		const int32 OutcomeCount = CountResponseEvents(HookEventStart,
+			VectorHookData->AbilityTag, UPRTagLibrary::GetCombatResponseDisplacementAppliedTag());
+		return FMath::IsNearlyEqual(Distance, 120.0f, 8.0f)
+			&& FMath::Abs(PlayerDelta.Y) <= 1.0f && FMath::Abs(TargetDelta.Y) <= 1.0f
+			&& (bTargetMoves ? PlanarMagnitude(PlayerDelta) <= 2.0f && PlanarMagnitude(TargetDelta) > 400.0f
+				: PlanarMagnitude(PlayerDelta) > 400.0f && PlanarMagnitude(TargetDelta) <= 2.0f)
+			&& OutcomeCount == 1 && !IsAbilityActive(VectorHookData->AbilityTag)
+			&& !SkillComponent->GetActiveDisplacementRequestId().IsValid();
+	}
+
+	FString DescribeHookPreflight() const
+	{
+		UPRPlayerSkillSubsystem* Subsystem = World.IsValid()
+			? World->GetSubsystem<UPRPlayerSkillSubsystem>() : nullptr;
+		if (!Subsystem || !VectorHookData.IsValid())
+		{
+			return TEXT("Preflight=Unavailable");
+		}
+		FPRAbilityTargetQuery Query;
+		Query.SourceActor = Character.Get();
+		Query.AbilityTag = VectorHookData->AbilityTag;
+		Query.TargetPolicy = EPRPlayerSkillTargetPolicy::ForwardArea;
+		Query.Origin = Character->GetActorLocation();
+		Query.AimDirection = AimDirection;
+		Query.AreaCenter = Query.Origin;
+		Query.Range = VectorHookData->Range;
+		Query.HalfAngleDegrees = VectorHookData->HalfAngleDegrees;
+		FPRAbilityTargetQueryResult Targets;
+		FGameplayTag Failure;
+		const bool bResolved = Subsystem->QueryTargets(Query, Targets, Failure);
+		return FString::Printf(TEXT("Preflight=%s Count=%d Failure=%s"),
+			bResolved ? TEXT("true") : TEXT("false"), Targets.Targets.Num(), *Failure.ToString());
+	}
+
+	FPRDamageRequest MakeGuardDamage(const FVector IncomingDirection) const
+	{
+		FPRDamageRequest Request;
+		Request.SourceId = TEXT("PIE.Skill.CheckpointD.Attacker");
+		Request.DamageSource = TargetA.PlayerState.Get();
+		Request.Instigator = TargetA.Character.Get();
+		Request.Target = Character.Get();
+		Request.AbilityTag = CounterProofWallData->AbilityTag;
+		Request.RawDamage = 10.0f;
+		Request.ImpactOrigin = TargetA.Character.IsValid() ? TargetA.Character->GetActorLocation() : FVector::ZeroVector;
+		Request.IncomingDirection = IncomingDirection;
+		return Request;
+	}
+
+	bool ApplyGuardDamage(const FVector IncomingDirection, const EPRCombatRequestStatus Expected) const
+	{
+		return CombatSubsystem->ApplyDamage(MakeGuardDamage(IncomingDirection)) == Expected;
+	}
+
+	bool LastDamageEventHas(const FGameplayTag ResponseTag) const
+	{
+		return !CombatEvents.IsEmpty()
+			&& CombatEvents.Last().EventTag == UPRTagLibrary::GetCombatEventDamageRejectedTag()
+			&& CombatEvents.Last().ResponseTags.HasTagExact(ResponseTag);
+	}
+
+	int32 CountResponseEvents(const int32 FirstIndex, const FGameplayTag AbilityTag,
+		const FGameplayTag ResponseTag) const
+	{
+		int32 Count = 0;
+		for (int32 Index = FirstIndex; Index < CombatEvents.Num(); ++Index)
+		{
+			const FPRCombatEvent& Event = CombatEvents[Index];
+			if (Event.AbilityTag == AbilityTag
+				&& Event.EventTag == UPRTagLibrary::GetCombatEventAbilityOutcomeTag()
+				&& Event.ResponseTags.HasTagExact(ResponseTag))
+			{
+				++Count;
+			}
+		}
+		return Count;
+	}
+
+	bool IsAbilityActive(const FGameplayTag AbilityTag) const
+	{
+		FPRAbilityRuntimeState State;
+		return ASC.IsValid() && ASC->GetAbilityRuntimeStateByAbilityTag(AbilityTag, State) && State.bActive;
+	}
+
+	bool CheckRuntimeClean() const
+	{
+		return CheckFormalSpecContract() && !IsAbilityActive(VectorHookData->AbilityTag)
+			&& !IsAbilityActive(CounterProofWallData->AbilityTag)
+			&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle
+			&& !SkillComponent->GetActiveDisplacementRequestId().IsValid()
+			&& !ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+			&& ASC->GetGameplayTagCount(HookCooldownTag()) == 0
+			&& ASC->GetGameplayTagCount(GuardCooldownTag()) == 0
+			&& ASC->GetActiveEffects(FGameplayEffectQuery()).IsEmpty()
+			&& !Wall.IsValid();
+	}
+
+	static FGameplayTag HookCooldownTag()
+	{
+		return FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Skill.VectorHook"));
+	}
+
+	static FGameplayTag GuardCooldownTag()
+	{
+		return FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Skill.CounterProofWall"));
+	}
+
+	void SendPressAndRelease(const FKey& Key)
+	{
+		SendKey(Key, IE_Pressed);
+		SendKey(Key, IE_Released);
+	}
+
+	void SendKey(const FKey& Key, const EInputEvent Event)
+	{
+		if (Viewport.IsValid() && InputViewport && Viewport->GetGameViewport() == InputViewport)
+		{
+			Viewport->InputKey(FInputKeyEventArgs::CreateSimulated(
+				Key, Event, 1.0f, -1, InputDevice, false, InputViewport));
+		}
+		DispatchFixedSkillInput(Key, Event);
+	}
+
+	void DispatchFixedSkillInput(const FKey& Key, const EInputEvent Event)
+	{
+		FGameplayTag InputTag;
+		if (Key == EKeys::H || Key == EKeys::Gamepad_DPad_Up)
+		{
+			InputTag = VectorHookData.IsValid() ? VectorHookData->InputTag : FGameplayTag();
+		}
+		else if (Key == EKeys::Semicolon || Key == EKeys::Gamepad_DPad_Down)
+		{
+			InputTag = CounterProofWallData.IsValid() ? CounterProofWallData->InputTag : FGameplayTag();
+		}
+		if (InputTag.IsValid() && ASC.IsValid())
+		{
+			if (Event == IE_Pressed)
+			{
+				ASC->AbilityInputTagPressed(InputTag);
+			}
+			else if (Event == IE_Released)
+			{
+				ASC->AbilityInputTagReleased(InputTag);
+			}
+		}
+	}
+
+	void ReleaseInputs()
+	{
+		SendKey(EKeys::H, IE_Released);
+		SendKey(EKeys::Gamepad_DPad_Up, IE_Released);
+		SendKey(EKeys::Semicolon, IE_Released);
+		SendKey(EKeys::Gamepad_DPad_Down, IE_Released);
+	}
+
+	void SetAutomationTimeDilation(const float TimeDilation) const
+	{
+		if (World.IsValid() && IsValid(World->GetWorldSettings()))
+		{
+			World->GetWorldSettings()->SetTimeDilation(TimeDilation);
+		}
+	}
+
+	bool Finish()
+	{
+		const bool bPassed = bHookNoTarget && bHookObstructed && bHookLight && bHookHeavy
+			&& bHookAnchored && bGuardPress && bGuardPerfect && bGuardMultipleBlocks
+			&& bGuardBackAndInvalid && bGuardRelease && bGuardGamepad && bGuardMaximum
+			&& bBCRegression && bRuntimeClean && CheckFormalSpecContract();
+		TSharedRef<FJsonObject> Json = MakeShared<FJsonObject>();
+		Json->SetStringField(TEXT("status"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+		Json->SetNumberField(TEXT("formalSpecCount"), ASC.IsValid() ? ASC->GetActivatableAbilities().Num() : 0);
+		Json->SetBoolField(TEXT("hookNoTargetPreCommit"), bHookNoTarget);
+		Json->SetBoolField(TEXT("hookObstructedPreCommit"), bHookObstructed);
+		Json->SetBoolField(TEXT("hookLight120cm"), bHookLight);
+		Json->SetBoolField(TEXT("hookHeavy120cm"), bHookHeavy);
+		Json->SetBoolField(TEXT("hookAnchored120cm"), bHookAnchored);
+		Json->SetBoolField(TEXT("guardPress"), bGuardPress);
+		Json->SetBoolField(TEXT("guardPerfect"), bGuardPerfect);
+		Json->SetBoolField(TEXT("guardMultipleBlocks"), bGuardMultipleBlocks);
+		Json->SetBoolField(TEXT("guardBackAndInvalid"), bGuardBackAndInvalid);
+		Json->SetBoolField(TEXT("guardRelease"), bGuardRelease);
+		Json->SetBoolField(TEXT("guardGamepad"), bGuardGamepad);
+		Json->SetBoolField(TEXT("guardMaximum"), bGuardMaximum);
+		Json->SetBoolField(TEXT("bcRegression"), bBCRegression);
+		Json->SetBoolField(TEXT("runtimeClean"), bRuntimeClean);
+		Json->SetNumberField(TEXT("combatEventCount"), CombatEvents.Num());
+		FString JsonString;
+		TSharedRef<TJsonWriter<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>> Writer =
+			TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&JsonString);
+		FJsonSerializer::Serialize(Json, Writer);
+		Cleanup();
+		if (bPassed)
+		{
+			Result->SetValue(JsonString);
+		}
+		else
+		{
+			Result->SetError(JsonString);
+		}
+		return false;
+	}
+
+	void Advance(const ECheckpointDSmokePhase NextPhase)
+	{
+		Phase = NextPhase;
+		PhaseStartTime = GetPlayWorldTimeSeconds();
+	}
+
+	double GetPlayWorldTimeSeconds() const
+	{
+		return World.IsValid() ? World->GetTimeSeconds() : 0.0;
+	}
+
+	void DestroyWall()
+	{
+		if (Wall.IsValid())
+		{
+			Wall->Destroy();
+			Wall.Reset();
+		}
+	}
+
+	static void DestroyCombatant(FTransientCombatant& Combatant)
+	{
+		if (Combatant.ASC.IsValid())
+		{
+			Combatant.ASC->CancelAllAbilities();
+		}
+		if (Combatant.Controller.IsValid())
+		{
+			Combatant.Controller->UnPossess();
+		}
+		if (Combatant.Character.IsValid())
+		{
+			Combatant.Character->Destroy();
+		}
+		if (Combatant.Controller.IsValid())
+		{
+			Combatant.Controller->Destroy();
+		}
+		if (Combatant.PlayerState.IsValid())
+		{
+			Combatant.PlayerState->Destroy();
+		}
+		Combatant = FTransientCombatant();
+	}
+
+	void Cleanup()
+	{
+		ReleaseInputs();
+		SetAutomationTimeDilation(InitialTimeDilation);
+		DestroyWall();
+		if (CombatSubsystem.IsValid() && CombatEventHandle.IsValid())
+		{
+			CombatSubsystem->OnCombatEvent().Remove(CombatEventHandle);
+			CombatEventHandle.Reset();
+		}
+		DestroyCombatant(TargetB);
+		DestroyCombatant(TargetA);
+		if (ASC.IsValid())
+		{
+			ASC->CancelAllAbilities();
+			FGameplayTagContainer CleanupTags;
+			CleanupTags.AddTag(HookCooldownTag());
+			CleanupTags.AddTag(GuardCooldownTag());
+			CleanupTags.AddTag(UPRTagLibrary::GetStateGuardingTag());
+			ASC->RemoveActiveEffectsWithTags(CleanupTags);
+			SetAttributes(*ASC.Get(), InitialHealth, InitialShield, InitialEnergy, InitialAttackPower);
+		}
+		if (Character.IsValid())
+		{
+			Character->SetActorTransform(InitialTransform, false, nullptr, ETeleportType::TeleportPhysics);
+			Character->GetCharacterMovement()->SetMovementMode(InitialMovementMode);
+			Character->GetCharacterMovement()->StopMovementImmediately();
+		}
+		InputViewport = nullptr;
+	}
+
+	bool FailAndStop(const FString& Message)
+	{
+		Fail(Message);
+		return false;
+	}
+
+	void Fail(const FString& Message)
+	{
+		Cleanup();
+		if (Result.IsValid())
+		{
+			Result->SetError(Message);
+		}
+	}
+
+	TStrongObjectPtr<UToolCallAsyncResultString> Result;
+	TWeakObjectPtr<UWorld> World;
+	TWeakObjectPtr<APRPlayerController> Controller;
+	TWeakObjectPtr<APRPlayerCharacter> Character;
+	TWeakObjectPtr<APRPlayerState> PlayerState;
+	TWeakObjectPtr<UPRAbilitySystemComponent> ASC;
+	const UPRAttributeSet* Attributes = nullptr;
+	TWeakObjectPtr<UPRPlayerSkillComponent> SkillComponent;
+	TWeakObjectPtr<UPRCombatSubsystem> CombatSubsystem;
+	TWeakObjectPtr<UGameViewportClient> Viewport;
+	FViewport* InputViewport = nullptr;
+	FInputDeviceId InputDevice = INPUTDEVICEID_NONE;
+	TWeakObjectPtr<UPRPlayerSkillDataAsset> VectorHookData;
+	TWeakObjectPtr<UPRPlayerSkillDataAsset> CounterProofWallData;
+	TWeakObjectPtr<AActor> Wall;
+	FTransientCombatant TargetA;
+	FTransientCombatant TargetB;
+	FDelegateHandle CombatEventHandle;
+	TArray<FPRCombatEvent> CombatEvents;
+	ECheckpointDSmokePhase Phase = ECheckpointDSmokePhase::HookNoTargetStart;
+	double PhaseStartTime = 0.0;
+	FTransform InitialTransform = FTransform::Identity;
+	EMovementMode InitialMovementMode = MOVE_Walking;
+	FVector TestOrigin = FVector::ZeroVector;
+	FVector AimDirection = FVector::ForwardVector;
+	FVector HookTargetStart = FVector::ZeroVector;
+	FVector HookPlayerStart = FVector::ZeroVector;
+	int32 HookEventStart = 0;
+	int32 GuardEventStart = 0;
+	float InitialHealth = 0.0f;
+	float InitialShield = 0.0f;
+	float InitialEnergy = 0.0f;
+	float InitialAttackPower = 0.0f;
+	float InitialTimeDilation = 1.0f;
+	bool bHookNoTarget = false;
+	bool bHookObstructed = false;
+	bool bHookLight = false;
+	bool bHookHeavy = false;
+	bool bHookAnchored = false;
+	bool bGuardPress = false;
+	bool bGuardPerfect = false;
+	bool bGuardMultipleBlocks = false;
+	bool bGuardBackAndInvalid = false;
+	bool bGuardRelease = false;
+	bool bGuardGamepad = false;
+	bool bGuardMaximum = false;
+	bool bBCRegression = false;
+	bool bRuntimeClean = false;
+};
 } // namespace PRPlayerSkillAutomationToolset
 
 UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointBSmoke()
@@ -1760,4 +2793,9 @@ UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCh
 UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointCSmoke()
 {
 	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointCRunner::Start();
+}
+
+UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointDSmoke()
+{
+	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointDRunner::Start();
 }

@@ -103,7 +103,7 @@ FVector APRPlayerSkillCombatTestCharacter::GetAbilityTargetPoint() const
 
 EPRAbilityTargetMobility APRPlayerSkillCombatTestCharacter::GetAbilityTargetMobility() const
 {
-	return EPRAbilityTargetMobility::Light;
+	return Mobility;
 }
 
 bool APRPlayerSkillCombatTestCharacter::CanBeTargetedByAbility(const FGameplayTag AbilityTag) const
@@ -113,10 +113,12 @@ bool APRPlayerSkillCombatTestCharacter::CanBeTargetedByAbility(const FGameplayTa
 
 void APRPlayerSkillCombatTestCharacter::ConfigureTarget(
 	const FName InTargetId,
-	const bool bInTargetable)
+	const bool bInTargetable,
+	const EPRAbilityTargetMobility InMobility)
 {
 	TargetId = InTargetId;
 	bTargetable = bInTargetable;
+	Mobility = InMobility;
 }
 
 
