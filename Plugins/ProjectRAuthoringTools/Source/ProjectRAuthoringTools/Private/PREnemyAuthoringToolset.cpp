@@ -1,0 +1,517 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "PREnemyAuthoringToolset.h"
+
+#include "Abilities/PRAbilitySetDataAsset.h"
+#include "Abilities/PRAttributeSet.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetToolsModule.h"
+#include "Core/PRTagLibrary.h"
+#include "Enemies/PREnemyAttackDataAsset.h"
+#include "Enemies/PREnemyAttackGameplayAbility.h"
+#include "Enemies/PREnemyCharacter.h"
+#include "Enemies/PREnemyPrototypeDataAsset.h"
+#include "Enemies/PREnemyStateTreeNodes.h"
+#include "Engine/Blueprint.h"
+#include "Factories/BlueprintFactory.h"
+#include "Factories/SoundFactory.h"
+#include "GameplayEffect.h"
+#include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
+#include "Kismet2/KismetEditorUtilities.h"
+#include "NiagaraSystem.h"
+#include "NiagaraSystemFactoryNew.h"
+#include "ObjectTools.h"
+#include "Sound/SoundWave.h"
+#include "StateTree.h"
+#include "StateTreeCompiler.h"
+#include "StateTreeCompilerLog.h"
+#include "StateTreeEditorData.h"
+#include "StateTreeEditorModule.h"
+#include "StateTreeEditorSchema.h"
+#include "StateTreeEditingSubsystem.h"
+#include "StateTreeState.h"
+#include "Components/StateTreeAIComponentSchema.h"
+#include "ToolsetRegistry/ToolCallAsyncResultString.h"
+#include "UObject/Package.h"
+#include "UObject/SavePackage.h"
+#include "UObject/UnrealType.h"
+
+namespace PREnemyAuthoringToolset
+{
+struct FScopedToolResultRoot
+{
+	explicit FScopedToolResultRoot(UToolCallAsyncResultString* InResult)
+		: Result(InResult)
+	{
+		check(Result);
+		Result->AddToRoot();
+	}
+
+	~FScopedToolResultRoot()
+	{
+		Result->RemoveFromRoot();
+	}
+
+	UToolCallAsyncResultString* Result;
+};
+
+constexpr const TCHAR* Packages[] = {
+	TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry"),
+	TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes"),
+	TEXT("/Game/ProjectR/Enemies/AI/ST_Enemy_Base"),
+	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base"),
+	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_MeleeMinion"),
+	TEXT("/Game/ProjectR/Enemies/Prototypes/DA_Enemy_MeleeMinion"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_MeleeStrike"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_MeleeStrike"),
+	TEXT("/Game/ProjectR/Enemies/Abilities/DA_EnemyAbilitySet_Melee"),
+	TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_MeleeStrike_Cooldown"),
+	TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_MeleeStrike"),
+	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_MeleeStrike")};
+
+template <typename T>
+T* CreateAsset(const TCHAR* Path)
+{
+	const FString LongName(Path);
+	UPackage* Package = CreatePackage(*LongName);
+	T* Asset = NewObject<T>(Package, *FPackageName::GetLongPackageAssetName(LongName), RF_Public | RF_Standalone);
+	FAssetRegistryModule::AssetCreated(Asset);
+	Package->MarkPackageDirty();
+	return Asset;
+}
+
+UBlueprint* CreateBlueprint(const TCHAR* Path, UClass* Parent)
+{
+	const FString LongName(Path);
+	UPackage* Package = CreatePackage(*LongName);
+	UBlueprint* Blueprint = FKismetEditorUtilities::CreateBlueprint(Parent, Package,
+		FName(FPackageName::GetLongPackageAssetName(LongName)), BPTYPE_Normal, UBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
+	if (Blueprint) FAssetRegistryModule::AssetCreated(Blueprint);
+	return Blueprint;
+}
+
+UBlueprint* CreateGameplayEffectBlueprint(const TCHAR* Path)
+{
+	return CreateBlueprint(Path, UGameplayEffect::StaticClass());
+}
+
+UNiagaraSystem* CreateNiagaraSystem(const TCHAR* Path)
+{
+	const FString LongName(Path);
+	UNiagaraSystemFactoryNew* Factory = NewObject<UNiagaraSystemFactoryNew>();
+	return Cast<UNiagaraSystem>(FAssetToolsModule::GetModule().Get().CreateAsset(
+		FPackageName::GetLongPackageAssetName(LongName), FPackageName::GetLongPackagePath(LongName), UNiagaraSystem::StaticClass(), Factory));
+}
+
+USoundWave* CreatePlaceholderSound(const TCHAR* Path)
+{
+	const uint8 WaveBytes[] = {
+		'R','I','F','F', 0x24,0x00,0x00,0x00, 'W','A','V','E', 'f','m','t',' ',
+		0x10,0x00,0x00,0x00, 0x01,0x00, 0x01,0x00, 0x22,0x56,0x00,0x00,
+		0x44,0xac,0x00,0x00, 0x02,0x00,0x10,0x00, 'd','a','t','a', 0x00,0x00,0x00,0x00};
+	const FString LongName(Path);
+	UPackage* Package = CreatePackage(*LongName);
+	USoundFactory* Factory = NewObject<USoundFactory>();
+	const uint8* WaveBuffer = WaveBytes;
+	USoundWave* Sound = Cast<USoundWave>(Factory->FactoryCreateBinary(USoundWave::StaticClass(), Package,
+		*FPackageName::GetLongPackageAssetName(LongName), RF_Public | RF_Standalone, nullptr, TEXT("wav"),
+		WaveBuffer, WaveBytes + UE_ARRAY_COUNT(WaveBytes), GWarn));
+	if (Sound)
+	{
+		Package->MarkPackageDirty();
+		FAssetRegistryModule::AssetCreated(Sound);
+	}
+	return Sound;
+}
+
+void AddSetByCallerModifier(UGameplayEffect* Effect, const FGameplayAttribute Attribute, const FGameplayTag Tag)
+{
+	FGameplayModifierInfo& Modifier = Effect->Modifiers.AddDefaulted_GetRef();
+	Modifier.Attribute = Attribute;
+	Modifier.ModifierOp = EGameplayModOp::Override;
+	FSetByCallerFloat SetByCaller;
+	SetByCaller.DataTag = Tag;
+	Modifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(SetByCaller);
+}
+
+bool Preflight(FString& Error)
+{
+	for (const TCHAR* Path : Packages)
+	{
+		if (FindObject<UObject>(nullptr, Path))
+		{
+			Error = FString::Printf(TEXT("Checkpoint A manifest collision: %s"), Path);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ResetFixedManifest(FString& Error, int32& OutDeleted)
+{
+	OutDeleted = 0;
+	IAssetRegistry& AssetRegistry = FAssetRegistryModule::GetRegistry();
+	TArray<FAssetData> AssetsToDelete;
+	for (const TCHAR* Path : Packages)
+	{
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.GetAssetsByPackageName(FName(Path), FoundAssets, true);
+		if (FoundAssets.Num() > 1)
+		{
+			Error = FString::Printf(TEXT("Fixed manifest reset found multiple assets in %s"), Path);
+			return false;
+		}
+		AssetsToDelete.Append(FoundAssets);
+	}
+
+	if (!AssetsToDelete.IsEmpty())
+	{
+		OutDeleted = ObjectTools::DeleteAssets(AssetsToDelete, false);
+		if (OutDeleted != AssetsToDelete.Num())
+		{
+			Error = FString::Printf(TEXT("Fixed manifest reset deleted %d of %d exact assets."), OutDeleted, AssetsToDelete.Num());
+			return false;
+		}
+	}
+
+	for (const TCHAR* Path : Packages)
+	{
+		FString Filename;
+		TArray<FAssetData> RemainingAssets;
+		AssetRegistry.GetAssetsByPackageName(FName(Path), RemainingAssets, true);
+		if (FPackageName::DoesPackageExist(Path, &Filename) || !RemainingAssets.IsEmpty())
+		{
+			Error = FString::Printf(TEXT("Fixed manifest reset did not remove %s"), Path);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool SavePackageObject(UObject* Asset, FString& Error)
+{
+	if (!Asset || !Asset->GetOutermost()) { Error = TEXT("Null asset during fixed manifest save."); return false; }
+	FSavePackageArgs Args;
+	Args.TopLevelFlags = RF_Public | RF_Standalone;
+	Args.Error = GError;
+	const FString Filename = FPackageName::LongPackageNameToFilename(Asset->GetOutermost()->GetName(), FPackageName::GetAssetPackageExtension());
+	if (!UPackage::SavePackage(Asset->GetOutermost(), Asset, *Filename, Args))
+	{
+		Error = FString::Printf(TEXT("Could not save fixed manifest package %s"), *Asset->GetPathName());
+		return false;
+	}
+	return true;
+}
+
+bool ConfigureEffectBlueprints(
+	UBlueprint* DefaultAttributesBlueprint,
+	UBlueprint* CooldownBlueprint,
+	UBlueprint* MeleeBlueprint,
+	UBlueprint* StrikeAbilityBlueprint,
+	FString& Error)
+{
+	if (!DefaultAttributesBlueprint || !CooldownBlueprint || !MeleeBlueprint || !StrikeAbilityBlueprint
+		|| !DefaultAttributesBlueprint->GeneratedClass || !CooldownBlueprint->GeneratedClass
+		|| !MeleeBlueprint->GeneratedClass || !StrikeAbilityBlueprint->GeneratedClass)
+	{
+		Error = TEXT("Fixed effect Blueprint generated classes are unavailable.");
+		return false;
+	}
+
+	UGameplayEffect* Defaults = DefaultAttributesBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>();
+	UGameplayEffect* Cooldown = CooldownBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>();
+	if (!Defaults || !Cooldown)
+	{
+		Error = TEXT("Fixed effect Blueprint CDOs are unavailable.");
+		return false;
+	}
+
+	Defaults->DurationPolicy = EGameplayEffectDurationType::Instant;
+	Defaults->Modifiers.Reset();
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetHealthAttribute(), UPRTagLibrary::GetEnemyDataHealthTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetMaxHealthAttribute(), UPRTagLibrary::GetEnemyDataMaxHealthTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetShieldAttribute(), UPRTagLibrary::GetEnemyDataShieldTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetMaxShieldAttribute(), UPRTagLibrary::GetEnemyDataMaxShieldTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetEnergyAttribute(), UPRTagLibrary::GetEnemyDataEnergyTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetMaxEnergyAttribute(), UPRTagLibrary::GetEnemyDataMaxEnergyTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetAttackPowerAttribute(), UPRTagLibrary::GetEnemyDataAttackPowerTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetMoveSpeedAttribute(), UPRTagLibrary::GetEnemyDataMoveSpeedTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetCritChanceAttribute(), UPRTagLibrary::GetEnemyDataCritChanceTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetPermissionAttribute(), UPRTagLibrary::GetEnemyDataPermissionTag());
+	AddSetByCallerModifier(Defaults, UPRAttributeSet::GetResonanceAttribute(), UPRTagLibrary::GetEnemyDataResonanceTag());
+	DefaultAttributesBlueprint->MarkPackageDirty();
+
+	Cooldown->DurationPolicy = EGameplayEffectDurationType::HasDuration;
+	Cooldown->DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(1.10f));
+	FInheritedTagContainer CooldownTags;
+	CooldownTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Enemy.MeleeStrike")));
+	Cooldown->FindOrAddComponent<UTargetTagsGameplayEffectComponent>().SetAndApplyTargetTagChanges(CooldownTags);
+	CooldownBlueprint->MarkPackageDirty();
+
+	if (FClassProperty* DefaultEffectProperty = FindFProperty<FClassProperty>(MeleeBlueprint->GeneratedClass, TEXT("DefaultAttributesEffect")))
+	{
+		DefaultEffectProperty->SetPropertyValue_InContainer(MeleeBlueprint->GeneratedClass->GetDefaultObject(), DefaultAttributesBlueprint->GeneratedClass);
+	}
+	else
+	{
+		Error = TEXT("BP_Enemy_MeleeMinion has no DefaultAttributesEffect CDO property.");
+		return false;
+	}
+	MeleeBlueprint->MarkPackageDirty();
+
+	if (FClassProperty* CooldownProperty = FindFProperty<FClassProperty>(StrikeAbilityBlueprint->GeneratedClass, TEXT("CooldownGameplayEffectClass")))
+	{
+		CooldownProperty->SetPropertyValue_InContainer(StrikeAbilityBlueprint->GeneratedClass->GetDefaultObject(), CooldownBlueprint->GeneratedClass);
+	}
+	else
+	{
+		Error = TEXT("GA_Enemy_MeleeStrike has no CooldownGameplayEffectClass CDO property.");
+		return false;
+	}
+	StrikeAbilityBlueprint->MarkPackageDirty();
+
+	FKismetEditorUtilities::CompileBlueprint(MeleeBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(StrikeAbilityBlueprint);
+	return true;
+}
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::ResetCheckpointAEnemyManifest()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	// ObjectTools performs an engine GC while unloading packages. Keep the MCP
+	// response alive until its terminal value has been published.
+	FString Error;
+	int32 Deleted = 0;
+	if (!PREnemyAuthoringToolset::ResetFixedManifest(Error, Deleted))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	Result->SetValue(FString::Printf(TEXT("{\"status\":\"PASS\",\"deleted\":%d,\"verifiedAbsent\":12,\"schema\":\"v0.2.1-A-fixed\"}"), Deleted));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::CreateCheckpointAEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	FString Error;
+	if (!PREnemyAuthoringToolset::Preflight(Error)) { Result->SetError(Error); return Result; }
+
+	UPREnemyPrototypeRegistryDataAsset* Registry = PREnemyAuthoringToolset::CreateAsset<UPREnemyPrototypeRegistryDataAsset>(PREnemyAuthoringToolset::Packages[0]);
+	UBlueprint* DefaultAttributesBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(PREnemyAuthoringToolset::Packages[1]);
+	UStateTree* StateTree = PREnemyAuthoringToolset::CreateAsset<UStateTree>(PREnemyAuthoringToolset::Packages[2]);
+	UBlueprint* BaseBlueprint = PREnemyAuthoringToolset::CreateBlueprint(PREnemyAuthoringToolset::Packages[3], APREnemyCharacter::StaticClass());
+	UBlueprint* MeleeBlueprint = PREnemyAuthoringToolset::CreateBlueprint(PREnemyAuthoringToolset::Packages[4], BaseBlueprint->GeneratedClass);
+	UPREnemyPrototypeDataAsset* Melee = PREnemyAuthoringToolset::CreateAsset<UPREnemyPrototypeDataAsset>(PREnemyAuthoringToolset::Packages[5]);
+	UPREnemyAttackDataAsset* Strike = PREnemyAuthoringToolset::CreateAsset<UPREnemyAttackDataAsset>(PREnemyAuthoringToolset::Packages[6]);
+	UBlueprint* StrikeAbilityBlueprint = PREnemyAuthoringToolset::CreateBlueprint(PREnemyAuthoringToolset::Packages[7], UPREnemyAttackGameplayAbility::StaticClass());
+	UPRAbilitySetDataAsset* AbilitySet = PREnemyAuthoringToolset::CreateAsset<UPRAbilitySetDataAsset>(PREnemyAuthoringToolset::Packages[8]);
+	UBlueprint* CooldownBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(PREnemyAuthoringToolset::Packages[9]);
+	UNiagaraSystem* VFX = PREnemyAuthoringToolset::CreateNiagaraSystem(PREnemyAuthoringToolset::Packages[10]);
+	USoundWave* SFX = PREnemyAuthoringToolset::CreatePlaceholderSound(PREnemyAuthoringToolset::Packages[11]);
+	if (!Registry || !DefaultAttributesBlueprint || !StateTree || !BaseBlueprint || !MeleeBlueprint || !Melee || !Strike || !StrikeAbilityBlueprint || !AbilitySet || !CooldownBlueprint || !VFX || !SFX)
+	{
+		Result->SetError(TEXT("Checkpoint A could not create its complete fixed manifest."));
+		return Result;
+	}
+
+	Melee->EnemyId = TEXT("MeleeMinion");
+	Melee->PrototypeTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
+	Melee->Mobility = EPRAbilityTargetMobility::Light;
+	Melee->Attributes = {100.0f, 100.0f, 0.0f, 0.0f, 0.0f, 0.0f, 10.0f, 450.0f, 0.0f, 0.0f, 0.0f};
+	Melee->Perception.AcquireRange = 900.0f; Melee->Perception.LoseRange = 1200.0f; Melee->Perception.PreferredMaxRange = 140.0f;
+	Strike->AttackId = TEXT("MeleeStrike"); Strike->AttackTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.MeleeStrike"));
+	Strike->Kind = EPREnemyAttackKind::MeleeSweep; Strike->MaxRange = 140.0f; Strike->BaseDamage = 10.0f; Strike->AttackPowerScale = 0.5f;
+	Strike->Windup = 0.30f; Strike->ActiveWindow = 0.12f; Strike->Recovery = 0.40f; Strike->Cooldown = 1.10f; Strike->SweepRadius = 140.0f; Strike->SweepHalfAngleDegrees = 60.0f;
+	Strike->VFX = VFX; Strike->SFX = SFX;
+	Melee->AttackDefinitions.Add(Strike);
+	Melee->InitialAbilitySet = AbilitySet;
+	FPRAbilitySetEntry& Entry = AbilitySet->AbilityEntries.AddDefaulted_GetRef(); Entry.AbilityClass = StrikeAbilityBlueprint->GeneratedClass; Entry.AbilityData = Strike; Entry.AbilityLevel = 1; Entry.bGrantOnInitialization = true;
+	FPREnemyPrototypeRegistryEntry& RegistryEntry = Registry->Entries.AddDefaulted_GetRef(); RegistryEntry.PrototypeTag = Melee->PrototypeTag; RegistryEntry.Prototype = Melee; RegistryEntry.EnemyClass = MeleeBlueprint->GeneratedClass;
+	if (UClass* MeleeClass = MeleeBlueprint->GeneratedClass)
+	{
+		if (FObjectProperty* StateTreeProperty = FindFProperty<FObjectProperty>(MeleeClass, TEXT("EnemyStateTree")))
+			StateTreeProperty->SetObjectPropertyValue_InContainer(MeleeClass->GetDefaultObject(), StateTree);
+		if (FClassProperty* DamageEffectProperty = FindFProperty<FClassProperty>(MeleeClass, TEXT("DamageEffect")))
+			DamageEffectProperty->SetPropertyValue_InContainer(MeleeClass->GetDefaultObject(), LoadClass<UGameplayEffect>(nullptr, TEXT("/Game/ProjectR/Effects/GE_Damage.GE_Damage_C")));
+		MeleeBlueprint->MarkPackageDirty();
+	}
+	if (UClass* StrikeClass = StrikeAbilityBlueprint->GeneratedClass)
+	{
+		if (FStructProperty* TagProperty = FindFProperty<FStructProperty>(StrikeClass, TEXT("AbilityTag")))
+			*TagProperty->ContainerPtrToValuePtr<FGameplayTag>(StrikeClass->GetDefaultObject()) = Strike->AttackTag;
+		StrikeAbilityBlueprint->MarkPackageDirty();
+	}
+	if (!PREnemyAuthoringToolset::ConfigureEffectBlueprints(DefaultAttributesBlueprint, CooldownBlueprint, MeleeBlueprint, StrikeAbilityBlueprint, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":12,\"saved\":false,\"schema\":\"v0.2.1-A-fixed\"}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::RecoverAndSaveCheckpointAEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	const TCHAR* ExistingPaths[] = {PREnemyAuthoringToolset::Packages[0], PREnemyAuthoringToolset::Packages[1], PREnemyAuthoringToolset::Packages[2],
+		PREnemyAuthoringToolset::Packages[4], PREnemyAuthoringToolset::Packages[5], PREnemyAuthoringToolset::Packages[6], PREnemyAuthoringToolset::Packages[7],
+		PREnemyAuthoringToolset::Packages[8], PREnemyAuthoringToolset::Packages[9]};
+	for (const TCHAR* Path : ExistingPaths)
+	{
+		if (!LoadObject<UObject>(nullptr, *FString::Printf(TEXT("%s.%s"), Path, *FPackageName::GetLongPackageAssetName(Path))))
+		{
+			Result->SetError(FString::Printf(TEXT("Recovery refuses an unexpected partial manifest: %s"), Path));
+			return Result;
+		}
+	}
+	UBlueprint* Base = LoadObject<UBlueprint>(nullptr, TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	UNiagaraSystem* VFX = LoadObject<UNiagaraSystem>(nullptr, TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_MeleeStrike.VFX_Enemy_MeleeStrike"));
+	USoundWave* SFX = LoadObject<USoundWave>(nullptr, TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_MeleeStrike.SFX_Enemy_MeleeStrike"));
+	TArray<UObject*> AssetsToSave;
+	if (!Base) { Base = PREnemyAuthoringToolset::CreateBlueprint(PREnemyAuthoringToolset::Packages[3], APREnemyCharacter::StaticClass()); if (!Base) { Result->SetError(TEXT("Recovery could not create BP_Enemy_Base.")); return Result; } FKismetEditorUtilities::CompileBlueprint(Base); AssetsToSave.Add(Base); }
+	if (!VFX) { VFX = PREnemyAuthoringToolset::CreateNiagaraSystem(PREnemyAuthoringToolset::Packages[10]); if (!VFX) { Result->SetError(TEXT("Recovery could not create VFX_Enemy_MeleeStrike.")); return Result; } AssetsToSave.Add(VFX); }
+	if (!SFX) { SFX = PREnemyAuthoringToolset::CreatePlaceholderSound(PREnemyAuthoringToolset::Packages[11]); if (!SFX) { Result->SetError(TEXT("Recovery could not create SFX_Enemy_MeleeStrike.")); return Result; } AssetsToSave.Add(SFX); }
+	FString Error;
+	const int32 SavedCount = AssetsToSave.Num();
+	for (UObject* Asset : AssetsToSave)
+	{
+		if (!PREnemyAuthoringToolset::SavePackageObject(Asset, Error)) { Result->SetError(Error); return Result; }
+	}
+	Result->SetValue(FString::Printf(TEXT("{\"status\":\"PASS\",\"recovered\":%d,\"saved\":%d,\"mode\":\"individual\"}"), SavedCount, SavedCount));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::RepairCheckpointAEffectBlueprints()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	if (LoadObject<UObject>(nullptr, TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes.GE_Enemy_DefaultAttributes"))
+		|| LoadObject<UObject>(nullptr, TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_MeleeStrike_Cooldown.GE_EnemyAttack_MeleeStrike_Cooldown")))
+	{
+		Result->SetError(TEXT("Effect repair requires the two exact old GameplayEffect packages to be absent."));
+		return Result;
+	}
+	UBlueprint* DefaultAttributesBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(PREnemyAuthoringToolset::Packages[1]);
+	UBlueprint* CooldownBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(PREnemyAuthoringToolset::Packages[9]);
+	UBlueprint* MeleeBlueprint = LoadObject<UBlueprint>(nullptr, TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_MeleeMinion.BP_Enemy_MeleeMinion"));
+	UBlueprint* StrikeAbilityBlueprint = LoadObject<UBlueprint>(nullptr, TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_MeleeStrike.GA_Enemy_MeleeStrike"));
+	FString Error;
+	if (!PREnemyAuthoringToolset::ConfigureEffectBlueprints(DefaultAttributesBlueprint, CooldownBlueprint, MeleeBlueprint, StrikeAbilityBlueprint, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	for (UObject* Asset : {static_cast<UObject*>(DefaultAttributesBlueprint), static_cast<UObject*>(CooldownBlueprint), static_cast<UObject*>(MeleeBlueprint), static_cast<UObject*>(StrikeAbilityBlueprint)})
+	{
+		if (!PREnemyAuthoringToolset::SavePackageObject(Asset, Error))
+		{
+			Result->SetError(Error);
+			return Result;
+		}
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":2,\"rewired\":2,\"saved\":4}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::ClearCheckpointAStaleEffectReference()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	UBlueprint* MeleeBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_MeleeMinion.BP_Enemy_MeleeMinion"));
+	if (!MeleeBlueprint || !MeleeBlueprint->GeneratedClass)
+	{
+		Result->SetError(TEXT("BP_Enemy_MeleeMinion generated class is unavailable for the fixed stale-reference repair."));
+		return Result;
+	}
+	FClassProperty* DefaultEffectProperty = FindFProperty<FClassProperty>(MeleeBlueprint->GeneratedClass, TEXT("DefaultAttributesEffect"));
+	if (!DefaultEffectProperty)
+	{
+		Result->SetError(TEXT("BP_Enemy_MeleeMinion has no DefaultAttributesEffect CDO property."));
+		return Result;
+	}
+	DefaultEffectProperty->SetPropertyValue_InContainer(MeleeBlueprint->GeneratedClass->GetDefaultObject(), nullptr);
+	MeleeBlueprint->MarkPackageDirty();
+	FKismetEditorUtilities::CompileBlueprint(MeleeBlueprint);
+	FString Error;
+	if (!PREnemyAuthoringToolset::SavePackageObject(MeleeBlueprint, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"cleared\":\"BP_Enemy_MeleeMinion.DefaultAttributesEffect\",\"saved\":1}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::ConfigureCheckpointAStateTree()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	UStateTree* Tree = LoadObject<UStateTree>(nullptr, TEXT("/Game/ProjectR/Enemies/AI/ST_Enemy_Base.ST_Enemy_Base"));
+	FObjectProperty* EditorDataProperty = FindFProperty<FObjectProperty>(UStateTree::StaticClass(), TEXT("EditorData"));
+	FObjectProperty* SchemaProperty = FindFProperty<FObjectProperty>(UStateTree::StaticClass(), TEXT("Schema"));
+	if (!Tree || !EditorDataProperty || !SchemaProperty) { Result->SetError(TEXT("StateTree properties are unavailable.")); return Result; }
+	if (EditorDataProperty->GetObjectPropertyValue_InContainer(Tree)) { Result->SetError(TEXT("StateTree already has editor data; refusing overwrite.")); return Result; }
+	FStateTreeEditorModule& EditorModule = FStateTreeEditorModule::GetModule();
+	UStateTreeEditorData* Data = NewObject<UStateTreeEditorData>(Tree,
+		EditorModule.GetEditorDataClass(UStateTreeAIComponentSchema::StaticClass()), FName(), RF_Transactional);
+	EditorDataProperty->SetObjectPropertyValue_InContainer(Tree, Data);
+	Data->Schema = NewObject<UStateTreeAIComponentSchema>(Data, UStateTreeAIComponentSchema::StaticClass(), FName(), RF_Transactional);
+	Data->EditorSchema = NewObject<UStateTreeEditorSchema>(Data,
+		EditorModule.GetEditorSchemaClass(UStateTreeAIComponentSchema::StaticClass()), FName(), RF_Transactional);
+	UStateTreeState& Root = Data->AddRootState();
+	Root.AddChildState(TEXT("Acquire")).AddTask<FPRSTTaskAcquireTarget>();
+	Root.AddChildState(TEXT("Pursue")).AddTask<FPRSTTaskMoveToRangeBand>();
+	Root.AddChildState(TEXT("Attack")).AddTask<FPRSTTaskActivateAttack>();
+	Root.AddChildState(TEXT("Wait")).AddTask<FPRSTTaskWaitForReevaluate>();
+	FStateTreeCompilerLog Log;
+	if (!UStateTreeEditingSubsystem::CompileStateTree(Tree, Log)) { Result->SetError(TEXT("StateTree compile failed for the fixed graph.")); return Result; }
+	FString Error;
+	if (!PREnemyAuthoringToolset::SavePackageObject(Tree, Error)) { Result->SetError(Error); return Result; }
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"states\":5,\"tasks\":4,\"compiled\":true,\"saved\":1}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::CorrectCheckpointAMeleeStrikeRange()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	UPREnemyAttackDataAsset* const Strike = LoadObject<UPREnemyAttackDataAsset>(
+		nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_MeleeStrike.DA_EnemyAttack_MeleeStrike"));
+	const FGameplayTag ExpectedAttackTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.MeleeStrike"));
+	if (!Strike
+		|| Strike->AttackId != TEXT("MeleeStrike")
+		|| Strike->AttackTag != ExpectedAttackTag
+		|| !FMath::IsNearlyEqual(Strike->MinRange, 0.0f)
+		|| !FMath::IsNearlyEqual(Strike->MaxRange, 140.0f)
+		|| !FMath::IsFinite(Strike->SweepRadius)
+		|| (!FMath::IsNearlyEqual(Strike->SweepRadius, 75.0f) && !FMath::IsNearlyEqual(Strike->SweepRadius, 140.0f)))
+	{
+		Result->SetError(TEXT("The fixed checkpoint-A melee-strike preimage does not match; no package was changed."));
+		return Result;
+	}
+
+	if (FMath::IsNearlyEqual(Strike->SweepRadius, 140.0f))
+	{
+		Result->SetValue(TEXT("{\"status\":\"PASS\",\"package\":\"/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_MeleeStrike\",\"sweepRadius\":140.0,\"saved\":0}"));
+		return Result;
+	}
+
+	Strike->SweepRadius = 140.0f;
+	Strike->MarkPackageDirty();
+	FString Error;
+	if (!PREnemyAuthoringToolset::SavePackageObject(Strike, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"package\":\"/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_MeleeStrike\",\"sweepRadius\":140.0,\"saved\":1}"));
+	return Result;
+}

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "AbilitySystemInterface.h"
+#include "Core/PRCombatantInterface.h"
 #include "Core/PRCombatFeedbackInterface.h"
 #include "Core/PRCombatMitigationInterface.h"
 #include "GameFramework/Character.h"
@@ -27,6 +28,7 @@ UCLASS(Abstract)
 class PROJECTR_API APRPlayerCharacter
 	: public ACharacter
 	, public IAbilitySystemInterface
+	, public IPRCombatantInterface
 	, public IPRCombatFeedbackInterface
 	, public IPRCombatMitigationInterface
 {
@@ -35,6 +37,8 @@ class PROJECTR_API APRPlayerCharacter
 public:
 	APRPlayerCharacter();
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual FName GetCombatantId() const override;
+	virtual TSubclassOf<UGameplayEffect> GetDamageEffectClass() const override;
 	virtual void HandleCombatHitReaction() override;
 	virtual void HandleCombatLifeStateChanged(bool bIsDead) override;
 	virtual EPRCombatMitigationResult EvaluateIncomingDamage(

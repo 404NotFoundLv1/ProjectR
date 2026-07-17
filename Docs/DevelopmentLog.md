@@ -273,6 +273,15 @@ date: "2026-07-10"
 - Known Issues 未出现新的真实状态变化；KI-019 的 `.uplugin` 依赖元数据 Warning 和既有粗帧隔离流程仍按既有条目保持，不以修改 Forbidden path 掩盖。GameplayTagTaxonomy 无真实 Tag 变化，未修改。`Package`、`PhysicalGamepad`、`NetworkPIEReplication` 与 GC 未运行，未被记为完成证据。
 - Future Compatibility Review PASS：敌人/Boss 继续只实现稳定 Target/Combat/Mobility 和 Heavy/Anchored；HUD/QTE 只读 RuntimeState、AbilityOutcome/CombatEvent；v0.2.4 只替换 DataAsset 数值/表现软引用；Meta、QA、Shipping 只消费稳定 ID/Handle/固定输入。Save 和实时玩法不保存/依赖运行时 Handle、Target、Timer、Held Input、Delegate、RootMotion、Guarding、表现组件、网络或 LLM。
 
+# 2026-07-17 - v0.2.1-A Enemy GAS、StateTree 与近战基础（Completed）
+
+- 在 `CURRENT_VERSION.md` 继续保持 v0.2.1/In Progress 的前提下完成内部检查点 A；未开始 B，公共 v0.2.1 未关闭。
+- 增加 Enemy 自持 Minimal ASC/AttributeSet、Prototype/Attack PrimaryDataAsset、固定 Registry 白名单、X/Z Plane Movement、原生 StateTree 节点、ServerTriggered 攻击 GA 与 12 项精确 Enemy Package。`ServerTriggered=3` 追加在既有 ActivationPolicy 后，保持旧枚举值、输入语义和玩家 AbilitySet 不变。
+- 经单独授权，PlayerCharacter 仅实现 Combatant 转发适配：CombatantId 与 Damage GE 继续由 PlayerState 作为唯一事实源；没有复制 ASC、属性、Damage 或玩家生命周期状态。Enemy 不 include PlayerCharacter 或具体后续敌人/Boss。
+- TDD RED 记录了缺失 Player pawn Combatant 适配和 140cm 攻击带与 75cm sweep 不一致；最小修复后 BuildEditor 通过。`DA_EnemyAttack_MeleeStrike` 只经固定无参 MCP 工具精确改为 140cm sweep，未使用 Save All。
+- 验证：`ProjectR.Enemy` 4/4、Player pawn Combatant forwarding、BuildEditor、GE/GA/BP warnings-as-errors、正常 Editor 重启、12 个 Package Dirty=0、固定 `RunPIEEnemyCheckpointASmoke()` 与六技能 E smoke 均 PASS。Enemy PIE 结构化结果为 Health=100、AP=10、MoveSpeed=450、Melee CombatEvent=15、deathStopsBrain/runtimeClean=true；无 ProjectR Error、Ensure 或 Blueprint Runtime Error。
+- Future Compatibility Review PASS：B 只新增 Projectile/Ranged Data，C/D 只新增 Shield/Elite Data 与同一稳定接口；v0.2.2 复用 Heavy/Anchored、v0.2.3 仅读 RuntimeState/CombatEvent、v0.3.2 只订阅稳定事件。Save 不持久化敌人、Spec、Effect、目标、Token、Timer、StateTree 或 UObject 引用。
+
 # 版本记录模板
 
 ```text

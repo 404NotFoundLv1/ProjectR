@@ -78,3 +78,9 @@ date: "2026-07-10"
 - `UPRTagLibrary` 为五个 Input、三个目标/位移失败、PlayerSkillActive、AbilityOutcome、五个 Response、Burning 与 Guarding 增加 17 个 checked getter，总计 47；六个 Cooldown Skill 标签保持数据驱动，不增加 getter。
 - 五个新 Input Tag 只用于正式 Enhanced Input 到 ASC 的语义路由；AfterimageDodge 固定复用 `Input.Dodge`。`State.Burning`、`State.Guarding` 和 Decoy/Guard/PerfectTiming Response 在 A 只冻结名称，不实现对应 B–D 业务。
 - `Combat.Response.*` 是 AbilityOutcome/Mitigation 的唯一响应标签范围；`Ability.ActivateFail.*` 是目标、LOS 与位移失败面。不得新增同义 Team/Faction、技能事件或测试标签。
+
+# v0.2.1-A Enemy 基础合同增量
+
+- 显式标签总数由 94 增至 118；根命名空间由 12 增至 13。新增根 `Enemy`，既有名称、顺序和 DevComment 不变，无 Redirect。
+- 一次冻结 v0.2.1 的 24 个稳定 Tag：四个 `Enemy.Type.*`、四个 `Enemy.Attack.*`、四个 `Cooldown.Enemy.*`、11 个 `Enemy.Data.*` SetByCaller 键和 `Enemy.AI.Event.Reevaluate`。A 仅实际消费 MeleeMinion/MeleeStrike；其余原型身份、攻击和冷却 Tag 保持 DataAsset 驱动，以避免 B–D 重新打开 Tag 合同。
+- `UPRTagLibrary` 仅为 11 个 Enemy Data 键与 Reevaluate 事件增加 checked getter，总计 59。原型、攻击及冷却 Tag 没有任意字符串公共查询器，也不增加临时测试、Boss、HUD、QTE、Reward 或 Faction Tag。

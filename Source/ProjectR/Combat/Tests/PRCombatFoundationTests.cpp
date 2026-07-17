@@ -178,7 +178,31 @@ bool FPRCombatSchemaTest::RunTest(const FString& Parameters)
 	}
 
 	TestTrue(TEXT("PlayerState implements Combatant"), APRPlayerState::StaticClass()->ImplementsInterface(UPRCombatantInterface::StaticClass()));
+	TestTrue(TEXT("PlayerCharacter implements Combatant for enemy targeting"), APRPlayerCharacter::StaticClass()->ImplementsInterface(UPRCombatantInterface::StaticClass()));
 	TestTrue(TEXT("PlayerCharacter implements Feedback"), APRPlayerCharacter::StaticClass()->ImplementsInterface(UPRCombatFeedbackInterface::StaticClass()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPRCombatPlayerPawnCombatantForwardingTest,
+	"ProjectR.Combat.Runtime.PlayerPawnCombatantForwarding",
+	PRCombatAutomation::TestFlags)
+
+bool FPRCombatPlayerPawnCombatantForwardingTest::RunTest(const FString& Parameters)
+{
+	PRCombatAutomation::FCombatFixture Fixture(*this);
+	if (!Fixture.bValid)
+	{
+		return false;
+	}
+
+	IPRCombatantInterface* PawnCombatant = Cast<IPRCombatantInterface>(Fixture.Character);
+	if (!TestNotNull(TEXT("Current player Pawn is a Combatant"), PawnCombatant))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Pawn forwards stable combatant identity"), PawnCombatant->GetCombatantId(), Fixture.PlayerState->GetCombatantId());
+	TestEqual(TEXT("Pawn forwards the PlayerState damage effect"), PawnCombatant->GetDamageEffectClass(), Fixture.PlayerState->GetDamageEffectClass());
 	return true;
 }
 

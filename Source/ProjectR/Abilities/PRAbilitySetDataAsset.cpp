@@ -97,10 +97,12 @@ EDataValidationResult UPRAbilitySetDataAsset::IsDataValid(FDataValidationContext
 		}
 		AbilityClasses.Add(Entry.AbilityClass);
 
-		const bool bPassive = AbilityCDO->GetActivationPolicy() == EPRAbilityActivationPolicy::Passive;
+		const EPRAbilityActivationPolicy Policy = AbilityCDO->GetActivationPolicy();
+		const bool bRequiresInput = Policy == EPRAbilityActivationPolicy::OnInputTriggered
+			|| Policy == EPRAbilityActivationPolicy::WhileInputActive;
 		const bool bInputTagValid = Entry.InputTag.IsValid()
 			&& Entry.InputTag.ToString().StartsWith(TEXT("Input."));
-		if ((bPassive && Entry.InputTag.IsValid()) || (!bPassive && !bInputTagValid))
+		if ((bRequiresInput && !bInputTagValid) || (!bRequiresInput && Entry.InputTag.IsValid()))
 		{
 			Context.AddError(FText::FromString(Prefix + TEXT(" violates its activation-policy InputTag rule.")));
 			Result = EDataValidationResult::Invalid;

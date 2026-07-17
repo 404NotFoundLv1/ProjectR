@@ -275,6 +275,20 @@ date: "2026-07-10"
 
 **验证**：A 的 TDD RED 只因新公共类型/API 缺失；A-D RED 证据在 E 中完成不可变完整性审计。最终 BuildEditor、PlayerSkill 5/5、Input/GAS/Combat/Ability/Save/Debug 共 33/33、六个 GA warnings-as-errors、精确保存、Dirty=0、正常重启回载、六技能固定 PIE 和 B/C/D 回归均实际通过。用户在 `L_CombatGym` 完成六技能手感 runbook 并明确回复 PASS；`v020e-final-report-20260717` 汇总为 58/58 required PASS。网络 PIE、物理手柄、Package 与 GC 未执行且未作为通过证据。
 
+# ADR-022 - Enemy 自持 GAS、白名单生成与 ServerTriggered 攻击
+
+**状态**：Accepted。
+
+**背景**：v0.2.1-A 需要在不修改玩家 PlayerState-owned ASC、CombatSubsystem 或六项玩家技能的前提下，提供可由后续原型复用的近战 Enemy 垂直切片。
+
+**决策**：Enemy Actor 自持 Minimal-replication ASC 和 AttributeSet，并以自身作为 Owner/Avatar；只通过 PrototypeTag 白名单生成。`ServerTriggered` 作为既有 ActivationPolicy 的末尾增量，只允许 Authority 用唯一 AbilityTag 激活。Enemy 攻击只经现有 CombatSubsystem；目标、移动、AttackProxy 和 Guard/Dodge 只消费已冻结的窄接口。Player pawn 只增加转发到既有 PlayerState Combatant 身份的适配，以符合 CombatSubsystem 的 Avatar 目标要求。
+
+**后果**：MeleeMinion 能以数据定义的 0–140cm 攻击带在 0.30/0.12/0.40/1.10 时间轴内结算一次 15 点原始伤害；StateTree、Timer、攻击 Token 和委托均由 Enemy 生命周期清理。B–D 只能增量加入现有 Registry 的原型和 Attack Data，不能替换接口、引入具体玩家或 Boss 依赖。
+
+**迁移/回滚**：先从固定 Registry 移除 A 的 Melee entry 并停止所有 SpawnedEnemy，再反向撤销 A 的 Enemy C++、Ability/Tag 增量和文档。已保存 12 个 Package 的删除仍需逐包明确批准；禁止 hard reset、clean、Save All、Fix Redirectors 或用户 Save 操作。
+
+**验证**：TDD RED 覆盖 Player pawn 缺少 Combatant 适配和 Melee 140cm 攻击带不一致；对应 GREEN BuildEditor 与原生自动化通过。固定 `L_CombatGym` PIE 已验证 ASC/属性、Melee CombatEvent=15、死亡停止 StateTree 和 runtime clean；12 个 Package 经正常 Editor 重启逐项回读 Dirty=0。
+
 # ADR 模板
 
 ```text

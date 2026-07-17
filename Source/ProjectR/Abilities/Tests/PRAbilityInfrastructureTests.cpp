@@ -110,6 +110,31 @@ bool FPRAbilityGrantRemoveInputTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPRAbilityServerTriggeredPolicyTest,
+	"ProjectR.Ability.Runtime.ServerTriggeredPolicy",
+	PRAbilityAutomation::TestFlags)
+
+bool FPRAbilityServerTriggeredPolicyTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Triggered policy retains its serialized value"),
+		static_cast<uint8>(EPRAbilityActivationPolicy::OnInputTriggered), static_cast<uint8>(0));
+	TestEqual(TEXT("Held policy retains its serialized value"),
+		static_cast<uint8>(EPRAbilityActivationPolicy::WhileInputActive), static_cast<uint8>(1));
+	TestEqual(TEXT("Passive policy retains its serialized value"),
+		static_cast<uint8>(EPRAbilityActivationPolicy::Passive), static_cast<uint8>(2));
+	TestEqual(TEXT("Server-triggered policy appends after the frozen policies"),
+		static_cast<uint8>(EPRAbilityActivationPolicy::ServerTriggered), static_cast<uint8>(3));
+
+	UPRAbilitySystemComponent* ASC = NewObject<UPRAbilitySystemComponent>();
+	FGameplayTagContainer FailureTags;
+	TestFalse(TEXT("An empty server-triggered AbilityTag is rejected"),
+		ASC->TryActivateAbilityByAbilityTag(FGameplayTag(), FailureTags));
+	TestTrue(TEXT("Empty server-triggered requests report CanActivate failure"),
+		FailureTags.HasTagExact(UPRTagLibrary::GetAbilityActivateFailCanActivateTag()));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRAbilityCostCooldownEventTest,
 	"ProjectR.Ability.Runtime.CostCooldownFailuresAndEvents",
 	PRAbilityAutomation::TestFlags)

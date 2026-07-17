@@ -15,9 +15,10 @@ class UPrimaryDataAsset;
 UENUM(BlueprintType)
 enum class EPRAbilityActivationPolicy : uint8
 {
-	OnInputTriggered,
-	WhileInputActive,
-	Passive
+	OnInputTriggered = 0,
+	WhileInputActive = 1,
+	Passive = 2,
+	ServerTriggered = 3
 };
 
 UENUM(BlueprintType)

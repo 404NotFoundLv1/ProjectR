@@ -47,6 +47,18 @@ UAbilitySystemComponent* APRPlayerCharacter::GetAbilitySystemComponent() const
 	return ProjectRPlayerState ? ProjectRPlayerState->GetAbilitySystemComponent() : nullptr;
 }
 
+FName APRPlayerCharacter::GetCombatantId() const
+{
+	const APRPlayerState* ProjectRPlayerState = GetPlayerState<APRPlayerState>();
+	return ProjectRPlayerState ? ProjectRPlayerState->GetCombatantId() : NAME_None;
+}
+
+TSubclassOf<UGameplayEffect> APRPlayerCharacter::GetDamageEffectClass() const
+{
+	const APRPlayerState* ProjectRPlayerState = GetPlayerState<APRPlayerState>();
+	return ProjectRPlayerState ? ProjectRPlayerState->GetDamageEffectClass() : nullptr;
+}
+
 EPRCombatMitigationResult APRPlayerCharacter::EvaluateIncomingDamage(
 	const FPRDamageRequest& Request,
 	FGameplayTagContainer& OutResponseTags) const

@@ -26,6 +26,11 @@ public:
 	void AbilityInputTagPressed(FGameplayTag InputTag);
 	void AbilityInputTagReleased(FGameplayTag InputTag);
 
+	/** Attempts exactly one authority-owned ServerTriggered spec selected by its stable AbilityTag. */
+	bool TryActivateAbilityByAbilityTag(
+		FGameplayTag AbilityTag,
+		FGameplayTagContainer& OutFailureTags);
+
 	bool GetAbilityRuntimeStateByAbilityTag(
 		FGameplayTag AbilityTag,
 		FPRAbilityRuntimeState& OutState) const;

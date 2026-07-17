@@ -265,6 +265,16 @@ Response 只允许 RuleId、Level、ReasonTags、VisibleReason、有限参数和
 
 AccountRecord 保存账号 ID、身份、开始/结束时间、结束原因、章节、Boss、主要法令、构筑摘要、主同步 AI、关键 QTE、死因和反证奖励。RunSummary 是适合对话/画像消费的有界摘要，不保存无限战斗日志。
 
+# v0.2.1-A Enemy 公共基础合同
+
+**所有者**：Enemy；**直接消费者**：v0.2.1-B–E、v0.2.2 Boss、v0.2.3 HUD、v0.3.2 QTE。
+
+- `APREnemyCharacter` 自持 `UPRAbilitySystemComponent` 与 `UPRAttributeSet`，在 Authority 上以 `(this, this)` 初始化 ActorInfo，并使用 Minimal replication；这不改变 PlayerState-owned、Mixed player ASC。初始化顺序为 Prototype/SpawnId 验证、ActorInfo、一次 DefaultAttributes GE、Alive/Dead Tag、幂等 AbilitySet 授予、StateTree 启动。失败保持 Dormant，不能攻击。
+- `EPRAbilityActivationPolicy::ServerTriggered=3` 追加在既有枚举末尾。它没有 InputTag，只能由 Authority 的 `TryActivateAbilityByAbilityTag` 以唯一精确 AbilityTag 激活；空 Tag、非 Authority、零或多匹配以及非 ServerTriggered CDO 均失败。
+- `UPREnemySubsystem` 只接受 `PrototypeTag + FTransform`，不接受类、路径、字符串或任意 UObject；A 的固定 Registry 只生成 MeleeMinion。`FPREnemyRuntimeState`、SpawnId、目标、Token、Timer、Delegate 和 StateTree 均是运行时数据，不能保存。
+- Enemy 只通过已有 Target/Combatant/AttackProxy 窄接口发现玩家和结算伤害；Player pawn 的 Combatant 适配仅转发既有 PlayerState 的稳定 CombatantId 与 Damage GE，不复制 ASC、属性或 Combat 状态。该适配使 Actor Avatar 能满足既有 CombatSubsystem 的目标接口，而不让 Enemy include PlayerCharacter。
+- X/Z 受控移动固定 PlaneY，禁止 NavMesh、MoveTo、PathFollowing、BehaviorTree、Blackboard、EQS 和 Actor/Brain 永久 Tick。攻击由 ServerTriggered native GA 进入 Windup/Active/Recovery/Cooldown，以 GUID Token 将每次激活限制为对同一目标最多一次 `UPRCombatSubsystem::ApplyDamage`。
+
 # 10. 契约升级清单
 
 1. 列出所有直接消费者。

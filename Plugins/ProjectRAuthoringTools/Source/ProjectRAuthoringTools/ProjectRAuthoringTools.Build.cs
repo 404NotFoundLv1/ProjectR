@@ -17,15 +17,27 @@ public class ProjectRAuthoringTools : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"AudioEditor",
+			"AssetTools",
 			"CoreUObject",
 			"AssetRegistry",
 			"Engine",
 			"EnhancedInput",
 			"GameplayAbilities",
 			"GameplayTags",
+			"KismetCompiler",
+			"Niagara",
+			"NiagaraEditor",
 			"InputCore",
 			"Json",
 			"ProjectR",
+			"StateTreeModule",
+			"StateTreeDeveloper",
+			"StateTreeEditorModule",
+			"GameplayStateTreeModule",
+			"PropertyBindingUtils",
+			"PropertyBindingUtilsEditor",
+			"PropertyAccessEditor",
+			"StructUtilsEditor",
 			"UnrealEd"
 		});
 	}

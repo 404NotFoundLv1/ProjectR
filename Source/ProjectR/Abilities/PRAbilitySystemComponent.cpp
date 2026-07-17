@@ -189,7 +189,9 @@ void UPRAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag InputT
 	const UPRGameplayAbility* AbilityCDO = Spec
 		? Cast<UPRGameplayAbility>(Spec->Ability)
 		: nullptr;
-	if (!Spec || !AbilityCDO || AbilityCDO->GetActivationPolicy() == EPRAbilityActivationPolicy::Passive)
+	if (!Spec || !AbilityCDO
+		|| (AbilityCDO->GetActivationPolicy() != EPRAbilityActivationPolicy::OnInputTriggered
+			&& AbilityCDO->GetActivationPolicy() != EPRAbilityActivationPolicy::WhileInputActive))
 	{
 		return;
 	}
@@ -201,6 +203,52 @@ void UPRAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag InputT
 	{
 		TryActivateAbility(Spec->Handle);
 	}
+}
+
+bool UPRAbilitySystemComponent::TryActivateAbilityByAbilityTag(
+	const FGameplayTag AbilityTag,
+	FGameplayTagContainer& OutFailureTags)
+{
+	OutFailureTags.Reset();
+	if (!AbilityTag.IsValid())
+	{
+		OutFailureTags.AddTag(UPRTagLibrary::GetAbilityActivateFailCanActivateTag());
+		return false;
+	}
+	if (!IsOwnerActorAuthoritative())
+	{
+		OutFailureTags.AddTag(UPRTagLibrary::GetAbilityActivateFailNetworkingTag());
+		return false;
+	}
+
+	const TArray<FGameplayAbilitySpecHandle> Matches = FindSpecsByExactDynamicTag(AbilityTag);
+	if (Matches.Num() != 1)
+	{
+		OutFailureTags.AddTag(UPRTagLibrary::GetAbilityActivateFailCanActivateTag());
+		UE_LOG(LogProjectR, Error, TEXT("Server-triggered AbilityTag %s matched %d AbilitySpecs."),
+			*AbilityTag.ToString(), Matches.Num());
+		return false;
+	}
+
+	FGameplayAbilitySpec* Spec = FindAbilitySpecFromHandle(Matches[0]);
+	const UPRGameplayAbility* AbilityCDO = Spec
+		? Cast<UPRGameplayAbility>(Spec->Ability)
+		: nullptr;
+	if (!Spec || !AbilityCDO
+		|| AbilityCDO->GetProjectRAbilityTag() != AbilityTag
+		|| AbilityCDO->GetActivationPolicy() != EPRAbilityActivationPolicy::ServerTriggered)
+	{
+		OutFailureTags.AddTag(UPRTagLibrary::GetAbilityActivateFailCanActivateTag());
+		return false;
+	}
+
+	if (!AbilityCDO->CanActivateAbility(
+		Spec->Handle, AbilityActorInfo.Get(), nullptr, nullptr, &OutFailureTags))
+	{
+		NotifyAbilityFailed(Spec->Handle, Spec->Ability, OutFailureTags);
+		return false;
+	}
+	return TryActivateAbility(Spec->Handle, false);
 }
 
 void UPRAbilitySystemComponent::AbilityInputTagReleased(const FGameplayTag InputTag)
@@ -366,9 +414,12 @@ bool UPRAbilitySystemComponent::ValidateAbilitySetForGrant(
 		{
 			return false;
 		}
-		const bool bPassive = AbilityCDO->GetActivationPolicy() == EPRAbilityActivationPolicy::Passive;
-		if (bPassive ? Entry.InputTag.IsValid()
-			: (!Entry.InputTag.IsValid() || !Entry.InputTag.ToString().StartsWith(TEXT("Input."))))
+		const EPRAbilityActivationPolicy Policy = AbilityCDO->GetActivationPolicy();
+		const bool bRequiresInput = Policy == EPRAbilityActivationPolicy::OnInputTriggered
+			|| Policy == EPRAbilityActivationPolicy::WhileInputActive;
+		const bool bInputTagValid = Entry.InputTag.IsValid()
+			&& Entry.InputTag.ToString().StartsWith(TEXT("Input."));
+		if (bRequiresInput ? !bInputTagValid : Entry.InputTag.IsValid())
 		{
 			return false;
 		}

@@ -265,6 +265,78 @@ const FGameplayTag& UPRTagLibrary::GetStateGuardingTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetEnemyDataHealthTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.Health"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataMaxHealthTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.MaxHealth"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataShieldTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.Shield"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataMaxShieldTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.MaxShield"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataEnergyTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.Energy"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataMaxEnergyTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.MaxEnergy"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataAttackPowerTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.AttackPower"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataMoveSpeedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.MoveSpeed"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataCritChanceTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.CritChance"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataPermissionTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.Permission"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyDataResonanceTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.Data.Resonance"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetEnemyAIEventReevaluateTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Enemy.AI.Event.Reevaluate"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetQTEResultSuccessTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("QTE.Result.Success"));

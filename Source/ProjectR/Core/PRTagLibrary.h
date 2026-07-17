@@ -61,6 +61,19 @@ public:
 	static const FGameplayTag& GetStateBurningTag();
 	static const FGameplayTag& GetStateGuardingTag();
 
+	static const FGameplayTag& GetEnemyDataHealthTag();
+	static const FGameplayTag& GetEnemyDataMaxHealthTag();
+	static const FGameplayTag& GetEnemyDataShieldTag();
+	static const FGameplayTag& GetEnemyDataMaxShieldTag();
+	static const FGameplayTag& GetEnemyDataEnergyTag();
+	static const FGameplayTag& GetEnemyDataMaxEnergyTag();
+	static const FGameplayTag& GetEnemyDataAttackPowerTag();
+	static const FGameplayTag& GetEnemyDataMoveSpeedTag();
+	static const FGameplayTag& GetEnemyDataCritChanceTag();
+	static const FGameplayTag& GetEnemyDataPermissionTag();
+	static const FGameplayTag& GetEnemyDataResonanceTag();
+	static const FGameplayTag& GetEnemyAIEventReevaluateTag();
+
 	static const FGameplayTag& GetQTEResultSuccessTag();
 	static const FGameplayTag& GetQTEResultFailureTag();
 	static const FGameplayTag& GetQTEResultRejectedTag();

@@ -7,6 +7,8 @@
 #include "PRPlayerSkillAutomationToolset.h"
 #include "PRPlayerSkillPresentationToolset.h"
 #include "PRPlayerSkillStateEffectToolset.h"
+#include "PREnemyAuthoringToolset.h"
+#include "PREnemyAutomationToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -20,10 +22,14 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPRPlayerSkillAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRPlayerSkillPresentationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRPlayerSkillStateEffectToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPREnemyAuthoringToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPREnemyAutomationToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
 	{
+		UToolsetRegistry::UnregisterToolsetClass(UPREnemyAutomationToolset::StaticClass());
+		UToolsetRegistry::UnregisterToolsetClass(UPREnemyAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRPlayerSkillStateEffectToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRPlayerSkillPresentationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRPlayerSkillAutomationToolset::StaticClass());

@@ -15,6 +15,22 @@
       "Enabled": true
     },
     {
+      "Name": "GameplayAbilities",
+      "Enabled": true
+    },
+    {
+      "Name": "Niagara",
+      "Enabled": true
+    },
+    {
+      "Name": "StateTree",
+      "Enabled": true
+    },
+    {
+      "Name": "GameplayStateTree",
+      "Enabled": true
+    },
+    {
       "Name": "ToolsetRegistry",
       "Enabled": true
     }
