@@ -54,6 +54,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-017 | v0.1.5 将手工 `WBP_DebugMenu`、加资源、清 Cooldown、法令/QTE/AI/Boss 命令和开发清档混在同一版本，并只以“Shipping 不显示”描述隔离边界 | 采用用户批准的无 Content `ProjectRDebug` Runtime 插件和原生 Slate 面板；插件引用与模块描述双重 `TargetConfigurationDenyList=[Shipping]`。Save Debug 仅查询脱敏 RuntimeState；资源、Cooldown、Director、QTE、Companion 与 Boss 命令先返回结构化 `NotAvailable`，直到所属版本提供受控 API。现有 `LogProjectR` 保持兼容，只冻结 Core/Input/GAS/Ability/Combat/Save/Debug 类别，不提前创建 Director/Companion 业务或日志类别 | 使 Debug 不能成为第二套 Gameplay/Save 实现，并从 Shipping 构建、收据、模块、资产和快捷键行为上真实隔离；同时避免手工作业和未来类型占位 | Resolved by v0.1.5 task contract |
 
+# v0.2.1 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-018 | v0.2.1 同时要求敌人死亡接入奖励/统计，并让精英硬直直接触发 QTE，但 Reward/房间结算、统计消费者和 QTE 尚未属于该版本 | v0.2.1 只通过既有 CombatEvent 发布伤害、死亡、ShieldBreak 与稳定 Enemy 身份事实；不创建 Reward、统计或 QTE 消费者。奖励/房间结算留给 v0.4.2，QTE 消费留给 v0.3.2；未来消费者只订阅事件与稳定 ID，不反向控制 Enemy 私有实现 | 防止敌人基础版本预建未冻结的奖励、统计和 QTE 业务，同时保留后续版本可验证的统一事件面 | Resolved by v0.2.1 task contract |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

@@ -265,7 +265,7 @@ date: "2026-07-10"
 
 # 2026-07-17 - v0.2.0-E 六技能整合、占位表现与手感验收（Completed）
 
-- 公共 v0.2.0 已完成，`CURRENT_VERSION.md` 保持指向 v0.2.0 而仅将状态标记为 Completed；没有推进或开始 v0.2.1，也没有创建提交或推送。
+- 公共 v0.2.0 已完成。正式实施提交为 `01abb8cc5931a9c75a2c70d67368b7327a6249c3`（`v0.2.0-E Add six P0 player skills`），且该实施提交已与 `origin/main` 同步；实施提交本身未开始 v0.2.1，后续版本转换另行处理。
 - 新增 `UPRPlayerSkillComponent` 的通用、安全表现缓存和播放路径：从已授予 Skill DataAsset 异步预加载软 `VFX`/`SFX`，仅在本地非 Dedicated Server 播放附着 Niagara/Audio；激活不做同步加载。缺失/失败只记录一次受控 Warning 并跳过表现，不能影响能力 Commit、伤害、位移、Cost、Cooldown、状态或 AbilityOutcome。EndAbility、Avatar replacement、World Cleanup 与 Component EndPlay 释放表现组件和流式句柄，无永久 Tick。
 - Unreal MCP 串行创建并精确保存六个 `/Game/ProjectR/VFX/Skills/VFX_*` 和六个 `/Game/ProjectR/Audio/Skills/SFX_*`，并仅为六个已有 `DA_Skill_*` 绑定软引用后精确保存。六个 GA warnings-as-errors 编译、全部 18 个 E 保存目标 Dirty=0，正常 Editor 重启后逐项回读引用。全版本唯一清单准确为 45 Create + 3 Modify；E 再保存的六个 DA 是 A 的 Create Package，不增加 Modify 计数。
 - 新增固定无参 E 表现 smoke，以及仅供六 Spec 最终环境使用的 C/D 兼容回归入口；B/C/D 原有公共入口不改语义。E smoke、B smoke、E-C 和 E-D 回归在 `L_CombatGym` 真实 PIE PASS；所有会话 StopPIE，运行时无额外 Effect、Spec、Tag、Timer、Delegate、RootMotion、残影、表现组件或 transient Actor 泄漏。
