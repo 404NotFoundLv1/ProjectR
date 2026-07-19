@@ -9,6 +9,8 @@
 #include "PREnemySubsystem.generated.h"
 
 class APREnemyCharacter;
+class APREnemyProjectile;
+class UPREnemyAttackDataAsset;
 class UPREnemyPrototypeDataAsset;
 class UPREnemyPrototypeRegistryDataAsset;
 
@@ -30,14 +32,20 @@ public:
 	virtual void Deinitialize() override;
 
 private:
+	friend class UPREnemyBrainComponent;
+
 	struct FLoadedPrototype
 	{
 		TObjectPtr<UPREnemyPrototypeDataAsset> Prototype = nullptr;
 		TSubclassOf<APREnemyCharacter> EnemyClass;
+		TArray<TSubclassOf<APREnemyProjectile>> PreloadedProjectileClasses;
 	};
 
 	void LoadFixedRegistry();
 	void FinishRegistryLoad();
+	TSubclassOf<APREnemyProjectile> GetPreloadedProjectileClass(
+		const APREnemyCharacter* Enemy,
+		const UPREnemyAttackDataAsset* Attack) const;
 	bool IsValidSpawnTransform(const FTransform& SpawnTransform) const;
 	void BroadcastState(APREnemyCharacter* Enemy) const;
 

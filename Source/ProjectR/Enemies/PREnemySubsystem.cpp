@@ -4,6 +4,8 @@
 
 #include "Enemies/PREnemyCharacter.h"
 #include "Enemies/PREnemyBrainComponent.h"
+#include "Enemies/PREnemyAttackDataAsset.h"
+#include "Enemies/PREnemyProjectile.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
@@ -13,6 +15,12 @@ namespace PREnemyRegistry
 {
 const FSoftObjectPath RegistryPath(TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
 const FGameplayTag MeleeMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
+const FGameplayTag RangedMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion"));
+
+bool IsCheckpointBPrototypeTag(const FGameplayTag Tag)
+{
+	return Tag == MeleeMinionTag || Tag == RangedMinionTag;
+}
 }
 
 void UPREnemySubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -56,7 +64,7 @@ void UPREnemySubsystem::FinishRegistryLoad()
 	if (!Registry) return;
 	for (const FPREnemyPrototypeRegistryEntry& Entry : Registry->GetEntries())
 	{
-		if (Entry.PrototypeTag != PREnemyRegistry::MeleeMinionTag || Entry.Prototype.IsNull() || Entry.EnemyClass.IsNull()) continue;
+		if (!PREnemyRegistry::IsCheckpointBPrototypeTag(Entry.PrototypeTag) || Entry.Prototype.IsNull() || Entry.EnemyClass.IsNull()) continue;
 		UPREnemyPrototypeDataAsset* Prototype = Entry.Prototype.LoadSynchronous();
 		UClass* LoadedClass = Entry.EnemyClass.LoadSynchronous();
 		if (Prototype && LoadedClass && LoadedClass->IsChildOf(APREnemyCharacter::StaticClass()))
@@ -64,9 +72,50 @@ void UPREnemySubsystem::FinishRegistryLoad()
 			FLoadedPrototype& Loaded = LoadedPrototypes.FindOrAdd(Entry.PrototypeTag);
 			Loaded.Prototype = Prototype;
 			Loaded.EnemyClass = LoadedClass;
+			bool bProjectileConfigurationValid = true;
+			for (const TObjectPtr<UPREnemyAttackDataAsset>& Attack : Prototype->AttackDefinitions)
+			{
+				if (!Attack || Attack->Kind != EPREnemyAttackKind::Projectile)
+				{
+					continue;
+				}
+				UClass* ProjectileClass = Attack->ProjectileClass.LoadSynchronous();
+				if (!ProjectileClass || !ProjectileClass->IsChildOf(APREnemyProjectile::StaticClass()))
+				{
+					bProjectileConfigurationValid = false;
+					break;
+				}
+				Loaded.PreloadedProjectileClasses.Add(ProjectileClass);
+			}
+			if (!bProjectileConfigurationValid)
+			{
+				LoadedPrototypes.Remove(Entry.PrototypeTag);
+			}
 		}
 	}
-	bRegistryReady = LoadedPrototypes.Contains(PREnemyRegistry::MeleeMinionTag);
+	bRegistryReady = LoadedPrototypes.Contains(PREnemyRegistry::MeleeMinionTag)
+		&& LoadedPrototypes.Contains(PREnemyRegistry::RangedMinionTag);
+}
+
+TSubclassOf<APREnemyProjectile> UPREnemySubsystem::GetPreloadedProjectileClass(
+	const APREnemyCharacter* Enemy,
+	const UPREnemyAttackDataAsset* Attack) const
+{
+	const UPREnemyPrototypeDataAsset* Prototype = Enemy ? Enemy->GetEnemyPrototype() : nullptr;
+	const FLoadedPrototype* Loaded = Prototype ? LoadedPrototypes.Find(Prototype->PrototypeTag) : nullptr;
+	if (!Loaded || !Attack || Attack->Kind != EPREnemyAttackKind::Projectile)
+	{
+		return nullptr;
+	}
+	const FSoftObjectPath RequestedPath = Attack->ProjectileClass.ToSoftObjectPath();
+	for (const TSubclassOf<APREnemyProjectile> PreloadedClass : Loaded->PreloadedProjectileClasses)
+	{
+		if (PreloadedClass && FSoftObjectPath(PreloadedClass.Get()) == RequestedPath)
+		{
+			return PreloadedClass;
+		}
+	}
+	return nullptr;
 }
 
 bool UPREnemySubsystem::IsValidSpawnTransform(const FTransform& SpawnTransform) const
@@ -92,7 +141,7 @@ EPREnemySpawnStatus UPREnemySubsystem::SpawnEnemyPrototype(
 	if (!bRegistryReady) return EPREnemySpawnStatus::NotReady;
 	if (!IsValidSpawnTransform(SpawnTransform)) return EPREnemySpawnStatus::InvalidTransform;
 	const FLoadedPrototype* Entry = LoadedPrototypes.Find(PrototypeTag);
-	if (!Entry || PrototypeTag != PREnemyRegistry::MeleeMinionTag) return EPREnemySpawnStatus::UnknownPrototype;
+	if (!Entry || !PREnemyRegistry::IsCheckpointBPrototypeTag(PrototypeTag)) return EPREnemySpawnStatus::UnknownPrototype;
 	OutSpawnId = FGuid::NewGuid();
 	APREnemyCharacter* Enemy = GetWorld()->SpawnActorDeferred<APREnemyCharacter>(Entry->EnemyClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (!Enemy)

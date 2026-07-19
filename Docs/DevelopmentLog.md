@@ -282,6 +282,14 @@ date: "2026-07-10"
 - 验证：`ProjectR.Enemy` 4/4、Player pawn Combatant forwarding、BuildEditor、GE/GA/BP warnings-as-errors、正常 Editor 重启、12 个 Package Dirty=0、固定 `RunPIEEnemyCheckpointASmoke()` 与六技能 E smoke 均 PASS。Enemy PIE 结构化结果为 Health=100、AP=10、MoveSpeed=450、Melee CombatEvent=15、deathStopsBrain/runtimeClean=true；无 ProjectR Error、Ensure 或 Blueprint Runtime Error。
 - Future Compatibility Review PASS：B 只新增 Projectile/Ranged Data，C/D 只新增 Shield/Elite Data 与同一稳定接口；v0.2.2 复用 Heavy/Anchored、v0.2.3 仅读 RuntimeState/CombatEvent、v0.3.2 只订阅稳定事件。Save 不持久化敌人、Spec、Effect、目标、Token、Timer、StateTree 或 UObject 引用。
 
+# 2026-07-19 - v0.2.1-B RangedMinion 与安全投射物（Completed）
+
+- 在 `CURRENT_VERSION.md` 继续保持 v0.2.1/In Progress 的前提下完成内部检查点 B；未开始 C，公共版本未关闭。
+- 新增白名单 `RangedMinion`、RangedShot Data/GA/AbilitySet/Cooldown、Ranged Blueprint、Projectile Blueprint 与占位 VFX/SFX，共九项 Package；Registry 只追加 Ranged Entry，Melee Entry 保持不变，GameplayTag/Config 零增量。
+- `APREnemyProjectile` 仅由 Authority 在 Active 阶段创建，以锁定 X/Z 方向、1200cm/s、1.5s 生命周期和 Attack Token 单次结算运行；所有伤害继续只经 `UPRCombatSubsystem`，并优先消费稳定 `IPRCombatAttackProxyInterface`，不依赖具体 Afterimage 类型。
+- 经批准修复 `APRSkillDecoyActor` 的无碰撞 SceneRoot：SpawnActor 现在准确保留残影起点，不改变公开接口、Tag、输入、伤害、Timer 或消费幂等性。TDD RED 仅因缺根组件导致 SpawnLocation 断言失败，GREEN 后 `ProjectR.PlayerSkill.Runtime.DamageBurningAndDefense` 通过。
+- 实测 BuildEditor、`ProjectR.Enemy` 5/5、`ProjectR.PlayerSkill` 5/5 与固定 `RunPIEEnemyCheckpointBSmoke()` 均 PASS；PIE 确认一次 12 点投射物事件、一次 Afterimage proxy 消费、无第二次伤害事件以及 runtime clean。
+
 # 版本记录模板
 
 ```text

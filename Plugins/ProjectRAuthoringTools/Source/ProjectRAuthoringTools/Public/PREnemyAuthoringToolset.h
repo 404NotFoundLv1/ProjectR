@@ -42,4 +42,20 @@ public:
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* CorrectCheckpointAMeleeStrikeRange();
 
+	/** Fixed, editor-only writer for the v0.2.1-B nine-package Ranged manifest and Registry append. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* CreateCheckpointBEnemyAssets();
+
+	/** Repairs only the verified absent B projectile Blueprint; no path, class, or save input is accepted. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RepairCheckpointBProjectileBlueprint();
+
+	/** Rebinds only the verified post-compile B Ranged CDO defaults; callers cannot select assets or values. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RepairCheckpointBRangedBindings();
+
+	/** Applies the approved v0.2.1-B shared-default GE order repair: each Max attribute precedes its Current attribute. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RepairCheckpointBDefaultAttributeModifierOrder();
+
 };

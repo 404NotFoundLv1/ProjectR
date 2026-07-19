@@ -9,6 +9,8 @@
 
 #include "PRSkillDecoyActor.generated.h"
 
+class USceneComponent;
+
 /** One-shot, non-combat proxy created by AfterimageDodge. */
 UCLASS(NotBlueprintable, NotPlaceable)
 class PROJECTR_API APRSkillDecoyActor final : public AActor,
@@ -34,6 +36,8 @@ private:
 	UFUNCTION()
 	void HandleProxyOwnerEndPlay(AActor* Actor, EEndPlayReason::Type EndPlayReason);
 	void PublishConsumptionOutcome() const;
+	UPROPERTY(VisibleAnywhere, Category="ProjectR|PlayerSkill")
+	TObjectPtr<USceneComponent> SceneRoot;
 	TWeakObjectPtr<AActor> ProxyOwner;
 	FName ProxyId;
 	float PerfectTimingEndTime = 0.0f;

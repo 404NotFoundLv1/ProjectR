@@ -329,12 +329,16 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 	SkillSource.Character->GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 	TestTrue(TEXT("Formal side-view right facing resolves along positive X"),
 		SkillSource.Character->GetMesh()->GetRightVector().Equals(FVector::ForwardVector, 0.01f));
-	APRSkillDecoyActor* RuntimeDecoy = World.Get()->SpawnActor<APRSkillDecoyActor>();
+	const FVector DecoySpawnLocation(321.0f, 17.0f, 89.0f);
+	APRSkillDecoyActor* RuntimeDecoy = World.Get()->SpawnActor<APRSkillDecoyActor>(
+		APRSkillDecoyActor::StaticClass(), DecoySpawnLocation, FRotator::ZeroRotator);
 	if (!TestNotNull(TEXT("Runtime decoy spawned"), RuntimeDecoy))
 	{
 		Combat->OnCombatEvent().Remove(EventHandle);
 		return false;
 	}
+	TestTrue(TEXT("Afterimage decoy retains its authoritative spawn location"),
+		RuntimeDecoy->GetActorLocation().Equals(DecoySpawnLocation, 0.01f));
 	RuntimeDecoy->InitializeProxy(
 		SkillSource.Character,
 		TEXT("Automation.AfterimageDecoy"),

@@ -2,6 +2,7 @@
 
 #include "Enemies/PREnemyAttackDataAsset.h"
 
+#include "Enemies/PREnemyProjectile.h"
 #include "Misc/DataValidation.h"
 
 FPrimaryAssetId UPREnemyAttackDataAsset::GetPrimaryAssetId() const
@@ -38,6 +39,15 @@ EDataValidationResult UPREnemyAttackDataAsset::IsDataValid(FDataValidationContex
 	{
 		Context.AddError(FText::FromString(TEXT("Projectile attacks require a class, speed, and lifetime.")));
 		Result = EDataValidationResult::Invalid;
+	}
+	if (Kind == EPREnemyAttackKind::Projectile && !ProjectileClass.IsNull())
+	{
+		const UClass* LoadedProjectileClass = ProjectileClass.LoadSynchronous();
+		if (!LoadedProjectileClass || !LoadedProjectileClass->IsChildOf(APREnemyProjectile::StaticClass()))
+		{
+			Context.AddError(FText::FromString(TEXT("Projectile attacks require an APREnemyProjectile class.")));
+			Result = EDataValidationResult::Invalid;
+		}
 	}
 	return Result == EDataValidationResult::NotValidated ? EDataValidationResult::Valid : Result;
 }

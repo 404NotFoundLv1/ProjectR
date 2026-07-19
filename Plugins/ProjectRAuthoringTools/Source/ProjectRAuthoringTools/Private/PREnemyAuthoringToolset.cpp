@@ -10,6 +10,7 @@
 #include "Enemies/PREnemyAttackDataAsset.h"
 #include "Enemies/PREnemyAttackGameplayAbility.h"
 #include "Enemies/PREnemyCharacter.h"
+#include "Enemies/PREnemyProjectile.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
 #include "Enemies/PREnemyStateTreeNodes.h"
 #include "Engine/Blueprint.h"
@@ -68,6 +69,17 @@ constexpr const TCHAR* Packages[] = {
 	TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_MeleeStrike_Cooldown"),
 	TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_MeleeStrike"),
 	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_MeleeStrike")};
+
+constexpr const TCHAR* CheckpointBPackages[] = {
+	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_RangedMinion"),
+	TEXT("/Game/ProjectR/Enemies/Prototypes/DA_Enemy_RangedMinion"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_RangedShot"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_RangedShot"),
+	TEXT("/Game/ProjectR/Enemies/Abilities/DA_EnemyAbilitySet_Ranged"),
+	TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_RangedShot_Cooldown"),
+	TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_RangedShot"),
+	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_RangedShot"),
+	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_EnemyProjectile_Ranged")};
 
 template <typename T>
 T* CreateAsset(const TCHAR* Path)
@@ -272,6 +284,170 @@ bool ConfigureEffectBlueprints(
 
 	FKismetEditorUtilities::CompileBlueprint(MeleeBlueprint);
 	FKismetEditorUtilities::CompileBlueprint(StrikeAbilityBlueprint);
+	return true;
+}
+
+bool PreflightCheckpointB(FString& Error)
+{
+	IAssetRegistry& AssetRegistry = FAssetRegistryModule::GetRegistry();
+	for (const TCHAR* Path : CheckpointBPackages)
+	{
+		FString Filename;
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.GetAssetsByPackageName(FName(Path), FoundAssets, true);
+		if (FindObject<UObject>(nullptr, Path) || FPackageName::DoesPackageExist(Path, &Filename) || !FoundAssets.IsEmpty())
+		{
+			Error = FString::Printf(TEXT("Checkpoint B manifest collision: %s"), Path);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ConfigureCheckpointBAssets(
+	UPREnemyPrototypeRegistryDataAsset* Registry,
+	UBlueprint* RangedBlueprint,
+	UPREnemyPrototypeDataAsset* Ranged,
+	UPREnemyAttackDataAsset* RangedShot,
+	UBlueprint* RangedAbilityBlueprint,
+	UPRAbilitySetDataAsset* RangedAbilitySet,
+	UBlueprint* RangedCooldownBlueprint,
+	UNiagaraSystem* RangedVFX,
+	USoundWave* RangedSFX,
+	UBlueprint* ProjectileBlueprint,
+	FString& Error)
+{
+	UBlueprint* BaseBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	UBlueprint* DefaultAttributesBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes.GE_Enemy_DefaultAttributes"));
+	UStateTree* StateTree = LoadObject<UStateTree>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/AI/ST_Enemy_Base.ST_Enemy_Base"));
+	UClass* DamageEffectClass = LoadClass<UGameplayEffect>(nullptr, TEXT("/Game/ProjectR/Effects/GE_Damage.GE_Damage_C"));
+	const FGameplayTag MeleeTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
+	const FGameplayTag RangedTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion"));
+	const FGameplayTag RangedAttackTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.RangedShot"));
+	const FGameplayTag RangedCooldownTag = FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Enemy.RangedShot"));
+	if (!Registry || !RangedBlueprint || !Ranged || !RangedShot || !RangedAbilityBlueprint || !RangedAbilitySet
+		|| !RangedCooldownBlueprint || !RangedVFX || !RangedSFX || !ProjectileBlueprint || !BaseBlueprint
+		|| !DefaultAttributesBlueprint || !DefaultAttributesBlueprint->GeneratedClass || !StateTree || !DamageEffectClass
+		|| !RangedBlueprint->GeneratedClass || !RangedAbilityBlueprint->GeneratedClass || !ProjectileBlueprint->GeneratedClass)
+	{
+		Error = TEXT("Checkpoint B fixed dependencies are unavailable.");
+		return false;
+	}
+	if (Registry->Entries.Num() != 1 || Registry->Entries[0].PrototypeTag != MeleeTag
+		|| Registry->Entries[0].Prototype.IsNull() || Registry->Entries[0].EnemyClass.IsNull())
+	{
+		Error = TEXT("Checkpoint B requires the exact one-entry Melee registry preimage.");
+		return false;
+	}
+	if (!RangedBlueprint->GeneratedClass->IsChildOf(BaseBlueprint->GeneratedClass)
+		|| !ProjectileBlueprint->GeneratedClass->IsChildOf(APREnemyProjectile::StaticClass()))
+	{
+		Error = TEXT("Checkpoint B Blueprint parent classes are invalid.");
+		return false;
+	}
+
+	Ranged->EnemyId = TEXT("RangedMinion");
+	Ranged->PrototypeTag = RangedTag;
+	Ranged->Mobility = EPRAbilityTargetMobility::Light;
+	Ranged->Attributes = {80.0f, 80.0f, 0.0f, 0.0f, 0.0f, 1.0f, 10.0f, 380.0f, 0.0f, 0.0f, 0.0f};
+	Ranged->Perception.SenseInterval = 0.10f;
+	Ranged->Perception.AcquireRange = 1100.0f;
+	Ranged->Perception.LoseRange = 1400.0f;
+	Ranged->Perception.PreferredMinRange = 350.0f;
+	Ranged->Perception.PreferredMaxRange = 700.0f;
+	Ranged->Perception.EdgeProbeForward = 60.0f;
+	Ranged->Perception.EdgeProbeDepth = 120.0f;
+	Ranged->MarkPackageDirty();
+
+	RangedShot->AttackId = TEXT("RangedShot");
+	RangedShot->AttackTag = RangedAttackTag;
+	RangedShot->Kind = EPREnemyAttackKind::Projectile;
+	RangedShot->MinRange = 350.0f;
+	RangedShot->MaxRange = 700.0f;
+	RangedShot->BaseDamage = 8.0f;
+	RangedShot->AttackPowerScale = 0.4f;
+	RangedShot->Windup = 0.45f;
+	RangedShot->ActiveWindow = 0.05f;
+	RangedShot->Recovery = 0.35f;
+	RangedShot->Cooldown = 1.40f;
+	RangedShot->SweepRadius = 0.0f;
+	RangedShot->SweepHalfAngleDegrees = 0.0f;
+	RangedShot->ProjectileClass = ProjectileBlueprint->GeneratedClass;
+	RangedShot->ProjectileSpeed = 1200.0f;
+	RangedShot->ProjectileLifetime = 1.5f;
+	RangedShot->DamageTags.Reset();
+	RangedShot->VFX = RangedVFX;
+	RangedShot->SFX = RangedSFX;
+	RangedShot->MarkPackageDirty();
+
+	Ranged->AttackDefinitions.Reset();
+	Ranged->AttackDefinitions.Add(RangedShot);
+	Ranged->InitialAbilitySet = RangedAbilitySet;
+	Ranged->MarkPackageDirty();
+
+	RangedAbilitySet->AbilityEntries.Reset();
+	FPRAbilitySetEntry& AbilityEntry = RangedAbilitySet->AbilityEntries.AddDefaulted_GetRef();
+	AbilityEntry.AbilityClass = RangedAbilityBlueprint->GeneratedClass;
+	AbilityEntry.AbilityData = RangedShot;
+	AbilityEntry.AbilityLevel = 1;
+	AbilityEntry.bGrantOnInitialization = true;
+	RangedAbilitySet->MarkPackageDirty();
+
+	UGameplayEffect* Cooldown = RangedCooldownBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>();
+	if (!Cooldown)
+	{
+		Error = TEXT("Checkpoint B cooldown GameplayEffect CDO is unavailable.");
+		return false;
+	}
+	Cooldown->DurationPolicy = EGameplayEffectDurationType::HasDuration;
+	Cooldown->DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(1.40f));
+	Cooldown->Modifiers.Reset();
+	FInheritedTagContainer CooldownTags;
+	CooldownTags.AddTag(RangedCooldownTag);
+	Cooldown->FindOrAddComponent<UTargetTagsGameplayEffectComponent>().SetAndApplyTargetTagChanges(CooldownTags);
+	RangedCooldownBlueprint->MarkPackageDirty();
+
+	if (FObjectProperty* StateTreeProperty = FindFProperty<FObjectProperty>(RangedBlueprint->GeneratedClass, TEXT("EnemyStateTree")))
+	{
+		StateTreeProperty->SetObjectPropertyValue_InContainer(RangedBlueprint->GeneratedClass->GetDefaultObject(), StateTree);
+	}
+	else { Error = TEXT("BP_Enemy_RangedMinion has no EnemyStateTree CDO property."); return false; }
+	if (FClassProperty* DefaultEffectProperty = FindFProperty<FClassProperty>(RangedBlueprint->GeneratedClass, TEXT("DefaultAttributesEffect")))
+	{
+		DefaultEffectProperty->SetPropertyValue_InContainer(RangedBlueprint->GeneratedClass->GetDefaultObject(), DefaultAttributesBlueprint->GeneratedClass);
+	}
+	else { Error = TEXT("BP_Enemy_RangedMinion has no DefaultAttributesEffect CDO property."); return false; }
+	if (FClassProperty* DamageEffectProperty = FindFProperty<FClassProperty>(RangedBlueprint->GeneratedClass, TEXT("DamageEffect")))
+	{
+		DamageEffectProperty->SetPropertyValue_InContainer(RangedBlueprint->GeneratedClass->GetDefaultObject(), DamageEffectClass);
+	}
+	else { Error = TEXT("BP_Enemy_RangedMinion has no DamageEffect CDO property."); return false; }
+	RangedBlueprint->MarkPackageDirty();
+
+	if (FStructProperty* TagProperty = FindFProperty<FStructProperty>(RangedAbilityBlueprint->GeneratedClass, TEXT("AbilityTag")))
+	{
+		*TagProperty->ContainerPtrToValuePtr<FGameplayTag>(RangedAbilityBlueprint->GeneratedClass->GetDefaultObject()) = RangedAttackTag;
+	}
+	else { Error = TEXT("GA_Enemy_RangedShot has no AbilityTag CDO property."); return false; }
+	if (FClassProperty* CooldownProperty = FindFProperty<FClassProperty>(RangedAbilityBlueprint->GeneratedClass, TEXT("CooldownGameplayEffectClass")))
+	{
+		CooldownProperty->SetPropertyValue_InContainer(RangedAbilityBlueprint->GeneratedClass->GetDefaultObject(), RangedCooldownBlueprint->GeneratedClass);
+	}
+	else { Error = TEXT("GA_Enemy_RangedShot has no CooldownGameplayEffectClass CDO property."); return false; }
+	RangedAbilityBlueprint->MarkPackageDirty();
+
+	FPREnemyPrototypeRegistryEntry& RegistryEntry = Registry->Entries.AddDefaulted_GetRef();
+	RegistryEntry.PrototypeTag = RangedTag;
+	RegistryEntry.Prototype = Ranged;
+	RegistryEntry.EnemyClass = RangedBlueprint->GeneratedClass;
+	Registry->MarkPackageDirty();
+	FKismetEditorUtilities::CompileBlueprint(RangedBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(RangedAbilityBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(RangedCooldownBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(ProjectileBlueprint);
 	return true;
 }
 }
@@ -513,5 +689,175 @@ UToolCallAsyncResultString* UPREnemyAuthoringToolset::CorrectCheckpointAMeleeStr
 	}
 
 	Result->SetValue(TEXT("{\"status\":\"PASS\",\"package\":\"/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_MeleeStrike\",\"sweepRadius\":140.0,\"saved\":1}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::CreateCheckpointBEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	FString Error;
+	if (!PREnemyAuthoringToolset::PreflightCheckpointB(Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+
+	UPREnemyPrototypeRegistryDataAsset* Registry = LoadObject<UPREnemyPrototypeRegistryDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
+	UBlueprint* BaseBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	if (!Registry || !BaseBlueprint || !BaseBlueprint->GeneratedClass)
+	{
+		Result->SetError(TEXT("Checkpoint B requires the saved checkpoint-A Registry and BP_Enemy_Base."));
+		return Result;
+	}
+
+	UBlueprint* RangedBlueprint = PREnemyAuthoringToolset::CreateBlueprint(
+		PREnemyAuthoringToolset::CheckpointBPackages[0], BaseBlueprint->GeneratedClass);
+	UPREnemyPrototypeDataAsset* Ranged = PREnemyAuthoringToolset::CreateAsset<UPREnemyPrototypeDataAsset>(
+		PREnemyAuthoringToolset::CheckpointBPackages[1]);
+	UPREnemyAttackDataAsset* RangedShot = PREnemyAuthoringToolset::CreateAsset<UPREnemyAttackDataAsset>(
+		PREnemyAuthoringToolset::CheckpointBPackages[2]);
+	UBlueprint* RangedAbilityBlueprint = PREnemyAuthoringToolset::CreateBlueprint(
+		PREnemyAuthoringToolset::CheckpointBPackages[3], UPREnemyAttackGameplayAbility::StaticClass());
+	UPRAbilitySetDataAsset* RangedAbilitySet = PREnemyAuthoringToolset::CreateAsset<UPRAbilitySetDataAsset>(
+		PREnemyAuthoringToolset::CheckpointBPackages[4]);
+	UBlueprint* RangedCooldownBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(
+		PREnemyAuthoringToolset::CheckpointBPackages[5]);
+	UNiagaraSystem* RangedVFX = PREnemyAuthoringToolset::CreateNiagaraSystem(
+		PREnemyAuthoringToolset::CheckpointBPackages[6]);
+	USoundWave* RangedSFX = PREnemyAuthoringToolset::CreatePlaceholderSound(
+		PREnemyAuthoringToolset::CheckpointBPackages[7]);
+	UBlueprint* ProjectileBlueprint = PREnemyAuthoringToolset::CreateBlueprint(
+		PREnemyAuthoringToolset::CheckpointBPackages[8], APREnemyProjectile::StaticClass());
+	if (!RangedBlueprint || !Ranged || !RangedShot || !RangedAbilityBlueprint || !RangedAbilitySet || !RangedCooldownBlueprint
+		|| !RangedVFX || !RangedSFX || !ProjectileBlueprint)
+	{
+		Result->SetError(TEXT("Checkpoint B could not create its complete fixed manifest."));
+		return Result;
+	}
+	if (!PREnemyAuthoringToolset::ConfigureCheckpointBAssets(Registry, RangedBlueprint, Ranged, RangedShot,
+		RangedAbilityBlueprint, RangedAbilitySet, RangedCooldownBlueprint, RangedVFX, RangedSFX, ProjectileBlueprint, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":9,\"registryAppended\":1,\"saved\":false,\"schema\":\"v0.2.1-B-fixed\"}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::RepairCheckpointBProjectileBlueprint()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	const TCHAR* ProjectilePath = PREnemyAuthoringToolset::CheckpointBPackages[8];
+	FString Filename;
+	TArray<FAssetData> Existing;
+	FAssetRegistryModule::GetRegistry().GetAssetsByPackageName(FName(ProjectilePath), Existing, true);
+	if (FPackageName::DoesPackageExist(ProjectilePath, &Filename) || !Existing.IsEmpty())
+	{
+		Result->SetError(TEXT("Checkpoint B projectile repair requires the documented absent projectile package preimage."));
+		return Result;
+	}
+	UBlueprint* ProjectileBlueprint = PREnemyAuthoringToolset::CreateBlueprint(ProjectilePath, APREnemyProjectile::StaticClass());
+	if (!ProjectileBlueprint || !ProjectileBlueprint->GeneratedClass
+		|| !ProjectileBlueprint->GeneratedClass->IsChildOf(APREnemyProjectile::StaticClass()))
+	{
+		Result->SetError(TEXT("Checkpoint B projectile repair could not create the fixed APREnemyProjectile Blueprint."));
+		return Result;
+	}
+	FKismetEditorUtilities::CompileBlueprint(ProjectileBlueprint);
+	ProjectileBlueprint->MarkPackageDirty();
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":1,\"package\":\"/Game/ProjectR/Enemies/Blueprints/BP_EnemyProjectile_Ranged\",\"saved\":false}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::RepairCheckpointBRangedBindings()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	UBlueprint* RangedBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_RangedMinion.BP_Enemy_RangedMinion"));
+	UBlueprint* RangedAbilityBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_RangedShot.GA_Enemy_RangedShot"));
+	UBlueprint* DefaultAttributesBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes.GE_Enemy_DefaultAttributes"));
+	UBlueprint* RangedCooldownBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_RangedShot_Cooldown.GE_EnemyAttack_RangedShot_Cooldown"));
+	UStateTree* StateTree = LoadObject<UStateTree>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/AI/ST_Enemy_Base.ST_Enemy_Base"));
+	UClass* DamageEffectClass = LoadClass<UGameplayEffect>(nullptr, TEXT("/Game/ProjectR/Effects/GE_Damage.GE_Damage_C"));
+	if (!RangedBlueprint || !RangedAbilityBlueprint || !DefaultAttributesBlueprint || !DefaultAttributesBlueprint->GeneratedClass
+		|| !RangedCooldownBlueprint || !RangedCooldownBlueprint->GeneratedClass || !StateTree || !DamageEffectClass
+		|| !RangedBlueprint->GeneratedClass || !RangedAbilityBlueprint->GeneratedClass)
+	{
+		Result->SetError(TEXT("Checkpoint B ranged-binding repair requires the complete saved B preimage."));
+		return Result;
+	}
+	UObject* RangedCDO = RangedBlueprint->GeneratedClass->GetDefaultObject();
+	UObject* AbilityCDO = RangedAbilityBlueprint->GeneratedClass->GetDefaultObject();
+	FObjectProperty* StateTreeProperty = FindFProperty<FObjectProperty>(RangedBlueprint->GeneratedClass, TEXT("EnemyStateTree"));
+	FClassProperty* DefaultEffectProperty = FindFProperty<FClassProperty>(RangedBlueprint->GeneratedClass, TEXT("DefaultAttributesEffect"));
+	FClassProperty* DamageEffectProperty = FindFProperty<FClassProperty>(RangedBlueprint->GeneratedClass, TEXT("DamageEffect"));
+	FStructProperty* AbilityTagProperty = FindFProperty<FStructProperty>(RangedAbilityBlueprint->GeneratedClass, TEXT("AbilityTag"));
+	FClassProperty* CooldownProperty = FindFProperty<FClassProperty>(RangedAbilityBlueprint->GeneratedClass, TEXT("CooldownGameplayEffectClass"));
+	if (!RangedCDO || !AbilityCDO || !StateTreeProperty || !DefaultEffectProperty || !DamageEffectProperty || !AbilityTagProperty || !CooldownProperty)
+	{
+		Result->SetError(TEXT("Checkpoint B ranged-binding repair found an incompatible native CDO schema."));
+		return Result;
+	}
+	StateTreeProperty->SetObjectPropertyValue_InContainer(RangedCDO, StateTree);
+	DefaultEffectProperty->SetPropertyValue_InContainer(RangedCDO, DefaultAttributesBlueprint->GeneratedClass);
+	DamageEffectProperty->SetPropertyValue_InContainer(RangedCDO, DamageEffectClass);
+	*AbilityTagProperty->ContainerPtrToValuePtr<FGameplayTag>(AbilityCDO) = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.RangedShot"));
+	CooldownProperty->SetPropertyValue_InContainer(AbilityCDO, RangedCooldownBlueprint->GeneratedClass);
+	RangedBlueprint->MarkPackageDirty();
+	RangedAbilityBlueprint->MarkPackageDirty();
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"packages\":[\"/Game/ProjectR/Enemies/Blueprints/BP_Enemy_RangedMinion\",\"/Game/ProjectR/Enemies/Attacks/GA_Enemy_RangedShot\"],\"saved\":false}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::RepairCheckpointBDefaultAttributeModifierOrder()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	UBlueprint* DefaultsBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes.GE_Enemy_DefaultAttributes"));
+	UGameplayEffect* Defaults = DefaultsBlueprint && DefaultsBlueprint->GeneratedClass
+		? DefaultsBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>() : nullptr;
+	if (!DefaultsBlueprint || !Defaults)
+	{
+		Result->SetError(TEXT("Checkpoint B default-attribute order repair requires the saved shared enemy default-attributes GameplayEffect."));
+		return Result;
+	}
+	const TArray<FGameplayAttribute> RequiredOrder = {
+		UPRAttributeSet::GetMaxHealthAttribute(), UPRAttributeSet::GetHealthAttribute(),
+		UPRAttributeSet::GetMaxShieldAttribute(), UPRAttributeSet::GetShieldAttribute(),
+		UPRAttributeSet::GetMaxEnergyAttribute(), UPRAttributeSet::GetEnergyAttribute(),
+		UPRAttributeSet::GetAttackPowerAttribute(), UPRAttributeSet::GetMoveSpeedAttribute(),
+		UPRAttributeSet::GetCritChanceAttribute(), UPRAttributeSet::GetPermissionAttribute(),
+		UPRAttributeSet::GetResonanceAttribute() };
+	if (Defaults->Modifiers.Num() != RequiredOrder.Num())
+	{
+		Result->SetError(TEXT("Checkpoint B default-attribute order repair requires the exact eleven-modifier A preimage."));
+		return Result;
+	}
+	TArray<FGameplayModifierInfo> OrderedModifiers;
+	OrderedModifiers.Reserve(RequiredOrder.Num());
+	for (const FGameplayAttribute RequiredAttribute : RequiredOrder)
+	{
+		const FGameplayModifierInfo* Found = Defaults->Modifiers.FindByPredicate(
+			[RequiredAttribute](const FGameplayModifierInfo& Modifier) { return Modifier.Attribute == RequiredAttribute; });
+		if (!Found)
+		{
+			Result->SetError(TEXT("Checkpoint B default-attribute order repair found an incompatible modifier schema."));
+			return Result;
+		}
+		OrderedModifiers.Add(*Found);
+	}
+	Defaults->Modifiers = MoveTemp(OrderedModifiers);
+	DefaultsBlueprint->MarkPackageDirty();
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"package\":\"/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes\",\"modifierOrder\":\"MaxThenCurrent\",\"saved\":false}"));
 	return Result;
 }

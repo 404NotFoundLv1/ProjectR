@@ -10,6 +10,7 @@
 
 class APREnemyCharacter;
 class UPREnemyAttackDataAsset;
+class APREnemyProjectile;
 
 /** Event-driven state owner for a single initialized enemy. */
 UCLASS(ClassGroup=(ProjectR), meta=(BlueprintSpawnableComponent))
@@ -28,14 +29,19 @@ public:
 	void ReevaluateTarget();
 	void UpdateRangeMovement();
 	bool TryActivateCurrentAttack();
+	bool CanBeginAttack(const UPREnemyAttackDataAsset* Attack, AActor* Target) const;
 	bool BeginAttack(const UPREnemyAttackDataAsset* Attack, AActor* Target);
 	void CancelAttack();
 
 private:
+	friend class APREnemyProjectile;
+
 	TWeakObjectPtr<APREnemyCharacter> Enemy;
 	FPREnemyRuntimeState RuntimeState;
 	TWeakObjectPtr<AActor> CurrentTarget;
+	TWeakObjectPtr<const UPREnemyAttackDataAsset> ActiveAttack;
 	FGuid AttackToken;
+	TSet<FGuid> ActiveProjectileTokens;
 	FVector LockedAttackDirection = FVector::ZeroVector;
 	double AttackCooldownEndTime = 0.0;
 	FTimerHandle ReevaluateTimer;
@@ -48,5 +54,10 @@ private:
 	void FinishCooldown();
 	AActor* FindBestTarget() const;
 	bool IsCurrentAttackTargetValid() const;
+	bool HasLineOfSightTo(AActor* Target) const;
+	const UPREnemyAttackDataAsset* FindConfiguredAttack() const;
 	const UPREnemyAttackDataAsset* FindAttackForTarget(AActor* Target) const;
+	bool SpawnProjectile(const UPREnemyAttackDataAsset* Attack, AActor* Target);
+	bool TryResolveProjectileToken(const FGuid& Token);
+	void ReleaseProjectileToken(const FGuid& Token);
 };

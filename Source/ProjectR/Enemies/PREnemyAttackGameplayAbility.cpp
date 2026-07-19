@@ -31,7 +31,10 @@ bool UPREnemyAttackGameplayAbility::CanActivateAbility(
 	const APREnemyCharacter* Enemy = Cast<APREnemyCharacter>(ActorInfo->AvatarActor.Get());
 	const FGameplayAbilitySpec* Spec = ActorInfo->AbilitySystemComponent.IsValid()
 		? ActorInfo->AbilitySystemComponent->FindAbilitySpecFromHandle(Handle) : nullptr;
-	return Enemy && Enemy->IsEnemyInitialized() && Spec && Cast<UPREnemyAttackDataAsset>(Spec->SourceObject) != nullptr;
+	const UPREnemyAttackDataAsset* Attack = Spec ? Cast<UPREnemyAttackDataAsset>(Spec->SourceObject) : nullptr;
+	const UPREnemyBrainComponent* Brain = Enemy ? Enemy->GetEnemyBrain() : nullptr;
+	AActor* Target = Brain ? Brain->GetRuntimeState().Target.Get() : nullptr;
+	return Enemy && Enemy->IsEnemyInitialized() && Attack && Brain && Brain->CanBeginAttack(Attack, Target);
 }
 
 void UPREnemyAttackGameplayAbility::ActivateAbility(
@@ -46,7 +49,8 @@ void UPREnemyAttackGameplayAbility::ActivateAbility(
 	const UPREnemyAttackDataAsset* Attack = Spec ? Cast<UPREnemyAttackDataAsset>(Spec->SourceObject) : nullptr;
 	UPREnemyBrainComponent* Brain = Enemy ? Enemy->GetEnemyBrain() : nullptr;
 	AActor* Target = Brain ? Brain->GetRuntimeState().Target.Get() : nullptr;
-	if (!Enemy || !Attack || !Brain || !Target || !CommitAbility(Handle, ActorInfo, ActivationInfo))
+	if (!Enemy || !Attack || !Brain || !Target || !Brain->CanBeginAttack(Attack, Target)
+		|| !CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;

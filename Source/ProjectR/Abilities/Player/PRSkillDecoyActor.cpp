@@ -6,6 +6,7 @@
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/Player/PRPlayerSkillSubsystem.h"
 #include "Combat/PRCombatTypes.h"
+#include "Components/SceneComponent.h"
 #include "Core/PRCombatantInterface.h"
 #include "Core/PRTagLibrary.h"
 #include "TimerManager.h"
@@ -13,6 +14,8 @@
 APRSkillDecoyActor::APRSkillDecoyActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
 	SetActorEnableCollision(false);
 }
 

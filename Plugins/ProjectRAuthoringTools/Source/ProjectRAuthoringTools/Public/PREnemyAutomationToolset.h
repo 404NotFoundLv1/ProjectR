@@ -15,4 +15,8 @@ class PROJECTRAUTHORINGTOOLS_API UPREnemyAutomationToolset : public UToolsetDefi
 public:
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointASmoke();
+
+	/** Runs the fixed v0.2.1-B RangedMinion vertical slice without accepting caller data or saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointBSmoke();
 };
