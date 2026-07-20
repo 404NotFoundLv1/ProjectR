@@ -20,6 +20,8 @@ class UPREnemyPrototypeDataAsset;
 class UPREnemyAttackDataAsset;
 class UPRAbilitySetDataAsset;
 class UStateTree;
+class UPRCombatSubsystem;
+struct FPRCombatEvent;
 struct FOnAttributeChangeData;
 
 UCLASS(Abstract)
@@ -72,6 +74,7 @@ protected:
 
 private:
 	friend class FPREnemyShieldGuardingLifecycleTest;
+	friend class FPREnemyEliteShieldBreakLifecycleTest;
 
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Abilities")
 	TObjectPtr<UPRAbilitySystemComponent> ProjectRAbilitySystemComponent;
@@ -87,6 +90,11 @@ private:
 	bool bDefaultAttributesApplied = false;
 	FPRAbilitySetGrantHandle InitialAbilityGrant;
 	FDelegateHandle ShieldAttributeDelegateHandle;
+	FDelegateHandle StunnedTagDelegateHandle;
+	FDelegateHandle ShieldBreakCombatEventDelegateHandle;
+	TWeakObjectPtr<UPRCombatSubsystem> BoundCombatSubsystem;
+	bool bEnemyStunned = false;
+	bool bShieldBreakResponseConsumed = false;
 
 	/** Called only after the pawn has both begun play and acquired its fixed AI controller. */
 	void TryInitializeEnemy();
@@ -94,4 +102,11 @@ private:
 	void ClearShieldGuardingLifecycle();
 	void SynchronizeShieldGuardingState();
 	void HandleShieldAttributeChanged(const FOnAttributeChangeData& ChangeData);
+	bool BindEnemyStunnedLifecycle();
+	void ClearEnemyStunnedLifecycle();
+	bool BindShieldBreakResponseLifecycle();
+	void ClearShieldBreakResponseLifecycle();
+	void HandleEnemyStunnedTagChanged(FGameplayTag Tag, int32 NewCount);
+	void HandleShieldBreakCombatEvent(const FPRCombatEvent& Event);
+	void CancelActiveEnemyAttackAbilities();
 };

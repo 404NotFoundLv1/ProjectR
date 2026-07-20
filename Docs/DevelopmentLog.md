@@ -300,6 +300,14 @@ date: "2026-07-10"
 - 最终 `Saved/AutomationReports/v021c-final-report-20260720b/v021c-final-None/result.json` 为 28/28 required PASS。GameplayTag/Config 零增量；HumanEnemyFeelJudgment、PhysicalGamepad、NetworkPIEReplication、Package 与 GC 均保持 optional `NOT_RUN`，留给 E 或独立流程。
 - Future Compatibility Review：D 只能复用通用 Shield/Guarding 同步并在其自身合同内添加 Elite Stunned，不能改写 C；v0.2.2 Boss 通过 Heavy/Anchored 和 DataAsset 扩展；v0.2.3 HUD、v0.3.2 QTE 仅读 RuntimeState/CombatEvent。Save 不持久化 Enemy ASC、Effect/Spec Handle、目标、Timer、Delegate、StateTree 或 Guarding。
 
+# 2026-07-21 - v0.2.1-D EliteAuditGuard 与 ShieldBreak Stagger（Completed）
+
+- 在 `CURRENT_VERSION.md` 保持 `v0.2.1 / In Progress` 的前提下完成内部检查点 D；A-C 保持 Completed，未开始 E，未推进 VersionIndex、未提交或 push。
+- 新增 EliteAuditGuard 的 Prototype/Attack/GA/AbilitySet/Cooldown/Blueprint/占位 VFX/SFX 八个准确 Package，并仅将 `DA_EnemyPrototypeRegistry` 追加为第四个 Elite Entry。Melee、Ranged、Shield Entry 的语义保持不变；共享 `GE_Enemy_DefaultAttributes`、`GE_State_Stunned`、StateTree、Base BP、玩家和地图均只读未保存，GameplayTag/Config 零增量。
+- `ShieldBreakEffect` 作为 Prototype 的可选、受限 GE 引用实现。Elite 指向既有 0.75s `GE_State_Stunned`；Enemy 通用 Shield Delegate 先锁定首次响应，已 Stunned 时只消费标记而不刷新/叠加，Shield 恢复后可重新镜像 Guarding 但不重复 Elite 响应。`State.Stunned` 通过 ASC Tag Event 取消 Attack GA、Attack Token 和 Timer，停止移动、保持 `Staggered`，解除后受控 reevaluate；没有具体 Elite 类型分支进入 CombatSubsystem 或 VectorHook。
+- TDD RED 证据为 `Saved/AutomationReports/v021d-tdd-red-schema/index.json`；GREEN 新鲜通过 `ProjectR.Enemy` 8 项、`ProjectR.PlayerSkill` 5 项、Input 3 项、GAS 4 项、Combat 5 项、Ability 6 项、Save 5 项、Debug（`-game`）12 项和 `BuildEditor` `v021d-final-build-2`。固定无参 `ProjectRAuthoringTools.Enemy.PIE.CheckpointD` 与 `CheckpointDPlayerHookRegression` 在 `L_CombatGym` 真实 PIE PASS：前者验证 Elite 300/150、Anchored、首次破盾单次 Stun、Staggered 恢复、EliteStrike 24、二次破盾无重复 D 响应；后者验证未修改的 Hook Heavy/Anchored 只拉玩家到 120cm 并 runtime clean；PIE 后正常退出 Editor。
+- Future Compatibility Review PASS：E 只完成四敌整合/客观回归/人工手感；v0.2.2 只能经 Prototype/Mobility 和数据化 `ShieldBreakEffect` 组合 Boss；HUD/QTE 仅读 RuntimeState/CombatEvent；Save 不持久化 Enemy Effect/Spec/Token/Timer/Delegate/Target/Brain 状态。`HumanEnemyFeelJudgment`、PhysicalGamepad、NetworkPIEReplication、Package 与 GC 未被冒充为 PASS，按合同保持 optional `NOT_RUN`。
+
 # 版本记录模板
 
 ```text

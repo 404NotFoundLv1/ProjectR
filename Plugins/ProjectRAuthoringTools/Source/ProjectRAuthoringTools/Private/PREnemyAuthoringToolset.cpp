@@ -91,6 +91,16 @@ constexpr const TCHAR* CheckpointCPackages[] = {
 	TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_ShieldBash"),
 	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_ShieldBash")};
 
+constexpr const TCHAR* CheckpointDPackages[] = {
+	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_EliteAuditGuard"),
+	TEXT("/Game/ProjectR/Enemies/Prototypes/DA_Enemy_EliteAuditGuard"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_EliteStrike"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_EliteStrike"),
+	TEXT("/Game/ProjectR/Enemies/Abilities/DA_EnemyAbilitySet_EliteAuditGuard"),
+	TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_EliteStrike_Cooldown"),
+	TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_EliteStrike"),
+	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_EliteStrike")};
+
 template <typename T>
 T* CreateAsset(const TCHAR* Path)
 {
@@ -625,6 +635,179 @@ bool ConfigureCheckpointCAssets(
 	FKismetEditorUtilities::CompileBlueprint(ShieldCooldownBlueprint);
 	return true;
 }
+
+bool PreflightCheckpointD(FString& Error)
+{
+	IAssetRegistry& AssetRegistry = FAssetRegistryModule::GetRegistry();
+	for (const TCHAR* Path : CheckpointDPackages)
+	{
+		FString Filename;
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.GetAssetsByPackageName(FName(Path), FoundAssets, true);
+		if (FindObject<UObject>(nullptr, Path) || FPackageName::DoesPackageExist(Path, &Filename) || !FoundAssets.IsEmpty())
+		{
+			Error = FString::Printf(TEXT("Checkpoint D manifest collision: %s"), Path);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ConfigureCheckpointDAssets(
+	UPREnemyPrototypeRegistryDataAsset* Registry,
+	UBlueprint* EliteBlueprint,
+	UPREnemyPrototypeDataAsset* Elite,
+	UPREnemyAttackDataAsset* EliteStrike,
+	UBlueprint* EliteAbilityBlueprint,
+	UPRAbilitySetDataAsset* EliteAbilitySet,
+	UBlueprint* EliteCooldownBlueprint,
+	UNiagaraSystem* EliteVFX,
+	USoundWave* EliteSFX,
+	FString& Error)
+{
+	UBlueprint* BaseBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	UBlueprint* DefaultAttributesBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes.GE_Enemy_DefaultAttributes"));
+	UStateTree* StateTree = LoadObject<UStateTree>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/AI/ST_Enemy_Base.ST_Enemy_Base"));
+	UClass* DamageEffectClass = LoadClass<UGameplayEffect>(nullptr,
+		TEXT("/Game/ProjectR/Effects/GE_Damage.GE_Damage_C"));
+	UClass* ShieldBreakEffectClass = LoadClass<UGameplayEffect>(nullptr,
+		TEXT("/Game/ProjectR/Abilities/Effects/GE_State_Stunned.GE_State_Stunned_C"));
+	const FGameplayTag MeleeTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
+	const FGameplayTag RangedTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion"));
+	const FGameplayTag ShieldTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion"));
+	const FGameplayTag EliteTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard"));
+	const FGameplayTag EliteAttackTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.EliteStrike"));
+	const FGameplayTag EliteCooldownTag = FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Enemy.EliteStrike"));
+	if (!Registry || !EliteBlueprint || !Elite || !EliteStrike || !EliteAbilityBlueprint || !EliteAbilitySet
+		|| !EliteCooldownBlueprint || !EliteVFX || !EliteSFX || !BaseBlueprint || !BaseBlueprint->GeneratedClass
+		|| !DefaultAttributesBlueprint || !DefaultAttributesBlueprint->GeneratedClass || !StateTree || !DamageEffectClass
+		|| !ShieldBreakEffectClass || !EliteBlueprint->GeneratedClass || !EliteAbilityBlueprint->GeneratedClass)
+	{
+		Error = TEXT("Checkpoint D fixed dependencies are unavailable.");
+		return false;
+	}
+	if (Registry->Entries.Num() != 3 || Registry->Entries[0].PrototypeTag != MeleeTag
+		|| Registry->Entries[1].PrototypeTag != RangedTag || Registry->Entries[2].PrototypeTag != ShieldTag
+		|| Registry->Entries[0].Prototype.IsNull() || Registry->Entries[0].EnemyClass.IsNull()
+		|| Registry->Entries[1].Prototype.IsNull() || Registry->Entries[1].EnemyClass.IsNull()
+		|| Registry->Entries[2].Prototype.IsNull() || Registry->Entries[2].EnemyClass.IsNull())
+	{
+		Error = TEXT("Checkpoint D requires the exact Melee/Ranged/Shield registry preimage.");
+		return false;
+	}
+	if (!EliteBlueprint->GeneratedClass->IsChildOf(BaseBlueprint->GeneratedClass))
+	{
+		Error = TEXT("BP_Enemy_EliteAuditGuard does not inherit the fixed Enemy Base Blueprint.");
+		return false;
+	}
+
+	Elite->EnemyId = TEXT("EliteAuditGuard");
+	Elite->PrototypeTag = EliteTag;
+	Elite->Mobility = EPRAbilityTargetMobility::Anchored;
+	Elite->Attributes = {300.0f, 300.0f, 150.0f, 150.0f, 0.0f, 1.0f, 15.0f, 350.0f, 0.0f, 0.0f, 0.0f};
+	Elite->Perception.SenseInterval = 0.10f;
+	Elite->Perception.AcquireRange = 1200.0f;
+	Elite->Perception.LoseRange = 1500.0f;
+	Elite->Perception.PreferredMinRange = 0.0f;
+	Elite->Perception.PreferredMaxRange = 190.0f;
+	Elite->Perception.EdgeProbeForward = 60.0f;
+	Elite->Perception.EdgeProbeDepth = 120.0f;
+	Elite->ShieldBreakEffect = ShieldBreakEffectClass;
+	Elite->MarkPackageDirty();
+
+	EliteStrike->AttackId = TEXT("EliteStrike");
+	EliteStrike->AttackTag = EliteAttackTag;
+	EliteStrike->Kind = EPREnemyAttackKind::MeleeSweep;
+	EliteStrike->MinRange = 0.0f;
+	EliteStrike->MaxRange = 190.0f;
+	EliteStrike->BaseDamage = 12.0f;
+	EliteStrike->AttackPowerScale = 0.8f;
+	EliteStrike->Windup = 0.50f;
+	EliteStrike->ActiveWindow = 0.18f;
+	EliteStrike->Recovery = 0.65f;
+	EliteStrike->Cooldown = 1.50f;
+	EliteStrike->SweepRadius = 190.0f;
+	EliteStrike->SweepHalfAngleDegrees = 60.0f;
+	EliteStrike->ProjectileClass.Reset();
+	EliteStrike->ProjectileSpeed = 0.0f;
+	EliteStrike->ProjectileLifetime = 0.0f;
+	EliteStrike->DamageTags.Reset();
+	EliteStrike->VFX = EliteVFX;
+	EliteStrike->SFX = EliteSFX;
+	EliteStrike->MarkPackageDirty();
+
+	Elite->AttackDefinitions.Reset();
+	Elite->AttackDefinitions.Add(EliteStrike);
+	Elite->InitialAbilitySet = EliteAbilitySet;
+	Elite->MarkPackageDirty();
+
+	EliteAbilitySet->AbilityEntries.Reset();
+	FPRAbilitySetEntry& AbilityEntry = EliteAbilitySet->AbilityEntries.AddDefaulted_GetRef();
+	AbilityEntry.AbilityClass = EliteAbilityBlueprint->GeneratedClass;
+	AbilityEntry.AbilityData = EliteStrike;
+	AbilityEntry.AbilityLevel = 1;
+	AbilityEntry.bGrantOnInitialization = true;
+	EliteAbilitySet->MarkPackageDirty();
+
+	UGameplayEffect* Cooldown = EliteCooldownBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>();
+	if (!Cooldown)
+	{
+		Error = TEXT("Checkpoint D cooldown GameplayEffect CDO is unavailable.");
+		return false;
+	}
+	Cooldown->DurationPolicy = EGameplayEffectDurationType::HasDuration;
+	Cooldown->DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(1.50f));
+	Cooldown->Period = FScalableFloat(0.0f);
+	Cooldown->Modifiers.Reset();
+	Cooldown->Executions.Reset();
+	Cooldown->GameplayCues.Reset();
+	FInheritedTagContainer CooldownTags;
+	CooldownTags.AddTag(EliteCooldownTag);
+	Cooldown->FindOrAddComponent<UTargetTagsGameplayEffectComponent>().SetAndApplyTargetTagChanges(CooldownTags);
+	EliteCooldownBlueprint->MarkPackageDirty();
+
+	if (FObjectProperty* StateTreeProperty = FindFProperty<FObjectProperty>(EliteBlueprint->GeneratedClass, TEXT("EnemyStateTree")))
+	{
+		StateTreeProperty->SetObjectPropertyValue_InContainer(EliteBlueprint->GeneratedClass->GetDefaultObject(), StateTree);
+	}
+	else { Error = TEXT("BP_Enemy_EliteAuditGuard has no EnemyStateTree CDO property."); return false; }
+	if (FClassProperty* DefaultEffectProperty = FindFProperty<FClassProperty>(EliteBlueprint->GeneratedClass, TEXT("DefaultAttributesEffect")))
+	{
+		DefaultEffectProperty->SetPropertyValue_InContainer(EliteBlueprint->GeneratedClass->GetDefaultObject(), DefaultAttributesBlueprint->GeneratedClass);
+	}
+	else { Error = TEXT("BP_Enemy_EliteAuditGuard has no DefaultAttributesEffect CDO property."); return false; }
+	if (FClassProperty* DamageEffectProperty = FindFProperty<FClassProperty>(EliteBlueprint->GeneratedClass, TEXT("DamageEffect")))
+	{
+		DamageEffectProperty->SetPropertyValue_InContainer(EliteBlueprint->GeneratedClass->GetDefaultObject(), DamageEffectClass);
+	}
+	else { Error = TEXT("BP_Enemy_EliteAuditGuard has no DamageEffect CDO property."); return false; }
+	EliteBlueprint->MarkPackageDirty();
+
+	if (FStructProperty* TagProperty = FindFProperty<FStructProperty>(EliteAbilityBlueprint->GeneratedClass, TEXT("AbilityTag")))
+	{
+		*TagProperty->ContainerPtrToValuePtr<FGameplayTag>(EliteAbilityBlueprint->GeneratedClass->GetDefaultObject()) = EliteAttackTag;
+	}
+	else { Error = TEXT("GA_Enemy_EliteStrike has no AbilityTag CDO property."); return false; }
+	if (FClassProperty* CooldownProperty = FindFProperty<FClassProperty>(EliteAbilityBlueprint->GeneratedClass, TEXT("CooldownGameplayEffectClass")))
+	{
+		CooldownProperty->SetPropertyValue_InContainer(EliteAbilityBlueprint->GeneratedClass->GetDefaultObject(), EliteCooldownBlueprint->GeneratedClass);
+	}
+	else { Error = TEXT("GA_Enemy_EliteStrike has no CooldownGameplayEffectClass CDO property."); return false; }
+	EliteAbilityBlueprint->MarkPackageDirty();
+
+	FPREnemyPrototypeRegistryEntry& RegistryEntry = Registry->Entries.AddDefaulted_GetRef();
+	RegistryEntry.PrototypeTag = EliteTag;
+	RegistryEntry.Prototype = Elite;
+	RegistryEntry.EnemyClass = EliteBlueprint->GeneratedClass;
+	Registry->MarkPackageDirty();
+	FKismetEditorUtilities::CompileBlueprint(EliteBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(EliteAbilityBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(EliteCooldownBlueprint);
+	return true;
+}
 }
 
 UToolCallAsyncResultString* UPREnemyAuthoringToolset::ResetCheckpointAEnemyManifest()
@@ -1007,6 +1190,83 @@ UToolCallAsyncResultString* UPREnemyAuthoringToolset::SaveCheckpointCEnemyAssets
 		}
 	}
 	Result->SetValue(TEXT("{\"status\":\"PASS\",\"saved\":9,\"schema\":\"v0.2.1-C-exact-manifest\"}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::CreateCheckpointDEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	FString Error;
+	if (!PREnemyAuthoringToolset::PreflightCheckpointD(Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	UPREnemyPrototypeRegistryDataAsset* Registry = LoadObject<UPREnemyPrototypeRegistryDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
+	UBlueprint* BaseBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	if (!Registry || !BaseBlueprint || !BaseBlueprint->GeneratedClass)
+	{
+		Result->SetError(TEXT("Checkpoint D requires the saved checkpoint-A Registry and BP_Enemy_Base."));
+		return Result;
+	}
+	UBlueprint* EliteBlueprint = PREnemyAuthoringToolset::CreateBlueprint(PREnemyAuthoringToolset::CheckpointDPackages[0], BaseBlueprint->GeneratedClass);
+	UPREnemyPrototypeDataAsset* Elite = PREnemyAuthoringToolset::CreateAsset<UPREnemyPrototypeDataAsset>(PREnemyAuthoringToolset::CheckpointDPackages[1]);
+	UPREnemyAttackDataAsset* EliteStrike = PREnemyAuthoringToolset::CreateAsset<UPREnemyAttackDataAsset>(PREnemyAuthoringToolset::CheckpointDPackages[2]);
+	UBlueprint* EliteAbilityBlueprint = PREnemyAuthoringToolset::CreateBlueprint(PREnemyAuthoringToolset::CheckpointDPackages[3], UPREnemyAttackGameplayAbility::StaticClass());
+	UPRAbilitySetDataAsset* EliteAbilitySet = PREnemyAuthoringToolset::CreateAsset<UPRAbilitySetDataAsset>(PREnemyAuthoringToolset::CheckpointDPackages[4]);
+	UBlueprint* EliteCooldownBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(PREnemyAuthoringToolset::CheckpointDPackages[5]);
+	UNiagaraSystem* EliteVFX = PREnemyAuthoringToolset::CreateNiagaraSystem(PREnemyAuthoringToolset::CheckpointDPackages[6]);
+	USoundWave* EliteSFX = PREnemyAuthoringToolset::CreatePlaceholderSound(PREnemyAuthoringToolset::CheckpointDPackages[7]);
+	if (!EliteBlueprint || !Elite || !EliteStrike || !EliteAbilityBlueprint || !EliteAbilitySet || !EliteCooldownBlueprint || !EliteVFX || !EliteSFX)
+	{
+		Result->SetError(TEXT("Checkpoint D could not create its complete fixed manifest."));
+		return Result;
+	}
+	if (!PREnemyAuthoringToolset::ConfigureCheckpointDAssets(Registry, EliteBlueprint, Elite, EliteStrike,
+		EliteAbilityBlueprint, EliteAbilitySet, EliteCooldownBlueprint, EliteVFX, EliteSFX, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":8,\"registryAppended\":1,\"saved\":false,\"schema\":\"v0.2.1-D-fixed\"}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::SaveCheckpointDEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	const TCHAR* ExactPaths[] = {
+		PREnemyAuthoringToolset::CheckpointDPackages[0], PREnemyAuthoringToolset::CheckpointDPackages[1],
+		PREnemyAuthoringToolset::CheckpointDPackages[2], PREnemyAuthoringToolset::CheckpointDPackages[3],
+		PREnemyAuthoringToolset::CheckpointDPackages[4], PREnemyAuthoringToolset::CheckpointDPackages[5],
+		PREnemyAuthoringToolset::CheckpointDPackages[6], PREnemyAuthoringToolset::CheckpointDPackages[7],
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry")};
+	TArray<UObject*> AssetsToSave;
+	AssetsToSave.Reserve(UE_ARRAY_COUNT(ExactPaths));
+	for (const TCHAR* Path : ExactPaths)
+	{
+		UObject* Asset = LoadObject<UObject>(nullptr, *FString::Printf(TEXT("%s.%s"), Path, *FPackageName::GetLongPackageAssetName(Path)));
+		if (!Asset)
+		{
+			Result->SetError(FString::Printf(TEXT("Checkpoint D exact save requires existing package %s."), Path));
+			return Result;
+		}
+		AssetsToSave.Add(Asset);
+	}
+	FString Error;
+	for (UObject* Asset : AssetsToSave)
+	{
+		if (!PREnemyAuthoringToolset::SavePackageObject(Asset, Error))
+		{
+			Result->SetError(Error);
+			return Result;
+		}
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"saved\":9,\"schema\":\"v0.2.1-D-exact-manifest\"}"));
 	return Result;
 }
 

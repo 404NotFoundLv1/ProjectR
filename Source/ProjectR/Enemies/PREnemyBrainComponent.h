@@ -32,6 +32,8 @@ public:
 	bool CanBeginAttack(const UPREnemyAttackDataAsset* Attack, AActor* Target) const;
 	bool BeginAttack(const UPREnemyAttackDataAsset* Attack, AActor* Target);
 	void CancelAttack();
+	void EnterStunnedState();
+	void ExitStunnedState();
 
 private:
 	friend class APREnemyProjectile;
@@ -60,4 +62,5 @@ private:
 	bool SpawnProjectile(const UPREnemyAttackDataAsset* Attack, AActor* Target);
 	bool TryResolveProjectileToken(const FGuid& Token);
 	void ReleaseProjectileToken(const FGuid& Token);
+	bool IsOwnerStunned() const;
 };

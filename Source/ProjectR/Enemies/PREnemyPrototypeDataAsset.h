@@ -10,6 +10,7 @@
 #include "PREnemyPrototypeDataAsset.generated.h"
 
 class UAnimMontage;
+class UGameplayEffect;
 class UNiagaraSystem;
 class USoundBase;
 class UPRAbilitySetDataAsset;
@@ -54,6 +55,9 @@ public:
 	TObjectPtr<UPRAbilitySetDataAsset> InitialAbilitySet = nullptr;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Enemy")
 	TArray<TObjectPtr<UPREnemyAttackDataAsset>> AttackDefinitions;
+	/** Optional one-shot response applied by the generic enemy shield-break lifecycle. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Enemy|Responses")
+	TSubclassOf<UGameplayEffect> ShieldBreakEffect;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Enemy|Presentation")
 	TSoftObjectPtr<UAnimMontage> HitMontage;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Enemy|Presentation")

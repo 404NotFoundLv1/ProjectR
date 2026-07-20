@@ -105,6 +105,11 @@ void UPREnemyBrainComponent::ReevaluateTarget()
 		StopBrain();
 		return;
 	}
+	if (IsOwnerStunned())
+	{
+		EnterStunnedState();
+		return;
+	}
 	if (RuntimeState.AttackPhase != EPREnemyAttackPhase::None && !IsCurrentAttackTargetValid())
 	{
 		CancelAttack();
@@ -141,6 +146,11 @@ void UPREnemyBrainComponent::UpdateRangeMovement()
 	UPREnemyPlaneMovementComponent* Movement = EnemyCharacter ? EnemyCharacter->GetEnemyPlaneMovement() : nullptr;
 	if (!bRunning || !EnemyCharacter || !Target || !Prototype || !Attack || !Movement)
 	{
+		return;
+	}
+	if (IsOwnerStunned())
+	{
+		EnterStunnedState();
 		return;
 	}
 	if (RuntimeState.AttackPhase != EPREnemyAttackPhase::None)
@@ -190,7 +200,7 @@ bool UPREnemyBrainComponent::TryActivateCurrentAttack()
 	APREnemyCharacter* EnemyCharacter = Enemy.Get();
 	const UPREnemyAttackDataAsset* Attack = FindConfiguredAttack();
 	AActor* Target = CurrentTarget.Get();
-	if (!EnemyCharacter || !Attack || !CanBeginAttack(Attack, Target))
+	if (!EnemyCharacter || IsOwnerStunned() || !Attack || !CanBeginAttack(Attack, Target))
 	{
 		return false;
 	}
@@ -203,6 +213,10 @@ bool UPREnemyBrainComponent::CanBeginAttack(const UPREnemyAttackDataAsset* Attac
 	const APREnemyCharacter* EnemyCharacter = Enemy.Get();
 	if (!bRunning || !Attack || !Target || !EnemyCharacter || RuntimeState.AttackPhase != EPREnemyAttackPhase::None
 		|| Target != CurrentTarget.Get() || !IsCurrentAttackTargetValid())
+	{
+		return false;
+	}
+	if (IsOwnerStunned())
 	{
 		return false;
 	}
@@ -261,12 +275,41 @@ void UPREnemyBrainComponent::CancelAttack()
 	SetAttackPhase(EPREnemyAttackPhase::None);
 }
 
+void UPREnemyBrainComponent::EnterStunnedState()
+{
+	if (!bRunning)
+	{
+		return;
+	}
+	CancelAttack();
+	ActiveProjectileTokens.Empty();
+	if (APREnemyCharacter* EnemyCharacter = Enemy.Get())
+	{
+		if (UPREnemyPlaneMovementComponent* Movement = EnemyCharacter->GetEnemyPlaneMovement())
+		{
+			Movement->StopEnemyMovement();
+		}
+	}
+	SetBrainState(EPREnemyBrainState::Staggered);
+}
+
+void UPREnemyBrainComponent::ExitStunnedState()
+{
+	if (!bRunning || IsOwnerStunned())
+	{
+		return;
+	}
+	SetBrainState(EPREnemyBrainState::AcquireTarget);
+	ReevaluateTarget();
+}
+
 void UPREnemyBrainComponent::FinishWindup()
 {
 	APREnemyCharacter* EnemyCharacter = Enemy.Get();
 	AActor* Target = CurrentTarget.Get();
 	const UPREnemyAttackDataAsset* Attack = ActiveAttack.Get();
-	if (!EnemyCharacter || !Target || !Attack || EnemyCharacter->IsEnemyDead() || !IsCurrentAttackTargetValid() || !AttackToken.IsValid())
+	if (!EnemyCharacter || !Target || !Attack || EnemyCharacter->IsEnemyDead() || IsOwnerStunned()
+		|| !IsCurrentAttackTargetValid() || !AttackToken.IsValid())
 	{
 		CancelAttack();
 		return;
@@ -338,6 +381,11 @@ void UPREnemyBrainComponent::FinishWindup()
 
 void UPREnemyBrainComponent::FinishActive()
 {
+	if (IsOwnerStunned())
+	{
+		EnterStunnedState();
+		return;
+	}
 	const UPREnemyAttackDataAsset* Attack = ActiveAttack.Get();
 	if (!Attack || !GetWorld())
 	{
@@ -350,6 +398,11 @@ void UPREnemyBrainComponent::FinishActive()
 
 void UPREnemyBrainComponent::FinishRecovery()
 {
+	if (IsOwnerStunned())
+	{
+		EnterStunnedState();
+		return;
+	}
 	const UPREnemyAttackDataAsset* Attack = ActiveAttack.Get();
 	if (!Attack || !GetWorld())
 	{
@@ -368,6 +421,11 @@ void UPREnemyBrainComponent::FinishRecovery()
 
 void UPREnemyBrainComponent::FinishCooldown()
 {
+	if (IsOwnerStunned())
+	{
+		EnterStunnedState();
+		return;
+	}
 	SetAttackPhase(EPREnemyAttackPhase::None);
 	ActiveAttack.Reset();
 	AttackToken.Invalidate();
@@ -536,4 +594,11 @@ void UPREnemyBrainComponent::ReleaseProjectileToken(const FGuid& Token)
 	{
 		ActiveProjectileTokens.Remove(Token);
 	}
+}
+
+bool UPREnemyBrainComponent::IsOwnerStunned() const
+{
+	const APREnemyCharacter* EnemyCharacter = Enemy.Get();
+	const UPRAbilitySystemComponent* ASC = EnemyCharacter ? EnemyCharacter->GetProjectRAbilitySystemComponent() : nullptr;
+	return ASC && ASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag());
 }

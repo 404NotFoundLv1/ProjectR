@@ -5,12 +5,16 @@
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAbilitySetDataAsset.h"
 #include "Abilities/PRAttributeSet.h"
+#include "Combat/PRCombatSubsystem.h"
+#include "Combat/PRCombatTypes.h"
 #include "Core/PRTagLibrary.h"
 #include "Enemies/PREnemyAIController.h"
+#include "Enemies/PREnemyAttackGameplayAbility.h"
 #include "Enemies/PREnemyBrainComponent.h"
 #include "Enemies/PREnemyPlaneMovementComponent.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
 #include "GameplayEffect.h"
+#include "ProjectR.h"
 
 APREnemyCharacter::APREnemyCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UPREnemyPlaneMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -59,6 +63,8 @@ void APREnemyCharacter::HandleCombatLifeStateChanged(const bool bIsDead)
 {
 	if (bIsDead)
 	{
+		ClearShieldBreakResponseLifecycle();
+		ClearEnemyStunnedLifecycle();
 		ClearShieldGuardingLifecycle();
 		if (UPREnemyPlaneMovementComponent* Movement = GetEnemyPlaneMovement())
 		{
@@ -229,11 +235,21 @@ void APREnemyCharacter::TryInitializeEnemy()
 	// task has any chance to activate the ServerTriggered ability.
 	bInitialized = true;
 	BindShieldGuardingLifecycle();
+	if (!BindEnemyStunnedLifecycle() || !BindShieldBreakResponseLifecycle())
+	{
+		ClearShieldBreakResponseLifecycle();
+		ClearEnemyStunnedLifecycle();
+		ClearShieldGuardingLifecycle();
+		bInitialized = false;
+		return;
+	}
 	EnemyBrain->InitializeBrain(this);
 	APREnemyAIController* EnemyController = Cast<APREnemyAIController>(GetController());
 	if (!EnemyController || !EnemyController->ConfigureAndStartStateTree(EnemyStateTree))
 	{
 		EnemyBrain->StopBrain();
+		ClearShieldBreakResponseLifecycle();
+		ClearEnemyStunnedLifecycle();
 		ClearShieldGuardingLifecycle();
 		bInitialized = false;
 		return;
@@ -291,8 +307,139 @@ void APREnemyCharacter::HandleShieldAttributeChanged(const FOnAttributeChangeDat
 	}
 }
 
+bool APREnemyCharacter::BindEnemyStunnedLifecycle()
+{
+	if (!ProjectRAbilitySystemComponent)
+	{
+		return false;
+	}
+	if (!StunnedTagDelegateHandle.IsValid())
+	{
+		StunnedTagDelegateHandle = ProjectRAbilitySystemComponent
+			->RegisterGameplayTagEvent(UPRTagLibrary::GetStateStunnedTag(), EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &APREnemyCharacter::HandleEnemyStunnedTagChanged);
+	}
+	HandleEnemyStunnedTagChanged(UPRTagLibrary::GetStateStunnedTag(),
+		ProjectRAbilitySystemComponent->GetTagCount(UPRTagLibrary::GetStateStunnedTag()));
+	return StunnedTagDelegateHandle.IsValid();
+}
+
+void APREnemyCharacter::ClearEnemyStunnedLifecycle()
+{
+	if (ProjectRAbilitySystemComponent && StunnedTagDelegateHandle.IsValid())
+	{
+		ProjectRAbilitySystemComponent
+			->RegisterGameplayTagEvent(UPRTagLibrary::GetStateStunnedTag(), EGameplayTagEventType::NewOrRemoved)
+			.Remove(StunnedTagDelegateHandle);
+	}
+	StunnedTagDelegateHandle.Reset();
+	bEnemyStunned = false;
+}
+
+bool APREnemyCharacter::BindShieldBreakResponseLifecycle()
+{
+	if (!Prototype || !Prototype->ShieldBreakEffect)
+	{
+		return true;
+	}
+	UPRCombatSubsystem* Combat = GetWorld() ? GetWorld()->GetSubsystem<UPRCombatSubsystem>() : nullptr;
+	if (!Combat)
+	{
+		return false;
+	}
+	if (!ShieldBreakCombatEventDelegateHandle.IsValid())
+	{
+		ShieldBreakCombatEventDelegateHandle = Combat->OnCombatEvent().AddUObject(this, &APREnemyCharacter::HandleShieldBreakCombatEvent);
+		BoundCombatSubsystem = Combat;
+	}
+	return ShieldBreakCombatEventDelegateHandle.IsValid();
+}
+
+void APREnemyCharacter::ClearShieldBreakResponseLifecycle()
+{
+	if (UPRCombatSubsystem* Combat = BoundCombatSubsystem.Get(); Combat && ShieldBreakCombatEventDelegateHandle.IsValid())
+	{
+		Combat->OnCombatEvent().Remove(ShieldBreakCombatEventDelegateHandle);
+	}
+	ShieldBreakCombatEventDelegateHandle.Reset();
+	BoundCombatSubsystem.Reset();
+}
+
+void APREnemyCharacter::HandleEnemyStunnedTagChanged(const FGameplayTag Tag, const int32 NewCount)
+{
+	if (Tag != UPRTagLibrary::GetStateStunnedTag())
+	{
+		return;
+	}
+	const bool bNowStunned = NewCount > 0;
+	if (bNowStunned == bEnemyStunned)
+	{
+		return;
+	}
+	bEnemyStunned = bNowStunned;
+	if (!bInitialized || IsEnemyDead() || !EnemyBrain)
+	{
+		return;
+	}
+	if (bEnemyStunned)
+	{
+		EnemyBrain->EnterStunnedState();
+		CancelActiveEnemyAttackAbilities();
+		return;
+	}
+	EnemyBrain->ExitStunnedState();
+}
+
+void APREnemyCharacter::HandleShieldBreakCombatEvent(const FPRCombatEvent& Event)
+{
+	if (bShieldBreakResponseConsumed || !HasAuthority() || !bInitialized || IsEnemyDead() || !Prototype
+		|| !Prototype->ShieldBreakEffect || Event.Target.Get() != this || Event.TargetId != GetCombatantId()
+		|| !Event.ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldBrokenTag()))
+	{
+		return;
+	}
+	bShieldBreakResponseConsumed = true;
+	if (Event.bFatal || ProjectRAbilitySystemComponent->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag()))
+	{
+		return;
+	}
+	FGameplayEffectContextHandle EffectContext = ProjectRAbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(Prototype);
+	const FGameplayEffectSpecHandle Spec = ProjectRAbilitySystemComponent->MakeOutgoingSpec(Prototype->ShieldBreakEffect, 1.0f, EffectContext);
+	if (!Spec.IsValid() || !Spec.Data.IsValid()
+		|| !ProjectRAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get()).WasSuccessfullyApplied())
+	{
+		UE_LOG(LogProjectR, Error, TEXT("Enemy ShieldBreak response effect could not be applied for %s."), *GetName());
+	}
+}
+
+void APREnemyCharacter::CancelActiveEnemyAttackAbilities()
+{
+	if (!ProjectRAbilitySystemComponent)
+	{
+		return;
+	}
+	TArray<FGameplayAbilitySpecHandle> ActiveEnemyAttackHandles;
+	{
+		FScopedAbilityListLock AbilityLock(*ProjectRAbilitySystemComponent);
+		for (const FGameplayAbilitySpec& Spec : ProjectRAbilitySystemComponent->GetActivatableAbilities())
+		{
+			if (Spec.IsActive() && Spec.Ability && Spec.Ability->IsA<UPREnemyAttackGameplayAbility>())
+			{
+				ActiveEnemyAttackHandles.Add(Spec.Handle);
+			}
+		}
+	}
+	for (const FGameplayAbilitySpecHandle Handle : ActiveEnemyAttackHandles)
+	{
+		ProjectRAbilitySystemComponent->CancelAbilityHandle(Handle);
+	}
+}
+
 void APREnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	ClearShieldBreakResponseLifecycle();
+	ClearEnemyStunnedLifecycle();
 	ClearShieldGuardingLifecycle();
 	if (EnemyBrain)
 	{

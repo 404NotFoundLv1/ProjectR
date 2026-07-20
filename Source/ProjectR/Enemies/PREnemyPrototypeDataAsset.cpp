@@ -4,6 +4,7 @@
 
 #include "Abilities/PRAbilitySetDataAsset.h"
 #include "Enemies/PREnemyAttackDataAsset.h"
+#include "GameplayEffect.h"
 #include "Misc/DataValidation.h"
 
 namespace PREnemyDataValidation
@@ -59,6 +60,19 @@ EDataValidationResult UPREnemyPrototypeDataAsset::IsDataValid(FDataValidationCon
 	if (!InitialAbilitySet || AttackDefinitions.IsEmpty() || AttackDefinitions.Contains(nullptr))
 	{
 		PREnemyDataValidation::AddError(Context, Result, TEXT("Enemy InitialAbilitySet and AttackDefinitions are required."));
+	}
+	if (ShieldBreakEffect)
+	{
+		const UGameplayEffect* EffectCDO = ShieldBreakEffect->GetDefaultObject<UGameplayEffect>();
+		float Duration = 0.0f;
+		if (!EffectCDO || Attributes.MaxShield <= 0.0f || Attributes.Shield <= 0.0f
+			|| EffectCDO->DurationPolicy != EGameplayEffectDurationType::HasDuration
+			|| !EffectCDO->DurationMagnitude.GetStaticMagnitudeIfPossible(1.0f, Duration)
+			|| !FMath::IsFinite(Duration) || Duration <= 0.0f)
+		{
+			PREnemyDataValidation::AddError(Context, Result,
+				TEXT("ShieldBreakEffect requires a positive-shield prototype and a finite duration GameplayEffect."));
+		}
 	}
 	return Result == EDataValidationResult::NotValidated ? EDataValidationResult::Valid : Result;
 }

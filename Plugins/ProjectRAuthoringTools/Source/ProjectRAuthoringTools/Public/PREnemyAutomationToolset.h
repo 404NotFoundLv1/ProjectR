@@ -23,4 +23,8 @@ public:
 	/** Runs the fixed v0.2.1-C ShieldMinion slice without accepting caller data or saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointCSmoke();
+
+	/** Runs the fixed v0.2.1-D EliteAuditGuard slice without accepting caller data or saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointDSmoke();
 };

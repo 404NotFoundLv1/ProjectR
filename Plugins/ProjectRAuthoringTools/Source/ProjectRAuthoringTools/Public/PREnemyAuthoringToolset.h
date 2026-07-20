@@ -62,6 +62,14 @@ public:
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* SaveCheckpointCEnemyAssets();
 
+	/** Fixed, editor-only writer for the v0.2.1-D EliteAuditGuard manifest and Registry append. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* CreateCheckpointDEnemyAssets();
+
+	/** Saves exactly the fixed v0.2.1-D EliteAuditGuard manifest and Registry append. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* SaveCheckpointDEnemyAssets();
+
 	/** Applies the approved v0.2.1-B shared-default GE order repair: each Max attribute precedes its Current attribute. */
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RepairCheckpointBDefaultAttributeModifierOrder();

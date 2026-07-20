@@ -8,6 +8,7 @@
 #include "Enemies/PREnemyAttackDataAsset.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
 #include "Abilities/PRAbilitySetDataAsset.h"
+#include "Abilities/PRGameplayAbility.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Core/PRTagLibrary.h"
 #include "GameplayEffect.h"
@@ -276,8 +277,8 @@ bool FPREnemyCheckpointCAssetManifestTest::RunTest(const FString& Parameters)
 
 	if (Registry)
 	{
-		TestEqual(TEXT("Registry contains exactly Melee, Ranged, and Shield entries"), Registry->GetEntries().Num(), 3);
-		if (Registry->GetEntries().Num() == 3)
+		TestTrue(TEXT("Registry retains the first three entries before downstream appends"), Registry->GetEntries().Num() >= 3);
+		if (Registry->GetEntries().Num() >= 3)
 		{
 			TestEqual(TEXT("Melee entry remains first"), Registry->GetEntries()[0].PrototypeTag,
 				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion")));
@@ -314,6 +315,124 @@ bool FPREnemyCheckpointCAssetManifestTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("ShieldBash active window is fixed"), Bash->ActiveWindow, 0.15f);
 		TestEqual(TEXT("ShieldBash recovery is fixed"), Bash->Recovery, 0.55f);
 		TestEqual(TEXT("ShieldBash cooldown is fixed"), Bash->Cooldown, 1.60f);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPREnemyCheckpointDAssetManifestTest,
+	"ProjectR.Enemy.Assets.CheckpointDManifest",
+	PREnemyArchetypeAutomation::TestFlags)
+
+bool FPREnemyCheckpointDAssetManifestTest::RunTest(const FString& Parameters)
+{
+	const UPREnemyPrototypeRegistryDataAsset* Registry = LoadObject<UPREnemyPrototypeRegistryDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
+	const UPREnemyPrototypeDataAsset* Elite = LoadObject<UPREnemyPrototypeDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Prototypes/DA_Enemy_EliteAuditGuard.DA_Enemy_EliteAuditGuard"));
+	const UPREnemyAttackDataAsset* Strike = LoadObject<UPREnemyAttackDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_EliteStrike.DA_EnemyAttack_EliteStrike"));
+	const UPRAbilitySetDataAsset* AbilitySet = LoadObject<UPRAbilitySetDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Abilities/DA_EnemyAbilitySet_EliteAuditGuard.DA_EnemyAbilitySet_EliteAuditGuard"));
+	const UBlueprint* FrozenStunnedBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Abilities/Effects/GE_State_Stunned.GE_State_Stunned"));
+	const UBlueprint* EliteAbilityBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_EliteStrike.GA_Enemy_EliteStrike"));
+	const UBlueprint* EliteCooldownBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_EliteStrike_Cooldown.GE_EnemyAttack_EliteStrike_Cooldown"));
+
+	TestNotNull(TEXT("Elite prototype exists"), Elite);
+	TestNotNull(TEXT("EliteStrike attack data exists"), Strike);
+	TestNotNull(TEXT("Elite ability set exists"), AbilitySet);
+	TestNotNull(TEXT("Elite enemy Blueprint exists"), LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_EliteAuditGuard.BP_Enemy_EliteAuditGuard")));
+	TestNotNull(TEXT("EliteStrike ability Blueprint exists"), LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_EliteStrike.GA_Enemy_EliteStrike")));
+	TestNotNull(TEXT("EliteStrike cooldown Blueprint exists"), LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_EliteStrike_Cooldown.GE_EnemyAttack_EliteStrike_Cooldown")));
+	TestNotNull(TEXT("EliteStrike VFX exists"), LoadObject<UNiagaraSystem>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_EliteStrike.VFX_Enemy_EliteStrike")));
+	TestNotNull(TEXT("EliteStrike SFX exists"), LoadObject<USoundWave>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_EliteStrike.SFX_Enemy_EliteStrike")));
+
+	const FClassProperty* ShieldBreakEffectProperty = FindFProperty<FClassProperty>(
+		UPREnemyPrototypeDataAsset::StaticClass(), TEXT("ShieldBreakEffect"));
+	TestNotNull(TEXT("Prototype exposes the data-driven ShieldBreak effect"), ShieldBreakEffectProperty);
+
+	if (Registry)
+	{
+		TestEqual(TEXT("Registry has exactly four D entries"), Registry->GetEntries().Num(), 4);
+		if (Registry->GetEntries().Num() == 4)
+		{
+			TestEqual(TEXT("Elite entry is appended fourth"), Registry->GetEntries()[3].PrototypeTag,
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard")));
+		}
+	}
+	if (Elite)
+	{
+		TestEqual(TEXT("Elite mobility is Anchored"), Elite->Mobility, EPRAbilityTargetMobility::Anchored);
+		TestEqual(TEXT("Elite Health is fixed"), Elite->Attributes.Health, 300.0f);
+		TestEqual(TEXT("Elite MaxHealth is fixed"), Elite->Attributes.MaxHealth, 300.0f);
+		TestEqual(TEXT("Elite Shield is fixed"), Elite->Attributes.Shield, 150.0f);
+		TestEqual(TEXT("Elite MaxShield is fixed"), Elite->Attributes.MaxShield, 150.0f);
+		TestEqual(TEXT("Elite AttackPower is fixed"), Elite->Attributes.AttackPower, 15.0f);
+		TestEqual(TEXT("Elite MoveSpeed is fixed"), Elite->Attributes.MoveSpeed, 350.0f);
+		TestEqual(TEXT("Elite acquire range is fixed"), Elite->Perception.AcquireRange, 1200.0f);
+		TestEqual(TEXT("Elite lose range is fixed"), Elite->Perception.LoseRange, 1500.0f);
+		TestEqual(TEXT("Elite preferred maximum is fixed"), Elite->Perception.PreferredMaxRange, 190.0f);
+		TestNotNull(TEXT("Elite ShieldBreak effect is configured"), Elite->ShieldBreakEffect.Get());
+		TestTrue(TEXT("Elite ShieldBreak effect reuses frozen Stunned"),
+			Elite->ShieldBreakEffect.Get() == (FrozenStunnedBlueprint ? FrozenStunnedBlueprint->GeneratedClass : nullptr));
+	}
+	if (Strike)
+	{
+		TestEqual(TEXT("EliteStrike is a melee sweep"), Strike->Kind, EPREnemyAttackKind::MeleeSweep);
+		TestEqual(TEXT("EliteStrike maximum range is fixed"), Strike->MaxRange, 190.0f);
+		TestEqual(TEXT("EliteStrike base damage is fixed"), Strike->BaseDamage, 12.0f);
+		TestEqual(TEXT("EliteStrike AP scale is fixed"), Strike->AttackPowerScale, 0.8f);
+		TestEqual(TEXT("EliteStrike windup is fixed"), Strike->Windup, 0.50f);
+		TestEqual(TEXT("EliteStrike active window is fixed"), Strike->ActiveWindow, 0.18f);
+		TestEqual(TEXT("EliteStrike recovery is fixed"), Strike->Recovery, 0.65f);
+		TestEqual(TEXT("EliteStrike cooldown is fixed"), Strike->Cooldown, 1.50f);
+	}
+	if (AbilitySet && EliteAbilityBlueprint)
+	{
+		TestEqual(TEXT("Elite ability set has exactly one entry"), AbilitySet->GetAbilityEntries().Num(), 1);
+		if (AbilitySet->GetAbilityEntries().Num() == 1)
+		{
+			TestTrue(TEXT("Elite ability set grants EliteStrike Blueprint"),
+				AbilitySet->GetAbilityEntries()[0].AbilityClass.Get() == EliteAbilityBlueprint->GeneratedClass);
+			TestTrue(TEXT("Elite ability set uses EliteStrike data"),
+				AbilitySet->GetAbilityEntries()[0].AbilityData.Get() == Strike);
+		}
+	}
+	if (EliteAbilityBlueprint && EliteAbilityBlueprint->GeneratedClass)
+	{
+		const UPRGameplayAbility* AbilityCDO = Cast<UPRGameplayAbility>(EliteAbilityBlueprint->GeneratedClass->GetDefaultObject());
+		TestNotNull(TEXT("EliteStrike GA CDO is a ProjectR ability"), AbilityCDO);
+		if (AbilityCDO)
+		{
+			TestEqual(TEXT("EliteStrike GA is ServerTriggered"), AbilityCDO->GetActivationPolicy(),
+				EPRAbilityActivationPolicy::ServerTriggered);
+			TestEqual(TEXT("EliteStrike GA tag is fixed"), AbilityCDO->GetProjectRAbilityTag(),
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.EliteStrike")));
+		}
+	}
+	if (EliteCooldownBlueprint && EliteCooldownBlueprint->GeneratedClass)
+	{
+		const UGameplayEffect* CooldownCDO = EliteCooldownBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>();
+		TestNotNull(TEXT("EliteStrike cooldown GE CDO exists"), CooldownCDO);
+		if (CooldownCDO)
+		{
+			float Duration = 0.0f;
+			TestEqual(TEXT("EliteStrike cooldown uses duration policy"), CooldownCDO->DurationPolicy,
+				EGameplayEffectDurationType::HasDuration);
+			TestTrue(TEXT("EliteStrike cooldown duration is fixed"),
+				CooldownCDO->DurationMagnitude.GetStaticMagnitudeIfPossible(1.0f, Duration)
+				&& FMath::IsNearlyEqual(Duration, 1.50f));
+			TestTrue(TEXT("EliteStrike cooldown grants its exact cooldown tag"),
+				CooldownCDO->GetGrantedTags().HasTagExact(FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Enemy.EliteStrike"))));
+		}
 	}
 	return true;
 }
