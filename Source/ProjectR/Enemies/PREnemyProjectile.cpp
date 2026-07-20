@@ -8,6 +8,7 @@
 #include "Combat/PRCombatSubsystem.h"
 #include "Combat/PRCombatTypes.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Core/PRCombatAttackProxyInterface.h"
 #include "Core/PRCombatantInterface.h"
 #include "Core/PRTagLibrary.h"
@@ -19,6 +20,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ProjectR.h"
 #include "TimerManager.h"
+#include "UObject/ConstructorHelpers.h"
 
 namespace PREnemyProjectile
 {
@@ -76,6 +78,16 @@ APREnemyProjectile::APREnemyProjectile()
 	Collision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	Collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 	SetRootComponent(Collision);
+	ProjectileVisual = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileVisual"));
+	ProjectileVisual->SetupAttachment(Collision);
+	ProjectileVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProjectileVisual->SetGenerateOverlapEvents(false);
+	ProjectileVisual->SetRelativeScale3D(FVector(0.18f));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	if (SphereMesh.Succeeded())
+	{
+		ProjectileVisual->SetStaticMesh(SphereMesh.Object);
+	}
 	ProjectileMovement = CreateDefaultSubobject<UPREnemyProjectileMovementComponent>(TEXT("ProjectileMovement"));
 	ProjectileMovement->SetUpdatedComponent(Collision);
 	ProjectileMovement->ProjectileGravityScale = 0.0f;

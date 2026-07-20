@@ -155,3 +155,8 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - 官方 Niagara 工具可创建合规 `UNiagaraSystem`；本轮以六个准确 `/Game/ProjectR/VFX/Skills/VFX_*` Package 创建安全占位系统，不创建 Manifest 外 Material、Emitter、地图或辅助 Package。官方通用工具没有一个能以固定、可审计方式生成六个无外部素材的 `USoundBase` 占位内容，因此经已批准的最小 Editor-only `UPRPlayerSkillPresentationToolset::CreateCheckpointEPlaceholderSounds()` 创建六个固定 PCM SoundWave Package；入口无参数、路径与波形固定、不接收任意代码/路径/音频数据、不删除不保存，仍由 MCP 对返回的准确 Package 逐项保存。
 - 该 Toolset 只服务 E 的 6 个 `/Game/ProjectR/Audio/Skills/SFX_*` Manifest 路径；不进入 Runtime/Shipping、不提供任意资产作者能力。因 Runtime 播放使用现有 `UPRPlayerSkillComponent` 的异步 DataAsset 软引用缓存，Toolset 不参与玩法、输入、Ability、Combat、Cost/Cooldown 或保存。
 - 原 B/C/D 固定 PIE 公共入口不改语义。六 Spec 的最终 E 环境通过新增固定无参 `RunPIEPlayerSkillCheckpointESmoke()`、`RunPIEPlayerSkillCheckpointECRegressionSmoke()`、`RunPIEPlayerSkillCheckpointEDRegressionSmoke()` 验收；入口仅使用 `L_CombatGym`、正式 AbilitySet、固定输入和 transient 代理，清理所有运行时对象且不保存 Package。C/D 兼容入口仅解决最终六 Spec/粗帧的观察边界，不能替代或改变各检查点的冻结入口。
+
+# v0.2.1-E Enemy 整合与人工手感入口
+
+- 官方 MCP 无法从活跃 PIE 安全、固定地调用 Enemy 白名单 Spawn、四敌生命周期和原生 Combat 观察接口；经批准的 `PREnemyAutomationToolset::RunPIEEnemyIntegrationSmoke()` 因此只执行固定无参四原型整合序列。它只在 Authority `L_CombatGym` PlayWorld 使用正式 Registry 的四个 PrototypeTag 和正式 Spawn API，不接受类、路径、Tag、数值、Transform 或代码参数，不保存地图或 Package，并在成功、失败、超时和 PIE Stop 时清理 transient Actor、Timer、Delegate、Token、Spec、Effect、Tag 与 Projectile。
+- `RunPIEEnemyHumanFeelSequence()` 只机械准备/重置固定的 Melee、Ranged、Shield、Elite、Mixed 五阶段场景并返回 `READY_FOR_HUMAN`；它不产生手感结论、不修改资产，也不把任何主观判断写为 PASS。用户的明确回复才是 `HumanEnemyFeelJudgment` 的唯一证据。

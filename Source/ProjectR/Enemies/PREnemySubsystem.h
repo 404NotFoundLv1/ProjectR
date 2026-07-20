@@ -13,6 +13,8 @@ class APREnemyProjectile;
 class UPREnemyAttackDataAsset;
 class UPREnemyPrototypeDataAsset;
 class UPREnemyPrototypeRegistryDataAsset;
+class UNiagaraSystem;
+class USoundBase;
 
 UCLASS()
 class PROJECTR_API UPREnemySubsystem : public UWorldSubsystem
@@ -39,6 +41,8 @@ private:
 		TObjectPtr<UPREnemyPrototypeDataAsset> Prototype = nullptr;
 		TSubclassOf<APREnemyCharacter> EnemyClass;
 		TArray<TSubclassOf<APREnemyProjectile>> PreloadedProjectileClasses;
+		TMap<FSoftObjectPath, TObjectPtr<UNiagaraSystem>> PreloadedAttackVFX;
+		TMap<FSoftObjectPath, TObjectPtr<USoundBase>> PreloadedAttackSFX;
 	};
 
 	void LoadFixedRegistry();
@@ -54,4 +58,5 @@ private:
 	TMap<FGuid, TWeakObjectPtr<APREnemyCharacter>> SpawnedEnemies;
 	bool bRegistryReady = false;
 	FPREnemyStateChangedNative EnemyStateChanged;
+	TSet<FName> PresentationWarningKeys;
 };

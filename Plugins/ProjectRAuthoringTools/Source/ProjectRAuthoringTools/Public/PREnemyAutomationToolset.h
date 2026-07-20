@@ -27,4 +27,12 @@ public:
 	/** Runs the fixed v0.2.1-D EliteAuditGuard slice without accepting caller data or saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointDSmoke();
+
+	/** Runs the fixed v0.2.1-E four-archetype integration sequence without accepting caller data or saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RunPIEEnemyIntegrationSmoke();
+
+	/** Prepares the fixed v0.2.1-E human-feel sequence; it reports readiness only and never reports a human verdict. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RunPIEEnemyHumanFeelSequence();
 };

@@ -9,11 +9,17 @@
 #include "Combat/PRCombatTypes.h"
 #include "Core/PRTagLibrary.h"
 #include "Enemies/PREnemyAIController.h"
+#include "Enemies/PREnemyAttackDataAsset.h"
 #include "Enemies/PREnemyAttackGameplayAbility.h"
 #include "Enemies/PREnemyBrainComponent.h"
 #include "Enemies/PREnemyPlaneMovementComponent.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
+#include "Components/AudioComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "GameplayEffect.h"
+#include "Kismet/GameplayStatics.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "ProjectR.h"
 
 APREnemyCharacter::APREnemyCharacter(const FObjectInitializer& ObjectInitializer)
@@ -27,6 +33,16 @@ APREnemyCharacter::APREnemyCharacter(const FObjectInitializer& ObjectInitializer
 	ProjectRAttributeSet = CreateDefaultSubobject<UPRAttributeSet>(TEXT("AttributeSet"));
 	ProjectRAbilitySystemComponent->AddAttributeSetSubobject(ProjectRAttributeSet.Get());
 	EnemyBrain = CreateDefaultSubobject<UPREnemyBrainComponent>(TEXT("EnemyBrain"));
+	EnemyIdentityLabel = CreateDefaultSubobject<UTextRenderComponent>(TEXT("EnemyIdentityLabel"));
+	EnemyIdentityLabel->SetupAttachment(GetRootComponent());
+	EnemyIdentityLabel->SetHorizontalAlignment(EHTA_Center);
+	EnemyIdentityLabel->SetWorldSize(22.0f);
+	EnemyIdentityLabel->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	EnemyStatusLabel = CreateDefaultSubobject<UTextRenderComponent>(TEXT("EnemyStatusLabel"));
+	EnemyStatusLabel->SetupAttachment(GetRootComponent());
+	EnemyStatusLabel->SetHorizontalAlignment(EHTA_Center);
+	EnemyStatusLabel->SetWorldSize(18.0f);
+	EnemyStatusLabel->SetRelativeLocation(FVector(0.0f, 0.0f, 145.0f));
 	AIControllerClass = APREnemyAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
@@ -163,6 +179,57 @@ void APREnemyCharacter::ConfigureSpawn(
 	Prototype = InPrototype;
 	SpawnId = InSpawnId;
 	PlaneY = InPlaneY;
+	RefreshPresentationLabels();
+}
+
+void APREnemyCharacter::BeginAttackPresentation(const UPREnemyAttackDataAsset* Attack)
+{
+	if (!Attack || GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	EndAttackPresentation();
+	bPresentationAttackActive = true;
+	if (UNiagaraSystem* VFX = Attack->VFX.Get())
+	{
+		ActiveAttackVFX = UNiagaraFunctionLibrary::SpawnSystemAttached(VFX, GetRootComponent(), NAME_None, FVector::ZeroVector,
+			FRotator::ZeroRotator, EAttachLocation::KeepRelativeOffset, true, true, ENCPoolMethod::None, true);
+	}
+	if (USoundBase* SFX = Attack->SFX.Get(); SFX && SFX->GetDuration() > KINDA_SMALL_NUMBER)
+	{
+		ActiveAttackSFX = UGameplayStatics::SpawnSoundAttached(SFX, GetRootComponent(), NAME_None, FVector::ZeroVector,
+			EAttachLocation::KeepRelativeOffset, true, 0.35f, 1.0f, 0.0f, nullptr, nullptr, true);
+	}
+	RefreshPresentationLabels();
+}
+
+void APREnemyCharacter::EndAttackPresentation()
+{
+	bPresentationAttackActive = false;
+	if (UNiagaraComponent* VFX = ActiveAttackVFX.Get())
+	{
+		VFX->DeactivateImmediate();
+		VFX->DestroyComponent();
+	}
+	if (UAudioComponent* SFX = ActiveAttackSFX.Get())
+	{
+		SFX->Stop();
+		SFX->DestroyComponent();
+	}
+	ActiveAttackVFX.Reset();
+	ActiveAttackSFX.Reset();
+	RefreshPresentationLabels();
+}
+
+void APREnemyCharacter::ShowShieldBreakPresentation()
+{
+	if (GetNetMode() == NM_DedicatedServer || !GetWorld())
+	{
+		return;
+	}
+	bPresentationBreakActive = true;
+	RefreshPresentationLabels();
+	GetWorld()->GetTimerManager().SetTimer(PresentationBreakTimer, this, &APREnemyCharacter::ClearShieldBreakPresentation, 0.25f, false);
 }
 
 void APREnemyCharacter::BeginPlay()
@@ -377,6 +444,7 @@ void APREnemyCharacter::HandleEnemyStunnedTagChanged(const FGameplayTag Tag, con
 		return;
 	}
 	bEnemyStunned = bNowStunned;
+	RefreshPresentationLabels();
 	if (!bInitialized || IsEnemyDead() || !EnemyBrain)
 	{
 		return;
@@ -399,6 +467,7 @@ void APREnemyCharacter::HandleShieldBreakCombatEvent(const FPRCombatEvent& Event
 		return;
 	}
 	bShieldBreakResponseConsumed = true;
+	ShowShieldBreakPresentation();
 	if (Event.bFatal || ProjectRAbilitySystemComponent->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag()))
 	{
 		return;
@@ -438,6 +507,12 @@ void APREnemyCharacter::CancelActiveEnemyAttackAbilities()
 
 void APREnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	EndAttackPresentation();
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(PresentationBreakTimer);
+	}
+	bPresentationBreakActive = false;
 	ClearShieldBreakResponseLifecycle();
 	ClearEnemyStunnedLifecycle();
 	ClearShieldGuardingLifecycle();
@@ -450,4 +525,23 @@ void APREnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		ProjectRAbilitySystemComponent->RemoveAbilitySet(InitialAbilityGrant);
 	}
 	Super::EndPlay(EndPlayReason);
+}
+
+void APREnemyCharacter::RefreshPresentationLabels()
+{
+	if (EnemyIdentityLabel)
+	{
+		EnemyIdentityLabel->SetText(FText::FromString(Prototype ? Prototype->EnemyId.ToString() : TEXT("Enemy")));
+	}
+	if (EnemyStatusLabel)
+	{
+		const TCHAR* Status = bEnemyStunned ? TEXT("STUN") : bPresentationBreakActive ? TEXT("BREAK") : bPresentationAttackActive ? TEXT("!") : TEXT("");
+		EnemyStatusLabel->SetText(FText::FromString(Status));
+	}
+}
+
+void APREnemyCharacter::ClearShieldBreakPresentation()
+{
+	bPresentationBreakActive = false;
+	RefreshPresentationLabels();
 }

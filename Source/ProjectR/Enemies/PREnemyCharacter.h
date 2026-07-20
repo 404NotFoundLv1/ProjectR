@@ -21,6 +21,9 @@ class UPREnemyAttackDataAsset;
 class UPRAbilitySetDataAsset;
 class UStateTree;
 class UPRCombatSubsystem;
+class UTextRenderComponent;
+class UNiagaraComponent;
+class UAudioComponent;
 struct FPRCombatEvent;
 struct FOnAttributeChangeData;
 
@@ -59,6 +62,10 @@ public:
 	FGuid GetSpawnId() const;
 
 	void ConfigureSpawn(UPREnemyPrototypeDataAsset* InPrototype, FGuid InSpawnId, float InPlaneY);
+	/** Local-only placeholder feedback; it never participates in combat or AI decisions. */
+	void BeginAttackPresentation(const UPREnemyAttackDataAsset* Attack);
+	void EndAttackPresentation();
+	void ShowShieldBreakPresentation();
 
 protected:
 	virtual void BeginPlay() override;
@@ -82,6 +89,10 @@ private:
 	TObjectPtr<UPRAttributeSet> ProjectRAttributeSet;
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Enemy")
 	TObjectPtr<UPREnemyBrainComponent> EnemyBrain;
+	UPROPERTY(VisibleAnywhere, Transient, Category="ProjectR|Enemy|Presentation")
+	TObjectPtr<UTextRenderComponent> EnemyIdentityLabel;
+	UPROPERTY(VisibleAnywhere, Transient, Category="ProjectR|Enemy|Presentation")
+	TObjectPtr<UTextRenderComponent> EnemyStatusLabel;
 	UPROPERTY(Transient)
 	TObjectPtr<UPREnemyPrototypeDataAsset> Prototype;
 	FGuid SpawnId;
@@ -95,6 +106,11 @@ private:
 	TWeakObjectPtr<UPRCombatSubsystem> BoundCombatSubsystem;
 	bool bEnemyStunned = false;
 	bool bShieldBreakResponseConsumed = false;
+	FTimerHandle PresentationBreakTimer;
+	bool bPresentationAttackActive = false;
+	bool bPresentationBreakActive = false;
+	TWeakObjectPtr<UNiagaraComponent> ActiveAttackVFX;
+	TWeakObjectPtr<UAudioComponent> ActiveAttackSFX;
 
 	/** Called only after the pawn has both begun play and acquired its fixed AI controller. */
 	void TryInitializeEnemy();
@@ -109,4 +125,6 @@ private:
 	void HandleEnemyStunnedTagChanged(FGameplayTag Tag, int32 NewCount);
 	void HandleShieldBreakCombatEvent(const FPRCombatEvent& Event);
 	void CancelActiveEnemyAttackAbilities();
+	void RefreshPresentationLabels();
+	void ClearShieldBreakPresentation();
 };

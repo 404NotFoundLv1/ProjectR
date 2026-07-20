@@ -309,6 +309,15 @@ date: "2026-07-10"
 - 最终 `Saved/AutomationReports/v021d-final-report-20260721c/v021d-final-None/result.json` 为 36/36 required PASS。
 - Future Compatibility Review PASS：E 只完成四敌整合/客观回归/人工手感；v0.2.2 只能经 Prototype/Mobility 和数据化 `ShieldBreakEffect` 组合 Boss；HUD/QTE 仅读 RuntimeState/CombatEvent；Save 不持久化 Enemy Effect/Spec/Token/Timer/Delegate/Target/Brain 状态。`HumanEnemyFeelJudgment`、PhysicalGamepad、NetworkPIEReplication、Package 与 GC 未被冒充为 PASS，按合同保持 optional `NOT_RUN`。
 
+# 2026-07-21 - v0.2.1-E 四敌整合、完整回归与人工手感（Completed）
+
+- 在公共 `v0.2.1`、`CURRENT_VERSION.md` 与 VersionIndex 均保持 In Progress 的前提下完成内部检查点 E；未开始 v0.2.2，未创建、修改或保存任何 UE Package、GameplayTag、Config 或地图。
+- 新增固定无参 Editor-only `RunPIEEnemyIntegrationSmoke()` 与 `RunPIEEnemyHumanFeelSequence()`，以及最小非权威 Enemy 可读性表现：身份/状态文字、Windup 的尽力 VFX/SFX 播放和无碰撞 Projectile 可视组件。表现引用在安全 Registry 阶段预加载，缺失、空或零时长占位只跳过，不影响 Combat、Token、移动、状态或数据合同；所有表现组件、Timer、Delegate 与 transient Actor 都在终止路径清理。
+- TDD RED 证据为 `v021e-tdd-red-presentation` 与 `v021e-tdd-red-integration`；GREEN BuildEditor、Enemy 原生 10 项、整合入口反射和真实四敌 PIE 全部通过。固定混合入口只通过正式四项 PrototypeTag 和白名单 Spawn API 生成四敌，验证唯一 SpawnId/RuntimeState、Melee、Projectile、Shield、Elite Staggered、六技能接口兼容与 `runtimeClean=true`，不保存 `L_CombatGym`。
+- 新鲜回归通过：Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5。MCP 回读确认 37 个 Enemy Package、Registry 四项顺序、冻结共享 GE/StateTree 与 Blueprint warnings-as-errors 均一致且 Dirty=0；重启回载后再次通过。
+- 用户在 Codex 已准备的固定五阶段 `L_CombatGym` 人工序列完成操作并明确回复 `PASS`。最终 `Saved/AutomationReports/v021e-final-report-2/v021e-final-None/result.json` 为 65/65 required PASS；PhysicalGamepad、NetworkPIEReplication、Package 与 GC 是 optional `NOT_RUN`，没有冒充通过。KnownIssues 未发现新的产品阻断，KI-019/KI-020 的既有隔离规则保持不变。
+- Future Compatibility Review PASS：v0.2.2 Boss 继续仅消费 Prototype/Mobility/ShieldBreakEffect，HUD/QTE 只读 RuntimeState/CombatEvent，v0.2.4 只调整 DataAsset/表现引用，Save 不保存 Enemy 或表现运行时 Handle、Target、Token、Timer、Delegate、Effect、Spec 或 UObject 引用。
+
 # 版本记录模板
 
 ```text

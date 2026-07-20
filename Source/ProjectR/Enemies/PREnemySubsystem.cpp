@@ -10,6 +10,9 @@
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
 #include "Engine/World.h"
+#include "NiagaraSystem.h"
+#include "ProjectR.h"
+#include "Sound/SoundBase.h"
 
 namespace PREnemyRegistry
 {
@@ -92,6 +95,31 @@ void UPREnemySubsystem::FinishRegistryLoad()
 			if (!bProjectileConfigurationValid)
 			{
 				LoadedPrototypes.Remove(Entry.PrototypeTag);
+			}
+			else
+			{
+				for (const TObjectPtr<UPREnemyAttackDataAsset>& Attack : Prototype->AttackDefinitions)
+				{
+					if (!Attack) continue;
+					if (UNiagaraSystem* VFX = Attack->VFX.LoadSynchronous())
+					{
+						Loaded.PreloadedAttackVFX.Add(Attack->VFX.ToSoftObjectPath(), VFX);
+					}
+					else if (const FName WarningKey(*FString::Printf(TEXT("VFX.%s"), *Attack->AttackId.ToString())); !PresentationWarningKeys.Contains(WarningKey))
+					{
+						PresentationWarningKeys.Add(WarningKey);
+						UE_LOG(LogProjectR, Warning, TEXT("Enemy presentation VFX preload failed for %s; gameplay remains available."), *Attack->AttackId.ToString());
+					}
+					if (USoundBase* SFX = Attack->SFX.LoadSynchronous())
+					{
+						Loaded.PreloadedAttackSFX.Add(Attack->SFX.ToSoftObjectPath(), SFX);
+					}
+					else if (const FName WarningKey(*FString::Printf(TEXT("SFX.%s"), *Attack->AttackId.ToString())); !PresentationWarningKeys.Contains(WarningKey))
+					{
+						PresentationWarningKeys.Add(WarningKey);
+						UE_LOG(LogProjectR, Warning, TEXT("Enemy presentation SFX preload failed for %s; gameplay remains available."), *Attack->AttackId.ToString());
+					}
+				}
 			}
 		}
 	}

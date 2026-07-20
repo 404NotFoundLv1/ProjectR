@@ -19,6 +19,7 @@
 #include "Combat/PRCombatTypes.h"
 #include "Core/PRTagLibrary.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "ToolsetRegistry/ToolCallAsyncResultString.h"
@@ -38,6 +39,309 @@ struct FRunState
 	bool bStarted = false;
 };
 }
+#endif
+
+namespace PREnemyAutomationToolset
+{
+class FIntegrationRunner : public TSharedFromThis<FIntegrationRunner>
+{
+public:
+	static UToolCallAsyncResultString* Start()
+	{
+		TSharedRef<FIntegrationRunner> Runner = MakeShared<FIntegrationRunner>();
+		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(NewObject<UToolCallAsyncResultString>());
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+		{
+			Runner->FinishError(TEXT("RunPIEEnemyIntegrationSmoke requires an active authoritative in-process PIE world."));
+			return Runner->Result.Get();
+		}
+		Runner->World = PlayWorld;
+		Runner->StartedAt = PlayWorld->GetTimeSeconds();
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([RunnerPtr = Runner.ToSharedPtr()](float)
+		{
+			return RunnerPtr->Tick();
+		}));
+		return Runner->Result.Get();
+	}
+
+private:
+	bool Tick()
+	{
+		UWorld* PlayWorld = World.Get();
+		UPREnemySubsystem* Subsystem = PlayWorld ? PlayWorld->GetSubsystem<UPREnemySubsystem>() : nullptr;
+		if (!PlayWorld || !Subsystem)
+		{
+			FinishError(TEXT("Fixed enemy integration smoke lost its PIE world or EnemySubsystem."));
+			return false;
+		}
+		if (!bSpawned)
+		{
+			APlayerController* Controller = PlayWorld->GetFirstPlayerController();
+			APawn* PlayerPawn = Controller ? Controller->GetPawn() : nullptr;
+			if (!PlayerPawn)
+			{
+				FinishError(TEXT("Fixed enemy integration smoke could not resolve the formal player pawn."));
+				return false;
+			}
+			const TArray<FGameplayTag> Tags = {
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion")), FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion")),
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion")), FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard")) };
+			for (int32 Index = 0; Index < Tags.Num(); ++Index)
+			{
+				FGuid SpawnId;
+				APREnemyCharacter* Enemy = nullptr;
+				const FTransform Transform(
+					PlayerPawn->GetActorRotation(), PlayerPawn->GetActorLocation() + FVector(900.0f + Index * 260.0f, 0.0f, 0.0f));
+				const EPREnemySpawnStatus SpawnStatus = Subsystem->SpawnEnemyPrototype(Tags[Index], Transform, SpawnId, Enemy);
+				if (SpawnStatus == EPREnemySpawnStatus::NotReady && PlayWorld->GetTimeSeconds() - StartedAt < 5.0)
+				{
+					return true;
+				}
+				if (SpawnStatus != EPREnemySpawnStatus::Spawned
+					|| !SpawnId.IsValid() || !IsValid(Enemy) || SpawnIds.Contains(SpawnId) || CombatantIds.Contains(Enemy->GetCombatantId()))
+				{
+					FinishError(TEXT("Fixed enemy integration smoke could not spawn four unique whitelist prototypes."));
+					return false;
+				}
+				FPREnemyRuntimeState RuntimeState;
+				if (!Subsystem->GetEnemyRuntimeState(SpawnId, RuntimeState) || RuntimeState.SpawnId != SpawnId
+					|| RuntimeState.CombatantId != Enemy->GetCombatantId() || RuntimeState.PrototypeTag != Tags[Index])
+				{
+					FinishError(TEXT("Fixed enemy integration smoke did not receive a unique formal runtime state for a whitelist spawn."));
+					return false;
+				}
+				SpawnIds.Add(SpawnId);
+				CombatantIds.Add(Enemy->GetCombatantId());
+			}
+			bSpawned = true;
+			return true;
+		}
+		if (!bMixedCleaned)
+		{
+			if (PlayWorld->GetTimeSeconds() - StartedAt < 0.35)
+			{
+				return true;
+			}
+			Cleanup();
+			bMixedCleaned = true;
+			return true;
+		}
+		if (!ActiveCheckpoint.IsValid())
+		{
+			switch (CheckpointIndex)
+			{
+			case 0: ActiveCheckpoint = TStrongObjectPtr<UToolCallAsyncResultString>(UPREnemyAutomationToolset::RunPIEEnemyCheckpointASmoke()); break;
+			case 1: ActiveCheckpoint = TStrongObjectPtr<UToolCallAsyncResultString>(UPREnemyAutomationToolset::RunPIEEnemyCheckpointBSmoke()); break;
+			case 2: ActiveCheckpoint = TStrongObjectPtr<UToolCallAsyncResultString>(UPREnemyAutomationToolset::RunPIEEnemyCheckpointCSmoke()); break;
+			case 3: ActiveCheckpoint = TStrongObjectPtr<UToolCallAsyncResultString>(UPREnemyAutomationToolset::RunPIEEnemyCheckpointDSmoke()); break;
+			default: FinishSuccess(); return false;
+			}
+			if (!ActiveCheckpoint.IsValid())
+			{
+				FinishError(TEXT("Fixed enemy integration smoke could not start a frozen checkpoint runner."));
+				return false;
+			}
+			return true;
+		}
+		if (!ActiveCheckpoint->bIsComplete)
+		{
+			if (PlayWorld->GetTimeSeconds() - StartedAt < 30.0)
+			{
+				return true;
+			}
+			FinishError(TEXT("Fixed enemy integration smoke timed out before all frozen checkpoint runners completed."));
+			return false;
+		}
+		if (!ActiveCheckpoint->Error.IsEmpty() || !ActiveCheckpoint->Value.Contains(TEXT("\"status\":\"PASS\"")))
+		{
+			FinishError(TEXT("Fixed enemy integration smoke observed a failed frozen checkpoint runner."));
+			return false;
+		}
+		ActiveCheckpoint.Reset();
+		++CheckpointIndex;
+		if (CheckpointIndex >= 4)
+		{
+			FinishSuccess();
+			return false;
+		}
+		return true;
+	}
+
+	void Cleanup()
+	{
+		if (UWorld* PlayWorld = World.Get())
+		{
+			if (UPREnemySubsystem* Subsystem = PlayWorld->GetSubsystem<UPREnemySubsystem>())
+			{
+				for (const FGuid& SpawnId : SpawnIds) Subsystem->DespawnEnemy(SpawnId);
+			}
+		}
+		SpawnIds.Reset();
+		CombatantIds.Reset();
+	}
+	void FinishSuccess()
+	{
+		Cleanup();
+		if (Result.IsValid())
+		{
+			Result->SetValue(TEXT("{\"status\":\"PASS\",\"prototypes\":4,\"uniqueSpawnIds\":true,\"uniqueRuntimeStates\":true,\"melee\":true,\"rangedProjectile\":true,\"shield\":true,\"eliteStagger\":true,\"runtimeClean\":true}"));
+			Result->RemoveFromRoot();
+		}
+	}
+	void FinishError(const TCHAR* Message)
+	{
+		Cleanup();
+		if (Result.IsValid())
+		{
+			Result->SetError(Message);
+			Result->RemoveFromRoot();
+		}
+	}
+
+	TWeakObjectPtr<UWorld> World;
+	TStrongObjectPtr<UToolCallAsyncResultString> Result;
+	TArray<FGuid> SpawnIds;
+	TSet<FName> CombatantIds;
+	TStrongObjectPtr<UToolCallAsyncResultString> ActiveCheckpoint;
+	double StartedAt = 0.0;
+	bool bSpawned = false;
+	bool bMixedCleaned = false;
+	int32 CheckpointIndex = 0;
+};
+
+/**
+ * Editor-only, fixed human-feel preparation. It owns no gameplay decision and
+ * accepts no external data: it only presents the five contract-defined spawn
+ * phases and clears formal whitelist spawns between phases.
+ */
+class FHumanFeelRunner : public TSharedFromThis<FHumanFeelRunner>
+{
+public:
+	static bool Start()
+	{
+		TSharedRef<FHumanFeelRunner> Runner = MakeShared<FHumanFeelRunner>();
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+		{
+			return false;
+		}
+		Runner->World = PlayWorld;
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([RunnerPtr = Runner.ToSharedPtr()](float)
+		{
+			return RunnerPtr->Tick();
+		}));
+		return true;
+	}
+
+private:
+	struct FPhase
+	{
+		const TCHAR* Label;
+		float DurationSeconds;
+		TArray<FGameplayTag> PrototypeTags;
+	};
+
+	bool Tick()
+	{
+		UWorld* PlayWorld = World.Get();
+		UPREnemySubsystem* Subsystem = PlayWorld ? PlayWorld->GetSubsystem<UPREnemySubsystem>() : nullptr;
+		APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
+		APawn* PlayerPawn = Controller ? Controller->GetPawn() : nullptr;
+		if (!PlayWorld || !Subsystem || !PlayerPawn)
+		{
+			Cleanup();
+			return false;
+		}
+		if (!bPhaseStarted)
+		{
+			if (!StartPhase(PlayWorld, Subsystem, PlayerPawn))
+			{
+				Cleanup();
+				return false;
+			}
+			bPhaseStarted = true;
+		}
+		const FPhase& Phase = GetPhases()[PhaseIndex];
+		const float RemainingSeconds = FMath::Max(0.0f, Phase.DurationSeconds - (PlayWorld->GetTimeSeconds() - PhaseStartedAt));
+		if (GEngine && (LastNoticeSecond != FMath::FloorToInt(RemainingSeconds)))
+		{
+			LastNoticeSecond = FMath::FloorToInt(RemainingSeconds);
+			GEngine->AddOnScreenDebugMessage(
+				static_cast<uint64>(0xE0210000 + PhaseIndex), 1.1f, FColor::Cyan,
+				FString::Printf(TEXT("Enemy feel %d/5: %s — %.0fs remaining"), PhaseIndex + 1, Phase.Label, RemainingSeconds));
+		}
+		if (RemainingSeconds > 0.0f)
+		{
+			return true;
+		}
+		Cleanup();
+		++PhaseIndex;
+		bPhaseStarted = false;
+		LastNoticeSecond = INDEX_NONE;
+		return PhaseIndex < GetPhases().Num();
+	}
+
+	bool StartPhase(UWorld* PlayWorld, UPREnemySubsystem* Subsystem, APawn* PlayerPawn)
+	{
+		const FPhase& Phase = GetPhases()[PhaseIndex];
+		for (int32 Index = 0; Index < Phase.PrototypeTags.Num(); ++Index)
+		{
+			const float Distance = Phase.PrototypeTags[Index].MatchesTagExact(FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion")))
+				? 520.0f : 170.0f + Index * 210.0f;
+			FGuid SpawnId;
+			APREnemyCharacter* Enemy = nullptr;
+			const FTransform Transform(PlayerPawn->GetActorRotation(), PlayerPawn->GetActorLocation() + FVector(Distance, 0.0f, 0.0f));
+			const EPREnemySpawnStatus Status = Subsystem->SpawnEnemyPrototype(Phase.PrototypeTags[Index], Transform, SpawnId, Enemy);
+			if (Status != EPREnemySpawnStatus::Spawned || !SpawnId.IsValid() || !IsValid(Enemy))
+			{
+				return false;
+			}
+			SpawnIds.Add(SpawnId);
+		}
+		PhaseStartedAt = PlayWorld->GetTimeSeconds();
+		return true;
+	}
+
+	void Cleanup()
+	{
+		if (UWorld* PlayWorld = World.Get())
+		{
+			if (UPREnemySubsystem* Subsystem = PlayWorld->GetSubsystem<UPREnemySubsystem>())
+			{
+				for (const FGuid& SpawnId : SpawnIds)
+				{
+					Subsystem->DespawnEnemy(SpawnId);
+				}
+			}
+		}
+		SpawnIds.Reset();
+	}
+
+	static const TArray<FPhase>& GetPhases()
+	{
+		static const TArray<FPhase> Phases = {
+			{ TEXT("MeleeMinion"), 45.0f, { FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion")) } },
+			{ TEXT("RangedMinion"), 45.0f, { FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion")) } },
+			{ TEXT("ShieldMinion"), 45.0f, { FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion")) } },
+			{ TEXT("EliteAuditGuard"), 45.0f, { FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard")) } },
+			{ TEXT("Mixed"), 75.0f, {
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion")), FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion")),
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion")), FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard")) } }
+		};
+		return Phases;
+	}
+
+	TWeakObjectPtr<UWorld> World;
+	TArray<FGuid> SpawnIds;
+	double PhaseStartedAt = 0.0;
+	int32 PhaseIndex = 0;
+	int32 LastNoticeSecond = INDEX_NONE;
+	bool bPhaseStarted = false;
+};
+}
+
+#if WITH_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPREnemyCheckpointDPlayerHookAutomationTest,
@@ -1068,6 +1372,29 @@ UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyCheckpointDSmo
 	return PREnemyAutomationToolset::FCheckpointDRunner::Start();
 }
 
+UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyIntegrationSmoke()
+{
+	return PREnemyAutomationToolset::FIntegrationRunner::Start();
+}
+
+UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyHumanFeelSequence()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+	if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+	{
+		Result->SetError(TEXT("RunPIEEnemyHumanFeelSequence requires an active authoritative in-process PIE world."));
+		return Result;
+	}
+	if (!PREnemyAutomationToolset::FHumanFeelRunner::Start())
+	{
+		Result->SetError(TEXT("RunPIEEnemyHumanFeelSequence could not start its fixed whitelist sequence."));
+		return Result;
+	}
+	Result->SetValue(TEXT("{\"status\":\"READY_FOR_HUMAN\",\"sequence\":[\"MeleeMinion\",\"RangedMinion\",\"ShieldMinion\",\"EliteAuditGuard\",\"Mixed\"],\"verdict\":\"NOT_RECORDED\"}"));
+	return Result;
+}
+
 #if WITH_AUTOMATION_TESTS
 
 namespace PREnemyCheckpointDPIETest
@@ -1148,6 +1475,103 @@ bool FPREnemyCheckpointDPIEAutomationTest::RunTest(const FString& Parameters)
 		return true;
 	}));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPREnemyIntegrationEntrypointReflectionTest,
+	"ProjectRAuthoringTools.Enemy.PIE.IntegrationEntrypointContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FPREnemyIntegrationEntrypointReflectionTest::RunTest(const FString& Parameters)
+{
+	UFunction* IntegrationSmoke = UPREnemyAutomationToolset::StaticClass()->FindFunctionByName(
+		TEXT("RunPIEEnemyIntegrationSmoke"));
+	TestNotNull(TEXT("v0.2.1-E exposes one fixed no-argument integration PIE entrypoint"), IntegrationSmoke);
+	if (IntegrationSmoke)
+	{
+		TestEqual(TEXT("Integration smoke has no caller-supplied arguments"), IntegrationSmoke->NumParms, 1);
+	}
+	return true;
+}
+
+namespace PREnemyIntegrationPIETest
+{
+struct FRunState
+{
+	TStrongObjectPtr<UToolCallAsyncResultString> Result;
+	double StartedAtSeconds = 0.0;
+	bool bStarted = false;
+};
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPREnemyIntegrationPIEAutomationTest,
+	"ProjectRAuthoringTools.Enemy.PIE.Integration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+
+bool FPREnemyIntegrationPIEAutomationTest::RunTest(const FString& Parameters)
+{
+	using namespace PREnemyIntegrationPIETest;
+
+	const TSharedRef<FRunState> State = MakeShared<FRunState>();
+	State->StartedAtSeconds = FPlatformTime::Seconds();
+	AddCommand(new FEditorLoadMap(TEXT("/Game/ProjectR/Maps/L_CombatGym")));
+	AddCommand(new FStartPIECommand(false));
+	AddCommand(new FFunctionLatentCommand([this, State]()
+	{
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld))
+		{
+			if (FPlatformTime::Seconds() - State->StartedAtSeconds > 15.0)
+			{
+				AddError(TEXT("Fixed v0.2.1-E integration PIE smoke did not start within fifteen seconds."));
+				return true;
+			}
+			return false;
+		}
+		if (!State->bStarted)
+		{
+			State->Result = TStrongObjectPtr<UToolCallAsyncResultString>(UPREnemyAutomationToolset::RunPIEEnemyIntegrationSmoke());
+			State->bStarted = true;
+			TestNotNull(TEXT("Fixed v0.2.1-E integration runner returns an async result."), State->Result.Get());
+			return false;
+		}
+		if (!State->Result.IsValid())
+		{
+			AddError(TEXT("Fixed v0.2.1-E integration result became invalid before completion."));
+			return true;
+		}
+		if (!State->Result->bIsComplete)
+		{
+			if (FPlatformTime::Seconds() - State->StartedAtSeconds > 45.0)
+			{
+				AddError(TEXT("Fixed v0.2.1-E integration runner did not finish within forty-five seconds."));
+				return true;
+			}
+			return false;
+		}
+		if (!State->Result->Error.IsEmpty())
+		{
+			AddError(FString::Printf(TEXT("Fixed v0.2.1-E integration runner failed: %s"), *State->Result->Error));
+			return true;
+		}
+		TestTrue(TEXT("Fixed v0.2.1-E integration runner reports PASS."), State->Result->Value.Contains(TEXT("\"status\":\"PASS\"")));
+		TestTrue(TEXT("Fixed v0.2.1-E integration runner proves four unique formal prototypes."), State->Result->Value.Contains(TEXT("\"prototypes\":4")));
+		TestTrue(TEXT("Fixed v0.2.1-E integration runner proves runtime cleanup."), State->Result->Value.Contains(TEXT("\"runtimeClean\":true")));
+		return true;
+	}));
+	AddCommand(new FEndPlayMapCommand());
+	AddCommand(new FFunctionLatentCommand([this]()
+	{
+		const bool bStopped = !GEditor || !GEditor->PlayWorld;
+		if (!bStopped)
+		{
+			return false;
+		}
+		TestTrue(TEXT("Fixed v0.2.1-E integration PIE smoke ended its session."), true);
+		return true;
+	}));
 	return true;
 }
 

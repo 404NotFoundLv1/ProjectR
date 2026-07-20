@@ -12,6 +12,7 @@
 class APREnemyCharacter;
 class UPREnemyAttackDataAsset;
 class USphereComponent;
+class UStaticMeshComponent;
 
 /** Internal movement bridge that exposes each swept projectile segment to its owner. */
 UCLASS(NotBlueprintable)
@@ -62,6 +63,8 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Enemy")
 	TObjectPtr<USphereComponent> Collision;
+	UPROPERTY(VisibleAnywhere, Category="ProjectR|Enemy|Presentation")
+	TObjectPtr<UStaticMeshComponent> ProjectileVisual;
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Enemy")
 	TObjectPtr<UPREnemyProjectileMovementComponent> ProjectileMovement;
 

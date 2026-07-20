@@ -4,6 +4,7 @@
 
 #include "Enemies/PREnemyCharacter.h"
 #include "Enemies/PREnemyPlaneMovementComponent.h"
+#include "Enemies/PREnemyProjectile.h"
 #include "Enemies/PREnemySubsystem.h"
 #include "Enemies/PREnemyAttackDataAsset.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
@@ -13,6 +14,8 @@
 #include "Core/PRTagLibrary.h"
 #include "GameplayEffect.h"
 #include "Engine/Blueprint.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "NiagaraSystem.h"
 #include "Sound/SoundWave.h"
 #include "StateTree.h"
@@ -434,6 +437,31 @@ bool FPREnemyCheckpointDAssetManifestTest::RunTest(const FString& Parameters)
 				CooldownCDO->GetGrantedTags().HasTagExact(FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Enemy.EliteStrike"))));
 		}
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPREnemyPresentationReadabilityAndCleanupContractTest,
+	"ProjectR.Enemy.Presentation.ReadabilityAndCleanupContract",
+	PREnemyArchetypeAutomation::TestFlags)
+
+bool FPREnemyPresentationReadabilityAndCleanupContractTest::RunTest(const FString& Parameters)
+{
+	const APREnemyCharacter* EnemyCDO = APREnemyCharacter::StaticClass()->GetDefaultObject<APREnemyCharacter>();
+	const APREnemyProjectile* ProjectileCDO = APREnemyProjectile::StaticClass()->GetDefaultObject<APREnemyProjectile>();
+	TestNotNull(TEXT("Enemy CDO exists for the generic local presentation contract"), EnemyCDO);
+	TestNotNull(TEXT("Projectile CDO exists for the generic local presentation contract"), ProjectileCDO);
+	if (!EnemyCDO || !ProjectileCDO)
+	{
+		return false;
+	}
+
+	TestNotNull(TEXT("Enemy has a non-authoritative identity label component"),
+		FindObjectFast<UTextRenderComponent>(const_cast<APREnemyCharacter*>(EnemyCDO), TEXT("EnemyIdentityLabel")));
+	TestNotNull(TEXT("Enemy has a non-authoritative transient status label component"),
+		FindObjectFast<UTextRenderComponent>(const_cast<APREnemyCharacter*>(EnemyCDO), TEXT("EnemyStatusLabel")));
+	TestNotNull(TEXT("Projectile has a non-colliding visual component"),
+		FindObjectFast<UStaticMeshComponent>(const_cast<APREnemyProjectile*>(ProjectileCDO), TEXT("ProjectileVisual")));
 	return true;
 }
 

@@ -253,6 +253,10 @@ bool UPREnemyBrainComponent::BeginAttack(const UPREnemyAttackDataAsset* Attack, 
 	}
 	SetBrainState(EPREnemyBrainState::Attack);
 	SetAttackPhase(EPREnemyAttackPhase::Windup, Attack->AttackTag);
+	if (APREnemyCharacter* EnemyCharacter = Enemy.Get())
+	{
+		EnemyCharacter->BeginAttackPresentation(Attack);
+	}
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().SetTimer(AttackTimer, this, &UPREnemyBrainComponent::FinishWindup, Attack->Windup, false);
@@ -264,6 +268,10 @@ bool UPREnemyBrainComponent::BeginAttack(const UPREnemyAttackDataAsset* Attack, 
 
 void UPREnemyBrainComponent::CancelAttack()
 {
+	if (APREnemyCharacter* EnemyCharacter = Enemy.Get())
+	{
+		EnemyCharacter->EndAttackPresentation();
+	}
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(AttackTimer);
@@ -421,6 +429,10 @@ void UPREnemyBrainComponent::FinishRecovery()
 
 void UPREnemyBrainComponent::FinishCooldown()
 {
+	if (APREnemyCharacter* EnemyCharacter = Enemy.Get())
+	{
+		EnemyCharacter->EndAttackPresentation();
+	}
 	if (IsOwnerStunned())
 	{
 		EnterStunnedState();
