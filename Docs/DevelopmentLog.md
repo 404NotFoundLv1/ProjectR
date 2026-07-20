@@ -291,13 +291,13 @@ date: "2026-07-10"
 - 实测 BuildEditor、`ProjectR.Enemy` 5/5、`ProjectR.PlayerSkill` 5/5 与固定 `RunPIEEnemyCheckpointBSmoke()` 均 PASS；PIE 确认一次 12 点投射物事件、一次 Afterimage proxy 消费、无第二次伤害事件以及 runtime clean。
 - 后续补验已将 B 对共享 `GE_Enemy_DefaultAttributes` 的资产修正正式冻结为 `MaxHealth, Health, MaxShield, Shield, MaxEnergy, Energy, AttackPower, MoveSpeed, CritChance, Permission, Resonance`。这是为 Ranged 80/80 等非默认 P0 值保留正确 Max→Current 初始化的语义修正，不是编辑器重序列化；C 不保存该 Package。最终 BuildEditor、`ProjectR.Enemy` 5/5、`ProjectR.PlayerSkill` 5/5、GAS 4/4、Combat 5/5、Ability 6/6、MCP CDO 回读、正常重启和固定 B PIE 均 PASS；11 个 B 相关 Package Dirty=0。
 
-# 2026-07-20 - v0.2.1-C ShieldMinion 护盾状态（Completed，未提交）
+# 2026-07-20 - v0.2.1-C ShieldMinion 护盾状态（Completed）
 
-- 在 `CURRENT_VERSION.md` 继续保持 v0.2.1/In Progress 的前提下完成内部检查点 C；A/B 保持 Completed，未开始 D，未推进 VersionIndex，也未创建提交或 push。
+- 在 `CURRENT_VERSION.md` 继续保持 v0.2.1/In Progress 的前提下完成内部检查点 C；正式实施提交为 `958778f520ef6bd61b4b9afd3518ee14e27a3c55`（`v0.2.1-C Add shield enemy guarding behavior`），且该实施提交已与 `origin/main` 同步。A/B 保持 Completed，D 未开始，公共版本未关闭，未推进 VersionIndex。
 - 新增 ShieldMinion 原型、ShieldBash Data/GA/AbilitySet/Cooldown、Blueprint 与占位 VFX/SFX 八项 Package；Registry 仅追加唯一 Shield entry，Melee/Ranged 条目保持不变。共享 `GE_Enemy_DefaultAttributes` 未保存，其冻结 LFS OID 仍为 `d596a0f3612e4839e5284b8199c19f940802c84281482ffbf995b92c00178c06`。
 - `APREnemyCharacter` 以幂等 ASC Shield Attribute Change Delegate 为所有有 Shield 的已初始化 Alive Enemy 镜像 `State.Guarding`：Shield 正值时唯一持有，归零/死亡/EndPlay/失败时移除，正式属性恢复时重新添加。此状态不创建新的 Mitigation；伤害继续唯一经过 `UPRCombatSubsystem` 的既有 Shield spill-over，首次破盾只消费既有一次 ShieldBroken 事件，C 不施加 Stunned。
 - 通过固定无参 Authoring Tool 创建和精确保存八项 Package 及 Registry，未 Save All、未保存地图/共享 GE/ST/Base BP/A-B 资产。固定无参 C PIE 验证 Health=140、Shield=80、唯一 Guarding、spill-over、单次 ShieldBroken、ShieldBash=16、恢复与运行时清理；冻结 D PlayerSkill PIE 另行验证真实 ShieldMinion Heavy VectorHook（目标不移动、玩家停距 120cm）。
-- 新鲜验证：BuildEditor、`ProjectR.Enemy` 7/7、PlayerSkill 5/5、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、A/B/C Enemy PIE 与 D PlayerSkill PIE 均 PASS。GameplayTag/Config 零增量；HumanEnemyFeelJudgment、PhysicalGamepad、NetworkPIEReplication、Package 与 GC 均保持 NOT_RUN，留给 E 或独立流程。
+- 最终 `Saved/AutomationReports/v021c-final-report-20260720b/v021c-final-None/result.json` 为 28/28 required PASS。GameplayTag/Config 零增量；HumanEnemyFeelJudgment、PhysicalGamepad、NetworkPIEReplication、Package 与 GC 均保持 optional `NOT_RUN`，留给 E 或独立流程。
 - Future Compatibility Review：D 只能复用通用 Shield/Guarding 同步并在其自身合同内添加 Elite Stunned，不能改写 C；v0.2.2 Boss 通过 Heavy/Anchored 和 DataAsset 扩展；v0.2.3 HUD、v0.3.2 QTE 仅读 RuntimeState/CombatEvent。Save 不持久化 Enemy ASC、Effect/Spec Handle、目标、Timer、Delegate、StateTree 或 Guarding。
 
 # 版本记录模板
