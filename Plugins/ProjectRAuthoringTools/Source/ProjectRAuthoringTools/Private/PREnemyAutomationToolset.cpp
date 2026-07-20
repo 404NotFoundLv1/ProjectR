@@ -5,6 +5,8 @@
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Abilities/Player/PRSkillDecoyActor.h"
+#include "Abilities/Player/PRPlayerSkillSubsystem.h"
+#include "Characters/PRPlayerCharacter.h"
 #include "Containers/Ticker.h"
 #include "Editor.h"
 #include "Enemies/PREnemyCharacter.h"
@@ -455,6 +457,240 @@ private:
 	double ProxySpawnedAt = 0.0;
 	TWeakObjectPtr<APRSkillDecoyActor> SpawnedDecoy;
 };
+
+/**
+ * Fixed C smoke. It validates only the fixed ShieldMinion registry entry and
+ * its guarding/shield contracts; the frozen PlayerSkill checkpoint-D smoke
+ * remains the authoritative formal VectorHook execution test. This runner
+ * neither accepts caller data nor saves a map or content package.
+ */
+class FCheckpointCRunner : public TSharedFromThis<FCheckpointCRunner>
+{
+public:
+	static UToolCallAsyncResultString* Start()
+	{
+		TSharedRef<FCheckpointCRunner> Runner = MakeShared<FCheckpointCRunner>();
+		Runner->Result = TStrongObjectPtr<UToolCallAsyncResultString>(NewObject<UToolCallAsyncResultString>());
+		UWorld* PlayWorld = GEditor ? GEditor->PlayWorld : nullptr;
+		if (!IsValid(PlayWorld) || PlayWorld->GetNetMode() == NM_Client)
+		{
+			Runner->FinishError(TEXT("RunPIEEnemyCheckpointCSmoke requires an active authoritative in-process PIE world."));
+			return Runner->Result.Get();
+		}
+		Runner->World = PlayWorld;
+		Runner->StartedAt = PlayWorld->GetTimeSeconds();
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
+			[RunnerPtr = Runner.ToSharedPtr()](float)
+			{
+				return RunnerPtr->Tick();
+			}));
+		return Runner->Result.Get();
+	}
+
+private:
+	bool Tick()
+	{
+		UWorld* PlayWorld = World.Get();
+		UPREnemySubsystem* Subsystem = PlayWorld ? PlayWorld->GetSubsystem<UPREnemySubsystem>() : nullptr;
+		APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
+		APRPlayerCharacter* Player = Controller ? Cast<APRPlayerCharacter>(Controller->GetPawn()) : nullptr;
+		if (!PlayWorld || !Subsystem || !Player)
+		{
+			FinishError(TEXT("Fixed C smoke lost its PIE world, EnemySubsystem, or formal player character."));
+			return false;
+		}
+		if (!SpawnedEnemy.IsValid())
+		{
+			APREnemyCharacter* Enemy = nullptr;
+			const FTransform SpawnTransform(Player->GetActorRotation(), Player->GetActorLocation() + FVector(130.0f, 0.0f, 0.0f));
+			const EPREnemySpawnStatus Status = Subsystem->SpawnEnemyPrototype(
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion")), SpawnTransform, SpawnId, Enemy);
+			if (Status == EPREnemySpawnStatus::NotReady && PlayWorld->GetTimeSeconds() - StartedAt < 5.0)
+			{
+				return true;
+			}
+			if (Status != EPREnemySpawnStatus::Spawned || !Enemy || !Enemy->IsEnemyInitialized())
+			{
+				FinishError(TEXT("Fixed C smoke could not spawn initialized ShieldMinion from the fixed whitelist."));
+				return false;
+			}
+			UPRAbilitySystemComponent* EnemyASC = Enemy->GetProjectRAbilitySystemComponent();
+			const UPRAttributeSet* Attributes = Enemy->GetAttributeSet();
+			const FGameplayTag Guarding = UPRTagLibrary::GetStateGuardingTag();
+			if (!EnemyASC || !Attributes || EnemyASC->GetOwnerActor() != Enemy || EnemyASC->GetAvatarActor() != Enemy
+				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 140.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 80.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetAttackPower(), 12.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetMoveSpeed(), 300.0f)
+				|| Enemy->GetAbilityTargetMobility() != EPRAbilityTargetMobility::Heavy
+				|| EnemyASC->GetTagCount(Guarding) != 1)
+			{
+				FinishError(TEXT("ShieldMinion GAS, P0 attributes, Heavy mobility, or initial unique Guarding contract was invalid."));
+				return false;
+			}
+			UPRCombatSubsystem* Combat = PlayWorld->GetSubsystem<UPRCombatSubsystem>();
+			if (!Combat)
+			{
+				FinishError(TEXT("Fixed C smoke could not resolve CombatSubsystem."));
+				return false;
+			}
+			SpawnedEnemy = Enemy;
+			SpawnedAt = PlayWorld->GetTimeSeconds();
+			CombatEventHandle = Combat->OnCombatEvent().AddLambda([this](const FPRCombatEvent& Event)
+			{
+				if (Event.Target.Get() == SpawnedEnemy.Get() && Event.SourceId == TEXT("EnemyCheckpointCSmoke"))
+				{
+					ShieldEvents.Add(Event);
+				}
+				if (Event.Instigator.Get() == SpawnedEnemy.Get() && Event.SourceId == TEXT("ShieldBash"))
+				{
+					++ShieldBashEventCount;
+					LastShieldBashDamage = Event.RawDamage;
+				}
+			});
+			return true;
+		}
+
+		APREnemyCharacter* Enemy = SpawnedEnemy.Get();
+		UPRCombatSubsystem* Combat = PlayWorld->GetSubsystem<UPRCombatSubsystem>();
+		if (!Enemy || !Combat)
+		{
+			FinishError(TEXT("Fixed C smoke lost its ShieldMinion or CombatSubsystem."));
+			return false;
+		}
+
+		if (!bShieldBashObserved)
+		{
+			if (ShieldBashEventCount == 0)
+			{
+				if (PlayWorld->GetTimeSeconds() - SpawnedAt < 4.0)
+				{
+					return true;
+				}
+				FinishError(TEXT("ShieldMinion did not produce its fixed ShieldBash CombatEvent within four seconds."));
+				return false;
+			}
+			if (ShieldBashEventCount != 1 || !FMath::IsNearlyEqual(LastShieldBashDamage, 16.0f))
+			{
+				FinishError(TEXT("ShieldMinion did not produce exactly one 16-point ShieldBash CombatEvent."));
+				return false;
+			}
+			bShieldBashObserved = true;
+			if (UPREnemyBrainComponent* Brain = Enemy->GetEnemyBrain()) Brain->StopBrain();
+			if (APREnemyAIController* EnemyController = Cast<APREnemyAIController>(Enemy->GetController())) EnemyController->StopEnemyStateTree();
+			return true;
+		}
+
+		UPRAbilitySystemComponent* EnemyASC = Enemy->GetProjectRAbilitySystemComponent();
+		const UPRAttributeSet* Attributes = Enemy->GetAttributeSet();
+		if (!EnemyASC || !Attributes)
+		{
+			FinishError(TEXT("Fixed C smoke lost ShieldMinion ASC or AttributeSet."));
+			return false;
+		}
+		if (!bDamageVerified)
+		{
+			auto ApplyFixedDamage = [Combat, Player, Enemy](const float RawDamage)
+			{
+				FPRDamageRequest Request;
+				Request.SourceId = TEXT("EnemyCheckpointCSmoke");
+				Request.DamageSource = Player;
+				Request.Instigator = Player;
+				Request.Target = Enemy;
+				Request.RawDamage = RawDamage;
+				Request.ImpactOrigin = Player->GetActorLocation();
+				Request.IncomingDirection = (Enemy->GetActorLocation() - Player->GetActorLocation()).GetSafeNormal();
+				return Combat->ApplyDamage(Request);
+			};
+			if (ApplyFixedDamage(30.0f) != EPRCombatRequestStatus::Applied
+				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 50.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 140.0f)
+				|| EnemyASC->GetTagCount(UPRTagLibrary::GetStateGuardingTag()) != 1
+				|| ApplyFixedDamage(70.0f) != EPRCombatRequestStatus::Applied
+				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 0.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 120.0f)
+				|| EnemyASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
+				|| EnemyASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag())
+				|| ApplyFixedDamage(10.0f) != EPRCombatRequestStatus::Applied)
+			{
+				FinishError(TEXT("ShieldMinion spill-over, Guarding removal, or no-Stunned contract was invalid."));
+				return false;
+			}
+			if (ShieldEvents.Num() != 3
+				|| !ShieldEvents[0].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldAbsorbedTag())
+				|| ShieldEvents[0].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldBrokenTag())
+				|| !ShieldEvents[1].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldAbsorbedTag())
+				|| !ShieldEvents[1].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldBrokenTag())
+				|| !ShieldEvents[1].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseHealthDamagedTag())
+				|| ShieldEvents[2].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldBrokenTag()))
+			{
+				FinishError(TEXT("ShieldMinion spill-over CombatEvent response ordering was invalid."));
+				return false;
+			}
+			EnemyASC->SetNumericAttributeBase(UPRAttributeSet::GetShieldAttribute(), 25.0f);
+			if (EnemyASC->GetTagCount(UPRTagLibrary::GetStateGuardingTag()) != 1)
+			{
+				FinishError(TEXT("Formal Shield restoration did not re-add exactly one Guarding tag."));
+				return false;
+			}
+			bDamageVerified = true;
+			return true;
+		}
+
+		FinishSuccess();
+		return false;
+	}
+
+	APRPlayerCharacter* GetPlayer() const
+	{
+		UWorld* PlayWorld = World.Get();
+		APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
+		return Controller ? Cast<APRPlayerCharacter>(Controller->GetPawn()) : nullptr;
+	}
+
+	void CleanupRuntime()
+	{
+		if (UWorld* PlayWorld = World.Get())
+		{
+			if (UPRCombatSubsystem* Combat = PlayWorld->GetSubsystem<UPRCombatSubsystem>(); Combat && CombatEventHandle.IsValid())
+			{
+				Combat->OnCombatEvent().Remove(CombatEventHandle);
+			}
+			if (SpawnId.IsValid())
+			{
+				if (UPREnemySubsystem* Subsystem = PlayWorld->GetSubsystem<UPREnemySubsystem>()) Subsystem->DespawnEnemy(SpawnId);
+			}
+		}
+		CombatEventHandle.Reset();
+		SpawnId.Invalidate();
+		SpawnedEnemy.Reset();
+	}
+
+	void FinishSuccess()
+	{
+		CleanupRuntime();
+		Result->SetValue(TEXT("{\"status\":\"PASS\",\"prototype\":\"ShieldMinion\",\"health\":140,\"shield\":80,\"guardingUnique\":true,\"shieldBrokenSingle\":true,\"shieldBashCombatEvent\":16,\"runtimeClean\":true}"));
+	}
+
+	void FinishError(const TCHAR* Message)
+	{
+		CleanupRuntime();
+		Result->SetError(Message);
+	}
+
+	TWeakObjectPtr<UWorld> World;
+	TStrongObjectPtr<UToolCallAsyncResultString> Result;
+	double StartedAt = 0.0;
+	double SpawnedAt = 0.0;
+	FGuid SpawnId;
+	TWeakObjectPtr<APREnemyCharacter> SpawnedEnemy;
+	FDelegateHandle CombatEventHandle;
+	TArray<FPRCombatEvent> ShieldEvents;
+	int32 ShieldBashEventCount = 0;
+	float LastShieldBashDamage = 0.0f;
+	bool bShieldBashObserved = false;
+	bool bDamageVerified = false;
+};
 }
 
 UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyCheckpointASmoke()
@@ -465,4 +701,9 @@ UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyCheckpointASmo
 UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyCheckpointBSmoke()
 {
 	return PREnemyAutomationToolset::FCheckpointBRunner::Start();
+}
+
+UToolCallAsyncResultString* UPREnemyAutomationToolset::RunPIEEnemyCheckpointCSmoke()
+{
+	return PREnemyAutomationToolset::FCheckpointCRunner::Start();
 }

@@ -54,6 +54,14 @@ public:
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RepairCheckpointBRangedBindings();
 
+	/** Fixed, editor-only writer for the v0.2.1-C eight-package Shield manifest and Registry append. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* CreateCheckpointCEnemyAssets();
+
+	/** Saves exactly the fixed v0.2.1-C Shield manifest and Registry append. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* SaveCheckpointCEnemyAssets();
+
 	/** Applies the approved v0.2.1-B shared-default GE order repair: each Max attribute precedes its Current attribute. */
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RepairCheckpointBDefaultAttributeModifierOrder();

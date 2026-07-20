@@ -19,4 +19,8 @@ public:
 	/** Runs the fixed v0.2.1-B RangedMinion vertical slice without accepting caller data or saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointBSmoke();
+
+	/** Runs the fixed v0.2.1-C ShieldMinion slice without accepting caller data or saving a Package. */
+	UFUNCTION(meta=(AICallable))
+	static class UToolCallAsyncResultString* RunPIEEnemyCheckpointCSmoke();
 };

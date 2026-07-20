@@ -59,6 +59,7 @@ void APREnemyCharacter::HandleCombatLifeStateChanged(const bool bIsDead)
 {
 	if (bIsDead)
 	{
+		ClearShieldGuardingLifecycle();
 		if (UPREnemyPlaneMovementComponent* Movement = GetEnemyPlaneMovement())
 		{
 			Movement->StopEnemyMovement();
@@ -227,18 +228,72 @@ void APREnemyCharacter::TryInitializeEnemy()
 	// only after all preceding lifecycle steps have succeeded, but before that
 	// task has any chance to activate the ServerTriggered ability.
 	bInitialized = true;
+	BindShieldGuardingLifecycle();
 	EnemyBrain->InitializeBrain(this);
 	APREnemyAIController* EnemyController = Cast<APREnemyAIController>(GetController());
 	if (!EnemyController || !EnemyController->ConfigureAndStartStateTree(EnemyStateTree))
 	{
 		EnemyBrain->StopBrain();
+		ClearShieldGuardingLifecycle();
 		bInitialized = false;
 		return;
 	}
 }
 
+void APREnemyCharacter::BindShieldGuardingLifecycle()
+{
+	if (!ProjectRAbilitySystemComponent || !ProjectRAttributeSet)
+	{
+		return;
+	}
+	if (!ShieldAttributeDelegateHandle.IsValid())
+	{
+		ShieldAttributeDelegateHandle = ProjectRAbilitySystemComponent
+			->GetGameplayAttributeValueChangeDelegate(UPRAttributeSet::GetShieldAttribute())
+			.AddUObject(this, &APREnemyCharacter::HandleShieldAttributeChanged);
+	}
+	SynchronizeShieldGuardingState();
+}
+
+void APREnemyCharacter::ClearShieldGuardingLifecycle()
+{
+	if (ProjectRAbilitySystemComponent)
+	{
+		if (ShieldAttributeDelegateHandle.IsValid())
+		{
+			ProjectRAbilitySystemComponent
+				->GetGameplayAttributeValueChangeDelegate(UPRAttributeSet::GetShieldAttribute())
+				.Remove(ShieldAttributeDelegateHandle);
+		}
+		ProjectRAbilitySystemComponent->SetLooseGameplayTagCount(UPRTagLibrary::GetStateGuardingTag(), 0);
+	}
+	ShieldAttributeDelegateHandle.Reset();
+}
+
+void APREnemyCharacter::SynchronizeShieldGuardingState()
+{
+	if (!ProjectRAbilitySystemComponent || !ProjectRAttributeSet || !ShieldAttributeDelegateHandle.IsValid())
+	{
+		return;
+	}
+	const bool bAlive = bInitialized
+		&& ProjectRAbilitySystemComponent->HasMatchingGameplayTag(UPRTagLibrary::GetStateAliveTag())
+		&& !ProjectRAbilitySystemComponent->HasMatchingGameplayTag(UPRTagLibrary::GetStateDeadTag());
+	const int32 GuardingCount = bAlive && ProjectRAttributeSet->GetShield() > UE_SMALL_NUMBER ? 1 : 0;
+	ProjectRAbilitySystemComponent->SetLooseGameplayTagCount(UPRTagLibrary::GetStateGuardingTag(), GuardingCount);
+}
+
+void APREnemyCharacter::HandleShieldAttributeChanged(const FOnAttributeChangeData& ChangeData)
+{
+	if (ChangeData.Attribute == UPRAttributeSet::GetShieldAttribute())
+	{
+		SynchronizeShieldGuardingState();
+	}
+}
+
 void APREnemyCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	ClearShieldGuardingLifecycle();
 	if (EnemyBrain)
 	{
 		EnemyBrain->StopBrain();

@@ -173,8 +173,8 @@ bool FPREnemyCheckpointBAssetManifestTest::RunTest(const FString& Parameters)
 
 	if (Registry)
 	{
-		TestEqual(TEXT("Registry contains Melee and Ranged entries"), Registry->GetEntries().Num(), 2);
-		if (Registry->GetEntries().Num() == 2)
+		TestTrue(TEXT("Registry retains Melee and Ranged entries before downstream appends"), Registry->GetEntries().Num() >= 2);
+		if (Registry->GetEntries().Num() >= 2)
 		{
 			TestEqual(TEXT("Melee entry remains first"), Registry->GetEntries()[0].PrototypeTag,
 				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion")));
@@ -237,6 +237,83 @@ bool FPREnemyCheckpointBAssetManifestTest::RunTest(const FString& Parameters)
 			TestEqual(FString::Printf(TEXT("Default GE modifier %d uses the fixed data tag"), Index),
 				Modifier.ModifierMagnitude.GetSetByCallerFloat().DataTag, Expected.DataTag);
 		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPREnemyCheckpointCAssetManifestTest,
+	"ProjectR.Enemy.Assets.CheckpointCManifest",
+	PREnemyArchetypeAutomation::TestFlags)
+
+bool FPREnemyCheckpointCAssetManifestTest::RunTest(const FString& Parameters)
+{
+	const UPREnemyPrototypeRegistryDataAsset* Registry = LoadObject<UPREnemyPrototypeRegistryDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
+	const UPREnemyPrototypeDataAsset* Shield = LoadObject<UPREnemyPrototypeDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Prototypes/DA_Enemy_ShieldMinion.DA_Enemy_ShieldMinion"));
+	const UPREnemyAttackDataAsset* Bash = LoadObject<UPREnemyAttackDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_ShieldBash.DA_EnemyAttack_ShieldBash"));
+	const UPRAbilitySetDataAsset* AbilitySet = LoadObject<UPRAbilitySetDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Abilities/DA_EnemyAbilitySet_Shield.DA_EnemyAbilitySet_Shield"));
+	const UBlueprint* ShieldBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_ShieldMinion.BP_Enemy_ShieldMinion"));
+	const UBlueprint* AbilityBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_ShieldBash.GA_Enemy_ShieldBash"));
+	const UBlueprint* CooldownBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_ShieldBash_Cooldown.GE_EnemyAttack_ShieldBash_Cooldown"));
+
+	TestNotNull(TEXT("Shield prototype exists"), Shield);
+	TestNotNull(TEXT("ShieldBash attack data exists"), Bash);
+	TestNotNull(TEXT("Shield ability set exists"), AbilitySet);
+	TestNotNull(TEXT("Shield enemy Blueprint exists"), ShieldBlueprint);
+	TestNotNull(TEXT("ShieldBash ability Blueprint exists"), AbilityBlueprint);
+	TestNotNull(TEXT("ShieldBash cooldown Blueprint exists"), CooldownBlueprint);
+	TestNotNull(TEXT("ShieldBash VFX exists"), LoadObject<UNiagaraSystem>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_ShieldBash.VFX_Enemy_ShieldBash")));
+	TestNotNull(TEXT("ShieldBash SFX exists"), LoadObject<USoundWave>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_ShieldBash.SFX_Enemy_ShieldBash")));
+
+	if (Registry)
+	{
+		TestEqual(TEXT("Registry contains exactly Melee, Ranged, and Shield entries"), Registry->GetEntries().Num(), 3);
+		if (Registry->GetEntries().Num() == 3)
+		{
+			TestEqual(TEXT("Melee entry remains first"), Registry->GetEntries()[0].PrototypeTag,
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion")));
+			TestEqual(TEXT("Ranged entry remains second"), Registry->GetEntries()[1].PrototypeTag,
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion")));
+			TestEqual(TEXT("Shield entry is appended third"), Registry->GetEntries()[2].PrototypeTag,
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion")));
+		}
+	}
+	if (Shield)
+	{
+		TestEqual(TEXT("Shield mobility is Heavy"), Shield->Mobility, EPRAbilityTargetMobility::Heavy);
+		TestEqual(TEXT("Shield health is fixed"), Shield->Attributes.Health, 140.0f);
+		TestEqual(TEXT("Shield max health is fixed"), Shield->Attributes.MaxHealth, 140.0f);
+		TestEqual(TEXT("Shield amount is fixed"), Shield->Attributes.Shield, 80.0f);
+		TestEqual(TEXT("Shield max amount is fixed"), Shield->Attributes.MaxShield, 80.0f);
+		TestEqual(TEXT("Shield energy is fixed"), Shield->Attributes.Energy, 0.0f);
+		TestEqual(TEXT("Shield max energy is fixed"), Shield->Attributes.MaxEnergy, 1.0f);
+		TestEqual(TEXT("Shield attack power is fixed"), Shield->Attributes.AttackPower, 12.0f);
+		TestEqual(TEXT("Shield move speed is fixed"), Shield->Attributes.MoveSpeed, 300.0f);
+		TestEqual(TEXT("Shield acquire range is fixed"), Shield->Perception.AcquireRange, 900.0f);
+		TestEqual(TEXT("Shield lose range is fixed"), Shield->Perception.LoseRange, 1200.0f);
+		TestEqual(TEXT("Shield preferred minimum is fixed"), Shield->Perception.PreferredMinRange, 0.0f);
+		TestEqual(TEXT("Shield preferred maximum is fixed"), Shield->Perception.PreferredMaxRange, 160.0f);
+	}
+	if (Bash)
+	{
+		TestEqual(TEXT("ShieldBash is a melee sweep"), Bash->Kind, EPREnemyAttackKind::MeleeSweep);
+		TestEqual(TEXT("ShieldBash minimum range is fixed"), Bash->MinRange, 0.0f);
+		TestEqual(TEXT("ShieldBash maximum range is fixed"), Bash->MaxRange, 160.0f);
+		TestEqual(TEXT("ShieldBash base damage is fixed"), Bash->BaseDamage, 10.0f);
+		TestEqual(TEXT("ShieldBash AP scale is fixed"), Bash->AttackPowerScale, 0.5f);
+		TestEqual(TEXT("ShieldBash windup is fixed"), Bash->Windup, 0.40f);
+		TestEqual(TEXT("ShieldBash active window is fixed"), Bash->ActiveWindow, 0.15f);
+		TestEqual(TEXT("ShieldBash recovery is fixed"), Bash->Recovery, 0.55f);
+		TestEqual(TEXT("ShieldBash cooldown is fixed"), Bash->Cooldown, 1.60f);
 	}
 	return true;
 }

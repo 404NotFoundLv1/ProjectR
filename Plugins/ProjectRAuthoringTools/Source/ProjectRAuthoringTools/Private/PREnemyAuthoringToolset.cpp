@@ -81,6 +81,16 @@ constexpr const TCHAR* CheckpointBPackages[] = {
 	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_RangedShot"),
 	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_EnemyProjectile_Ranged")};
 
+constexpr const TCHAR* CheckpointCPackages[] = {
+	TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_ShieldMinion"),
+	TEXT("/Game/ProjectR/Enemies/Prototypes/DA_Enemy_ShieldMinion"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/DA_EnemyAttack_ShieldBash"),
+	TEXT("/Game/ProjectR/Enemies/Attacks/GA_Enemy_ShieldBash"),
+	TEXT("/Game/ProjectR/Enemies/Abilities/DA_EnemyAbilitySet_Shield"),
+	TEXT("/Game/ProjectR/Enemies/Effects/GE_EnemyAttack_ShieldBash_Cooldown"),
+	TEXT("/Game/ProjectR/Enemies/VFX/VFX_Enemy_ShieldBash"),
+	TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_ShieldBash")};
+
 template <typename T>
 T* CreateAsset(const TCHAR* Path)
 {
@@ -450,6 +460,171 @@ bool ConfigureCheckpointBAssets(
 	FKismetEditorUtilities::CompileBlueprint(ProjectileBlueprint);
 	return true;
 }
+
+bool PreflightCheckpointC(FString& Error)
+{
+	IAssetRegistry& AssetRegistry = FAssetRegistryModule::GetRegistry();
+	for (const TCHAR* Path : CheckpointCPackages)
+	{
+		FString Filename;
+		TArray<FAssetData> FoundAssets;
+		AssetRegistry.GetAssetsByPackageName(FName(Path), FoundAssets, true);
+		if (FindObject<UObject>(nullptr, Path) || FPackageName::DoesPackageExist(Path, &Filename) || !FoundAssets.IsEmpty())
+		{
+			Error = FString::Printf(TEXT("Checkpoint C manifest collision: %s"), Path);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ConfigureCheckpointCAssets(
+	UPREnemyPrototypeRegistryDataAsset* Registry,
+	UBlueprint* ShieldBlueprint,
+	UPREnemyPrototypeDataAsset* Shield,
+	UPREnemyAttackDataAsset* ShieldBash,
+	UBlueprint* ShieldAbilityBlueprint,
+	UPRAbilitySetDataAsset* ShieldAbilitySet,
+	UBlueprint* ShieldCooldownBlueprint,
+	UNiagaraSystem* ShieldVFX,
+	USoundWave* ShieldSFX,
+	FString& Error)
+{
+	UBlueprint* BaseBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	UBlueprint* DefaultAttributesBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Effects/GE_Enemy_DefaultAttributes.GE_Enemy_DefaultAttributes"));
+	UStateTree* StateTree = LoadObject<UStateTree>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/AI/ST_Enemy_Base.ST_Enemy_Base"));
+	UClass* DamageEffectClass = LoadClass<UGameplayEffect>(nullptr,
+		TEXT("/Game/ProjectR/Effects/GE_Damage.GE_Damage_C"));
+	const FGameplayTag MeleeTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
+	const FGameplayTag RangedTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion"));
+	const FGameplayTag ShieldTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion"));
+	const FGameplayTag ShieldAttackTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Attack.ShieldBash"));
+	const FGameplayTag ShieldCooldownTag = FGameplayTag::RequestGameplayTag(TEXT("Cooldown.Enemy.ShieldBash"));
+	if (!Registry || !ShieldBlueprint || !Shield || !ShieldBash || !ShieldAbilityBlueprint || !ShieldAbilitySet
+		|| !ShieldCooldownBlueprint || !ShieldVFX || !ShieldSFX || !BaseBlueprint || !BaseBlueprint->GeneratedClass
+		|| !DefaultAttributesBlueprint || !DefaultAttributesBlueprint->GeneratedClass || !StateTree || !DamageEffectClass
+		|| !ShieldBlueprint->GeneratedClass || !ShieldAbilityBlueprint->GeneratedClass)
+	{
+		Error = TEXT("Checkpoint C fixed dependencies are unavailable.");
+		return false;
+	}
+	if (Registry->Entries.Num() != 2 || Registry->Entries[0].PrototypeTag != MeleeTag
+		|| Registry->Entries[1].PrototypeTag != RangedTag || Registry->Entries[0].Prototype.IsNull()
+		|| Registry->Entries[0].EnemyClass.IsNull() || Registry->Entries[1].Prototype.IsNull()
+		|| Registry->Entries[1].EnemyClass.IsNull())
+	{
+		Error = TEXT("Checkpoint C requires the exact Melee/Ranged registry preimage.");
+		return false;
+	}
+	if (!ShieldBlueprint->GeneratedClass->IsChildOf(BaseBlueprint->GeneratedClass))
+	{
+		Error = TEXT("BP_Enemy_ShieldMinion does not inherit the fixed Enemy Base Blueprint.");
+		return false;
+	}
+
+	Shield->EnemyId = TEXT("ShieldMinion");
+	Shield->PrototypeTag = ShieldTag;
+	Shield->Mobility = EPRAbilityTargetMobility::Heavy;
+	Shield->Attributes = {140.0f, 140.0f, 80.0f, 80.0f, 0.0f, 1.0f, 12.0f, 300.0f, 0.0f, 0.0f, 0.0f};
+	Shield->Perception.SenseInterval = 0.10f;
+	Shield->Perception.AcquireRange = 900.0f;
+	Shield->Perception.LoseRange = 1200.0f;
+	Shield->Perception.PreferredMinRange = 0.0f;
+	Shield->Perception.PreferredMaxRange = 160.0f;
+	Shield->Perception.EdgeProbeForward = 60.0f;
+	Shield->Perception.EdgeProbeDepth = 120.0f;
+	Shield->MarkPackageDirty();
+
+	ShieldBash->AttackId = TEXT("ShieldBash");
+	ShieldBash->AttackTag = ShieldAttackTag;
+	ShieldBash->Kind = EPREnemyAttackKind::MeleeSweep;
+	ShieldBash->MinRange = 0.0f;
+	ShieldBash->MaxRange = 160.0f;
+	ShieldBash->BaseDamage = 10.0f;
+	ShieldBash->AttackPowerScale = 0.5f;
+	ShieldBash->Windup = 0.40f;
+	ShieldBash->ActiveWindow = 0.15f;
+	ShieldBash->Recovery = 0.55f;
+	ShieldBash->Cooldown = 1.60f;
+	ShieldBash->SweepRadius = 160.0f;
+	ShieldBash->SweepHalfAngleDegrees = 60.0f;
+	ShieldBash->ProjectileClass.Reset();
+	ShieldBash->ProjectileSpeed = 0.0f;
+	ShieldBash->ProjectileLifetime = 0.0f;
+	ShieldBash->DamageTags.Reset();
+	ShieldBash->VFX = ShieldVFX;
+	ShieldBash->SFX = ShieldSFX;
+	ShieldBash->MarkPackageDirty();
+
+	Shield->AttackDefinitions.Reset();
+	Shield->AttackDefinitions.Add(ShieldBash);
+	Shield->InitialAbilitySet = ShieldAbilitySet;
+	Shield->MarkPackageDirty();
+
+	ShieldAbilitySet->AbilityEntries.Reset();
+	FPRAbilitySetEntry& AbilityEntry = ShieldAbilitySet->AbilityEntries.AddDefaulted_GetRef();
+	AbilityEntry.AbilityClass = ShieldAbilityBlueprint->GeneratedClass;
+	AbilityEntry.AbilityData = ShieldBash;
+	AbilityEntry.AbilityLevel = 1;
+	AbilityEntry.bGrantOnInitialization = true;
+	ShieldAbilitySet->MarkPackageDirty();
+
+	UGameplayEffect* Cooldown = ShieldCooldownBlueprint->GeneratedClass->GetDefaultObject<UGameplayEffect>();
+	if (!Cooldown)
+	{
+		Error = TEXT("Checkpoint C cooldown GameplayEffect CDO is unavailable.");
+		return false;
+	}
+	Cooldown->DurationPolicy = EGameplayEffectDurationType::HasDuration;
+	Cooldown->DurationMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(1.60f));
+	Cooldown->Modifiers.Reset();
+	FInheritedTagContainer CooldownTags;
+	CooldownTags.AddTag(ShieldCooldownTag);
+	Cooldown->FindOrAddComponent<UTargetTagsGameplayEffectComponent>().SetAndApplyTargetTagChanges(CooldownTags);
+	ShieldCooldownBlueprint->MarkPackageDirty();
+
+	if (FObjectProperty* StateTreeProperty = FindFProperty<FObjectProperty>(ShieldBlueprint->GeneratedClass, TEXT("EnemyStateTree")))
+	{
+		StateTreeProperty->SetObjectPropertyValue_InContainer(ShieldBlueprint->GeneratedClass->GetDefaultObject(), StateTree);
+	}
+	else { Error = TEXT("BP_Enemy_ShieldMinion has no EnemyStateTree CDO property."); return false; }
+	if (FClassProperty* DefaultEffectProperty = FindFProperty<FClassProperty>(ShieldBlueprint->GeneratedClass, TEXT("DefaultAttributesEffect")))
+	{
+		DefaultEffectProperty->SetPropertyValue_InContainer(ShieldBlueprint->GeneratedClass->GetDefaultObject(), DefaultAttributesBlueprint->GeneratedClass);
+	}
+	else { Error = TEXT("BP_Enemy_ShieldMinion has no DefaultAttributesEffect CDO property."); return false; }
+	if (FClassProperty* DamageEffectProperty = FindFProperty<FClassProperty>(ShieldBlueprint->GeneratedClass, TEXT("DamageEffect")))
+	{
+		DamageEffectProperty->SetPropertyValue_InContainer(ShieldBlueprint->GeneratedClass->GetDefaultObject(), DamageEffectClass);
+	}
+	else { Error = TEXT("BP_Enemy_ShieldMinion has no DamageEffect CDO property."); return false; }
+	ShieldBlueprint->MarkPackageDirty();
+
+	if (FStructProperty* TagProperty = FindFProperty<FStructProperty>(ShieldAbilityBlueprint->GeneratedClass, TEXT("AbilityTag")))
+	{
+		*TagProperty->ContainerPtrToValuePtr<FGameplayTag>(ShieldAbilityBlueprint->GeneratedClass->GetDefaultObject()) = ShieldAttackTag;
+	}
+	else { Error = TEXT("GA_Enemy_ShieldBash has no AbilityTag CDO property."); return false; }
+	if (FClassProperty* CooldownProperty = FindFProperty<FClassProperty>(ShieldAbilityBlueprint->GeneratedClass, TEXT("CooldownGameplayEffectClass")))
+	{
+		CooldownProperty->SetPropertyValue_InContainer(ShieldAbilityBlueprint->GeneratedClass->GetDefaultObject(), ShieldCooldownBlueprint->GeneratedClass);
+	}
+	else { Error = TEXT("GA_Enemy_ShieldBash has no CooldownGameplayEffectClass CDO property."); return false; }
+	ShieldAbilityBlueprint->MarkPackageDirty();
+
+	FPREnemyPrototypeRegistryEntry& RegistryEntry = Registry->Entries.AddDefaulted_GetRef();
+	RegistryEntry.PrototypeTag = ShieldTag;
+	RegistryEntry.Prototype = Shield;
+	RegistryEntry.EnemyClass = ShieldBlueprint->GeneratedClass;
+	Registry->MarkPackageDirty();
+	FKismetEditorUtilities::CompileBlueprint(ShieldBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(ShieldAbilityBlueprint);
+	FKismetEditorUtilities::CompileBlueprint(ShieldCooldownBlueprint);
+	return true;
+}
 }
 
 UToolCallAsyncResultString* UPREnemyAuthoringToolset::ResetCheckpointAEnemyManifest()
@@ -744,6 +919,94 @@ UToolCallAsyncResultString* UPREnemyAuthoringToolset::CreateCheckpointBEnemyAsse
 		return Result;
 	}
 	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":9,\"registryAppended\":1,\"saved\":false,\"schema\":\"v0.2.1-B-fixed\"}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::CreateCheckpointCEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	FString Error;
+	if (!PREnemyAuthoringToolset::PreflightCheckpointC(Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+
+	UPREnemyPrototypeRegistryDataAsset* Registry = LoadObject<UPREnemyPrototypeRegistryDataAsset>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
+	UBlueprint* BaseBlueprint = LoadObject<UBlueprint>(nullptr,
+		TEXT("/Game/ProjectR/Enemies/Blueprints/BP_Enemy_Base.BP_Enemy_Base"));
+	if (!Registry || !BaseBlueprint || !BaseBlueprint->GeneratedClass)
+	{
+		Result->SetError(TEXT("Checkpoint C requires the saved checkpoint-A Registry and BP_Enemy_Base."));
+		return Result;
+	}
+
+	UBlueprint* ShieldBlueprint = PREnemyAuthoringToolset::CreateBlueprint(
+		PREnemyAuthoringToolset::CheckpointCPackages[0], BaseBlueprint->GeneratedClass);
+	UPREnemyPrototypeDataAsset* Shield = PREnemyAuthoringToolset::CreateAsset<UPREnemyPrototypeDataAsset>(
+		PREnemyAuthoringToolset::CheckpointCPackages[1]);
+	UPREnemyAttackDataAsset* ShieldBash = PREnemyAuthoringToolset::CreateAsset<UPREnemyAttackDataAsset>(
+		PREnemyAuthoringToolset::CheckpointCPackages[2]);
+	UBlueprint* ShieldAbilityBlueprint = PREnemyAuthoringToolset::CreateBlueprint(
+		PREnemyAuthoringToolset::CheckpointCPackages[3], UPREnemyAttackGameplayAbility::StaticClass());
+	UPRAbilitySetDataAsset* ShieldAbilitySet = PREnemyAuthoringToolset::CreateAsset<UPRAbilitySetDataAsset>(
+		PREnemyAuthoringToolset::CheckpointCPackages[4]);
+	UBlueprint* ShieldCooldownBlueprint = PREnemyAuthoringToolset::CreateGameplayEffectBlueprint(
+		PREnemyAuthoringToolset::CheckpointCPackages[5]);
+	UNiagaraSystem* ShieldVFX = PREnemyAuthoringToolset::CreateNiagaraSystem(
+		PREnemyAuthoringToolset::CheckpointCPackages[6]);
+	USoundWave* ShieldSFX = PREnemyAuthoringToolset::CreatePlaceholderSound(
+		PREnemyAuthoringToolset::CheckpointCPackages[7]);
+	if (!ShieldBlueprint || !Shield || !ShieldBash || !ShieldAbilityBlueprint || !ShieldAbilitySet
+		|| !ShieldCooldownBlueprint || !ShieldVFX || !ShieldSFX)
+	{
+		Result->SetError(TEXT("Checkpoint C could not create its complete fixed manifest."));
+		return Result;
+	}
+	if (!PREnemyAuthoringToolset::ConfigureCheckpointCAssets(Registry, ShieldBlueprint, Shield, ShieldBash,
+		ShieldAbilityBlueprint, ShieldAbilitySet, ShieldCooldownBlueprint, ShieldVFX, ShieldSFX, Error))
+	{
+		Result->SetError(Error);
+		return Result;
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"created\":8,\"registryAppended\":1,\"saved\":false,\"schema\":\"v0.2.1-C-fixed\"}"));
+	return Result;
+}
+
+UToolCallAsyncResultString* UPREnemyAuthoringToolset::SaveCheckpointCEnemyAssets()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>();
+	PREnemyAuthoringToolset::FScopedToolResultRoot ResultRoot(Result);
+	const TCHAR* ExactPaths[] = {
+		PREnemyAuthoringToolset::CheckpointCPackages[0], PREnemyAuthoringToolset::CheckpointCPackages[1],
+		PREnemyAuthoringToolset::CheckpointCPackages[2], PREnemyAuthoringToolset::CheckpointCPackages[3],
+		PREnemyAuthoringToolset::CheckpointCPackages[4], PREnemyAuthoringToolset::CheckpointCPackages[5],
+		PREnemyAuthoringToolset::CheckpointCPackages[6], PREnemyAuthoringToolset::CheckpointCPackages[7],
+		TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry")};
+	TArray<UObject*> AssetsToSave;
+	AssetsToSave.Reserve(UE_ARRAY_COUNT(ExactPaths));
+	for (const TCHAR* Path : ExactPaths)
+	{
+		UObject* Asset = LoadObject<UObject>(nullptr, *FString::Printf(TEXT("%s.%s"), Path, *FPackageName::GetLongPackageAssetName(Path)));
+		if (!Asset)
+		{
+			Result->SetError(FString::Printf(TEXT("Checkpoint C exact save requires existing package %s."), Path));
+			return Result;
+		}
+		AssetsToSave.Add(Asset);
+	}
+	FString Error;
+	for (UObject* Asset : AssetsToSave)
+	{
+		if (!PREnemyAuthoringToolset::SavePackageObject(Asset, Error))
+		{
+			Result->SetError(Error);
+			return Result;
+		}
+	}
+	Result->SetValue(TEXT("{\"status\":\"PASS\",\"saved\":9,\"schema\":\"v0.2.1-C-exact-manifest\"}"));
 	return Result;
 }
 

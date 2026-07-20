@@ -16,10 +16,11 @@ namespace PREnemyRegistry
 const FSoftObjectPath RegistryPath(TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
 const FGameplayTag MeleeMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
 const FGameplayTag RangedMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion"));
+const FGameplayTag ShieldMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion"));
 
-bool IsCheckpointBPrototypeTag(const FGameplayTag Tag)
+bool IsCheckpointCPrototypeTag(const FGameplayTag Tag)
 {
-	return Tag == MeleeMinionTag || Tag == RangedMinionTag;
+	return Tag == MeleeMinionTag || Tag == RangedMinionTag || Tag == ShieldMinionTag;
 }
 }
 
@@ -64,7 +65,7 @@ void UPREnemySubsystem::FinishRegistryLoad()
 	if (!Registry) return;
 	for (const FPREnemyPrototypeRegistryEntry& Entry : Registry->GetEntries())
 	{
-		if (!PREnemyRegistry::IsCheckpointBPrototypeTag(Entry.PrototypeTag) || Entry.Prototype.IsNull() || Entry.EnemyClass.IsNull()) continue;
+		if (!PREnemyRegistry::IsCheckpointCPrototypeTag(Entry.PrototypeTag) || Entry.Prototype.IsNull() || Entry.EnemyClass.IsNull()) continue;
 		UPREnemyPrototypeDataAsset* Prototype = Entry.Prototype.LoadSynchronous();
 		UClass* LoadedClass = Entry.EnemyClass.LoadSynchronous();
 		if (Prototype && LoadedClass && LoadedClass->IsChildOf(APREnemyCharacter::StaticClass()))
@@ -94,7 +95,8 @@ void UPREnemySubsystem::FinishRegistryLoad()
 		}
 	}
 	bRegistryReady = LoadedPrototypes.Contains(PREnemyRegistry::MeleeMinionTag)
-		&& LoadedPrototypes.Contains(PREnemyRegistry::RangedMinionTag);
+		&& LoadedPrototypes.Contains(PREnemyRegistry::RangedMinionTag)
+		&& LoadedPrototypes.Contains(PREnemyRegistry::ShieldMinionTag);
 }
 
 TSubclassOf<APREnemyProjectile> UPREnemySubsystem::GetPreloadedProjectileClass(
@@ -141,7 +143,7 @@ EPREnemySpawnStatus UPREnemySubsystem::SpawnEnemyPrototype(
 	if (!bRegistryReady) return EPREnemySpawnStatus::NotReady;
 	if (!IsValidSpawnTransform(SpawnTransform)) return EPREnemySpawnStatus::InvalidTransform;
 	const FLoadedPrototype* Entry = LoadedPrototypes.Find(PrototypeTag);
-	if (!Entry || !PREnemyRegistry::IsCheckpointBPrototypeTag(PrototypeTag)) return EPREnemySpawnStatus::UnknownPrototype;
+	if (!Entry || !PREnemyRegistry::IsCheckpointCPrototypeTag(PrototypeTag)) return EPREnemySpawnStatus::UnknownPrototype;
 	OutSpawnId = FGuid::NewGuid();
 	APREnemyCharacter* Enemy = GetWorld()->SpawnActorDeferred<APREnemyCharacter>(Entry->EnemyClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (!Enemy)

@@ -287,7 +287,7 @@ date: "2026-07-10"
 
 **迁移/回滚**：先从固定 Registry 移除 A 的 Melee entry 并停止所有 SpawnedEnemy，再反向撤销 A 的 Enemy C++、Ability/Tag 增量和文档。已保存 12 个 Package 的删除仍需逐包明确批准；禁止 hard reset、clean、Save All、Fix Redirectors 或用户 Save 操作。
 
-**验证**：TDD RED 覆盖 Player pawn 缺少 Combatant 适配和 Melee 140cm 攻击带不一致；对应 GREEN BuildEditor 与原生自动化通过。固定 `L_CombatGym` PIE 已验证 ASC/属性、Melee CombatEvent=15、死亡停止 StateTree 和 runtime clean；12 个 Package 经正常 Editor 重启逐项回读 Dirty=0。B 的后续合同补验确认共享 `GE_Enemy_DefaultAttributes` 的有效顺序为 `MaxHealth, Health, MaxShield, Shield, MaxEnergy, Energy, AttackPower, MoveSpeed, CritChance, Permission, Resonance`：这修正了 A 的 Current→Max 初始资产顺序，以保证 Ranged 80/80 等非默认 P0 值不被钳制；11 项 Override/SetByCaller、Instant、无 Execution/Cue/Granted 内容保持不变。该修正不改变本 ADR 的公开接口或依赖方向，已冻结为 C–E 的只读上游。
+**验证**：TDD RED 覆盖 Player pawn 缺少 Combatant 适配和 Melee 140cm 攻击带不一致；对应 GREEN BuildEditor 与原生自动化通过。固定 `L_CombatGym` PIE 已验证 ASC/属性、Melee CombatEvent=15、死亡停止 StateTree 和 runtime clean；12 个 Package 经正常 Editor 重启逐项回读 Dirty=0。B 的后续合同补验确认共享 `GE_Enemy_DefaultAttributes` 的有效顺序为 `MaxHealth, Health, MaxShield, Shield, MaxEnergy, Energy, AttackPower, MoveSpeed, CritChance, Permission, Resonance`：这修正了 A 的 Current→Max 初始资产顺序，以保证 Ranged 80/80 等非默认 P0 值不被钳制；11 项 Override/SetByCaller、Instant、无 Execution/Cue/Granted 内容保持不变。该修正不改变本 ADR 的公开接口或依赖方向，已冻结为 C–E 的只读上游。C 验证 ShieldMinion 仅以同一窄 Mobility 接口表达 Heavy；Shield `AttributeChange` Delegate 幂等镜像 `State.Guarding`，而所有 Shield spill-over/ShieldBroken 仍只来自 CombatSubsystem。C 未改变 Combat、AttributeSet、玩家技能或 Tag/Config。
 
 # ADR 模板
 

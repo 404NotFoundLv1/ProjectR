@@ -20,6 +20,7 @@ class UPREnemyPrototypeDataAsset;
 class UPREnemyAttackDataAsset;
 class UPRAbilitySetDataAsset;
 class UStateTree;
+struct FOnAttributeChangeData;
 
 UCLASS(Abstract)
 class PROJECTR_API APREnemyCharacter
@@ -70,6 +71,8 @@ protected:
 	TObjectPtr<UStateTree> EnemyStateTree;
 
 private:
+	friend class FPREnemyShieldGuardingLifecycleTest;
+
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Abilities")
 	TObjectPtr<UPRAbilitySystemComponent> ProjectRAbilitySystemComponent;
 	UPROPERTY(VisibleAnywhere, Category="ProjectR|Abilities")
@@ -83,7 +86,12 @@ private:
 	bool bInitialized = false;
 	bool bDefaultAttributesApplied = false;
 	FPRAbilitySetGrantHandle InitialAbilityGrant;
+	FDelegateHandle ShieldAttributeDelegateHandle;
 
 	/** Called only after the pawn has both begun play and acquired its fixed AI controller. */
 	void TryInitializeEnemy();
+	void BindShieldGuardingLifecycle();
+	void ClearShieldGuardingLifecycle();
+	void SynchronizeShieldGuardingState();
+	void HandleShieldAttributeChanged(const FOnAttributeChangeData& ChangeData);
 };
