@@ -9,6 +9,7 @@
 #include "Enemies/PREnemyPrototypeDataAsset.h"
 #include "Abilities/PRAbilitySetDataAsset.h"
 #include "Abilities/PRAttributeSet.h"
+#include "Core/PRTagLibrary.h"
 #include "GameplayEffect.h"
 #include "Engine/Blueprint.h"
 #include "NiagaraSystem.h"
@@ -19,11 +20,46 @@
 #include "Abilities/Player/PRAbilityTargetInterface.h"
 
 #include "Misc/AutomationTest.h"
+#include "UObject/UnrealType.h"
 
 namespace PREnemyArchetypeAutomation
 {
 constexpr EAutomationTestFlags TestFlags =
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
+
+struct FExpectedDefaultAttributeModifier
+{
+	FGameplayAttribute Attribute;
+	FGameplayTag DataTag;
+	const TCHAR* Name;
+};
+
+TArray<FExpectedDefaultAttributeModifier> GetExpectedDefaultAttributeModifiers()
+{
+	return {
+		{UPRAttributeSet::GetMaxHealthAttribute(), UPRTagLibrary::GetEnemyDataMaxHealthTag(), TEXT("MaxHealth")},
+		{UPRAttributeSet::GetHealthAttribute(), UPRTagLibrary::GetEnemyDataHealthTag(), TEXT("Health")},
+		{UPRAttributeSet::GetMaxShieldAttribute(), UPRTagLibrary::GetEnemyDataMaxShieldTag(), TEXT("MaxShield")},
+		{UPRAttributeSet::GetShieldAttribute(), UPRTagLibrary::GetEnemyDataShieldTag(), TEXT("Shield")},
+		{UPRAttributeSet::GetMaxEnergyAttribute(), UPRTagLibrary::GetEnemyDataMaxEnergyTag(), TEXT("MaxEnergy")},
+		{UPRAttributeSet::GetEnergyAttribute(), UPRTagLibrary::GetEnemyDataEnergyTag(), TEXT("Energy")},
+		{UPRAttributeSet::GetAttackPowerAttribute(), UPRTagLibrary::GetEnemyDataAttackPowerTag(), TEXT("AttackPower")},
+		{UPRAttributeSet::GetMoveSpeedAttribute(), UPRTagLibrary::GetEnemyDataMoveSpeedTag(), TEXT("MoveSpeed")},
+		{UPRAttributeSet::GetCritChanceAttribute(), UPRTagLibrary::GetEnemyDataCritChanceTag(), TEXT("CritChance")},
+		{UPRAttributeSet::GetPermissionAttribute(), UPRTagLibrary::GetEnemyDataPermissionTag(), TEXT("Permission")},
+		{UPRAttributeSet::GetResonanceAttribute(), UPRTagLibrary::GetEnemyDataResonanceTag(), TEXT("Resonance")}};
+}
+
+int32 GetReflectedArrayNum(const UObject* Object, const FName PropertyName)
+{
+	const FArrayProperty* Property = FindFProperty<FArrayProperty>(Object->GetClass(), PropertyName);
+	if (!Property)
+	{
+		return INDEX_NONE;
+	}
+	const void* ArrayAddress = Property->ContainerPtrToValuePtr<void>(Object);
+	return FScriptArrayHelper(Property, ArrayAddress).Num();
+}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -173,28 +209,34 @@ bool FPREnemyCheckpointBAssetManifestTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Shared enemy default-attributes GE exists for Ranged P0 initialization"), DefaultAttributes);
 	if (DefaultAttributes)
 	{
-		int32 HealthIndex = INDEX_NONE;
-		int32 MaxHealthIndex = INDEX_NONE;
-		int32 ShieldIndex = INDEX_NONE;
-		int32 MaxShieldIndex = INDEX_NONE;
-		int32 EnergyIndex = INDEX_NONE;
-		int32 MaxEnergyIndex = INDEX_NONE;
-		for (int32 Index = 0; Index < DefaultAttributes->Modifiers.Num(); ++Index)
+		const TArray<PREnemyArchetypeAutomation::FExpectedDefaultAttributeModifier> ExpectedModifiers =
+			PREnemyArchetypeAutomation::GetExpectedDefaultAttributeModifiers();
+		TestEqual(TEXT("Default GE is Instant"), DefaultAttributes->DurationPolicy,
+			EGameplayEffectDurationType::Instant);
+		TestEqual(TEXT("Default GE period is zero"), DefaultAttributes->Period.GetValueAtLevel(1.0f), 0.0f);
+		TestEqual(TEXT("Default GE has exactly eleven modifiers"), DefaultAttributes->Modifiers.Num(), ExpectedModifiers.Num());
+		TestEqual(TEXT("Default GE has no executions"), DefaultAttributes->Executions.Num(), 0);
+		TestEqual(TEXT("Default GE has no gameplay cues"), DefaultAttributes->GameplayCues.Num(), 0);
+		TestEqual(TEXT("Default GE stacking is none"), DefaultAttributes->GetStackingType(), EGameplayEffectStackingType::None);
+		TestEqual(TEXT("Default GE stack limit is zero"), DefaultAttributes->StackLimitCount, 0);
+		TestEqual(TEXT("Default GE grants no abilities"),
+			PREnemyArchetypeAutomation::GetReflectedArrayNum(DefaultAttributes, TEXT("GrantedAbilities")), 0);
+		TestEqual(TEXT("Default GE has no GE components"),
+			PREnemyArchetypeAutomation::GetReflectedArrayNum(DefaultAttributes, TEXT("GEComponents")), 0);
+
+		for (int32 Index = 0; Index < FMath::Min(DefaultAttributes->Modifiers.Num(), ExpectedModifiers.Num()); ++Index)
 		{
-			const FGameplayAttribute Attribute = DefaultAttributes->Modifiers[Index].Attribute;
-			if (Attribute == UPRAttributeSet::GetHealthAttribute()) HealthIndex = Index;
-			else if (Attribute == UPRAttributeSet::GetMaxHealthAttribute()) MaxHealthIndex = Index;
-			else if (Attribute == UPRAttributeSet::GetShieldAttribute()) ShieldIndex = Index;
-			else if (Attribute == UPRAttributeSet::GetMaxShieldAttribute()) MaxShieldIndex = Index;
-			else if (Attribute == UPRAttributeSet::GetEnergyAttribute()) EnergyIndex = Index;
-			else if (Attribute == UPRAttributeSet::GetMaxEnergyAttribute()) MaxEnergyIndex = Index;
+			const FGameplayModifierInfo& Modifier = DefaultAttributes->Modifiers[Index];
+			const PREnemyArchetypeAutomation::FExpectedDefaultAttributeModifier& Expected = ExpectedModifiers[Index];
+			TestEqual(FString::Printf(TEXT("Default GE modifier %d attribute is %s"), Index, Expected.Name),
+				Modifier.Attribute, Expected.Attribute);
+			TestEqual(FString::Printf(TEXT("Default GE modifier %d is Override"), Index),
+				Modifier.ModifierOp, EGameplayModOp::Override);
+			TestEqual(FString::Printf(TEXT("Default GE modifier %d is SetByCaller"), Index),
+				Modifier.ModifierMagnitude.GetMagnitudeCalculationType(), EGameplayEffectMagnitudeCalculation::SetByCaller);
+			TestEqual(FString::Printf(TEXT("Default GE modifier %d uses the fixed data tag"), Index),
+				Modifier.ModifierMagnitude.GetSetByCallerFloat().DataTag, Expected.DataTag);
 		}
-		TestTrue(TEXT("Default GE applies MaxHealth before Health for non-default P0 values"),
-			MaxHealthIndex != INDEX_NONE && HealthIndex != INDEX_NONE && MaxHealthIndex < HealthIndex);
-		TestTrue(TEXT("Default GE applies MaxShield before Shield for non-default P0 values"),
-			MaxShieldIndex != INDEX_NONE && ShieldIndex != INDEX_NONE && MaxShieldIndex < ShieldIndex);
-		TestTrue(TEXT("Default GE applies MaxEnergy before Energy for non-default P0 values"),
-			MaxEnergyIndex != INDEX_NONE && EnergyIndex != INDEX_NONE && MaxEnergyIndex < EnergyIndex);
 	}
 	return true;
 }

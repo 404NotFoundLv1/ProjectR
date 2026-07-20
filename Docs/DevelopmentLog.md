@@ -289,6 +289,7 @@ date: "2026-07-10"
 - `APREnemyProjectile` 仅由 Authority 在 Active 阶段创建，以锁定 X/Z 方向、1200cm/s、1.5s 生命周期和 Attack Token 单次结算运行；所有伤害继续只经 `UPRCombatSubsystem`，并优先消费稳定 `IPRCombatAttackProxyInterface`，不依赖具体 Afterimage 类型。
 - 经批准修复 `APRSkillDecoyActor` 的无碰撞 SceneRoot：SpawnActor 现在准确保留残影起点，不改变公开接口、Tag、输入、伤害、Timer 或消费幂等性。TDD RED 仅因缺根组件导致 SpawnLocation 断言失败，GREEN 后 `ProjectR.PlayerSkill.Runtime.DamageBurningAndDefense` 通过。
 - 实测 BuildEditor、`ProjectR.Enemy` 5/5、`ProjectR.PlayerSkill` 5/5 与固定 `RunPIEEnemyCheckpointBSmoke()` 均 PASS；PIE 确认一次 12 点投射物事件、一次 Afterimage proxy 消费、无第二次伤害事件以及 runtime clean。
+- 后续补验已将 B 对共享 `GE_Enemy_DefaultAttributes` 的资产修正正式冻结为 `MaxHealth, Health, MaxShield, Shield, MaxEnergy, Energy, AttackPower, MoveSpeed, CritChance, Permission, Resonance`。这是为 Ranged 80/80 等非默认 P0 值保留正确 Max→Current 初始化的语义修正，不是编辑器重序列化；C 不保存该 Package。最终 BuildEditor、`ProjectR.Enemy` 5/5、`ProjectR.PlayerSkill` 5/5、GAS 4/4、Combat 5/5、Ability 6/6、MCP CDO 回读、正常重启和固定 B PIE 均 PASS；11 个 B 相关 Package Dirty=0。
 
 # 版本记录模板
 
