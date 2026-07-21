@@ -1282,7 +1282,10 @@ private:
 			PrepareTarget(TargetB, Character->GetActorLocation() + AimDirection * 300.0f);
 			AfterimageStartLocation = Character->GetActorLocation();
 			AfterimageEventStart = CombatEvents.Num();
-			SendPressAndRelease(EKeys::L);
+			// Afterimage is held-input. Let the input-triggered ability activate
+			// before releasing it; a same-frame release can otherwise arrive before
+			// deferred activation and leave the ability held until later cleanup.
+			SendKey(EKeys::L, IE_Pressed);
 			Advance(ECheckpointCSmokePhase::AfterimageCommitWait);
 			break;
 
@@ -1308,6 +1311,7 @@ private:
 				Fail(TEXT("AfterimageDodge did not Commit, apply Invulnerable, or create one consumable decoy."));
 				return false;
 			}
+			SendKey(EKeys::L, IE_Released);
 			Advance(ECheckpointCSmokePhase::AfterimageWait);
 			break;
 
@@ -2900,6 +2904,17 @@ private:
 		{
 			return Fail(TEXT("The formal v0.2.0-E AbilitySet or six presentation references are not exact."));
 		}
+		// Re-enter the ordinary PlayerState-owned Avatar lifecycle after the final
+		// AbilitySet is known to be present.  This is the same fixed re-possession
+		// path exercised by the foundation regressions and makes the smoke verify
+		// the real component preload table rather than loading presentation assets
+		// directly from this editor-only tool.
+		Controller->UnPossess();
+		Controller->Possess(Character.Get());
+		if (Controller->GetPawn() != Character.Get())
+		{
+			return Fail(TEXT("Checkpoint-E could not restore the fixed formal player after its controlled Avatar re-possession."));
+		}
 		PhaseStartTime = GetPlayWorldTimeSeconds();
 		return true;
 	}
@@ -2920,7 +2935,10 @@ private:
 				bPreloadReady = true;
 				Advance(ECheckpointESmokePhase::AfterimageStart);
 			}
-			else if (Elapsed > 3.0)
+			// The PlayerSkillComponent owns the asynchronous request.  This smoke only
+			// observes that request completing; a slow local DDC must not turn the
+			// fixed presentation contract into a false negative.
+			else if (Elapsed > 20.0)
 			{
 				return FailAndStop(TEXT("Checkpoint-E did not asynchronously preload all six VFX/SFX soft references."));
 			}
@@ -2930,35 +2948,56 @@ private:
 			InitialNiagaraCount = CountAttachedNiagaraComponents();
 			InitialAudioCount = CountAttachedAudioComponents();
 			ASC->AbilityInputTagPressed(AfterimageData->InputTag);
-			ASC->AbilityInputTagReleased(AfterimageData->InputTag);
 			Advance(ECheckpointESmokePhase::AfterimagePlaybackWait);
 			break;
 
 		case ECheckpointESmokePhase::AfterimagePlaybackWait:
 			if (Elapsed >= 0.03)
 			{
-				bLocalPlayback = CountAttachedNiagaraComponents() > InitialNiagaraCount
-					&& CountAttachedAudioComponents() > InitialAudioCount;
+				const int32 CurrentNiagaraCount = CountAttachedNiagaraComponents();
+				const int32 CurrentAudioCount = CountAttachedAudioComponents();
+				bLocalPlayback = CurrentNiagaraCount > InitialNiagaraCount
+					&& CurrentAudioCount > InitialAudioCount;
 				if (!bLocalPlayback)
 				{
-					return FailAndStop(TEXT("Checkpoint-E did not create local Niagara and audio components after a committed formal skill."));
+					FPRAbilityRuntimeState AbilityState;
+					const bool bHasAbilityState = ASC->GetAbilityRuntimeStateByAbilityTag(
+						AfterimageData->AbilityTag, AbilityState);
+					return FailAndStop(FString::Printf(
+						TEXT("Checkpoint-E did not create local Niagara and audio components after a committed formal skill. "
+							"LocallyControlled=%s AbilityState=%s Active=%s Phase=%d Niagara=%d/%d Audio=%d/%d."),
+						Character->IsLocallyControlled() ? TEXT("true") : TEXT("false"),
+						bHasAbilityState ? TEXT("true") : TEXT("false"),
+						bHasAbilityState && AbilityState.bActive ? TEXT("true") : TEXT("false"),
+						static_cast<int32>(SkillComponent->GetCurrentPhase()),
+						CurrentNiagaraCount, InitialNiagaraCount, CurrentAudioCount, InitialAudioCount));
 				}
+				// AfterimageDodge is held-input.  Release only after observing the
+				// presentation created by the committed ability; releasing in the same
+				// frame as Press cancels the ability before this assertion can run.
+				ASC->AbilityInputTagReleased(AfterimageData->InputTag);
 				Advance(ECheckpointESmokePhase::AfterimageCleanupWait);
 			}
 			break;
 
 		case ECheckpointESmokePhase::AfterimageCleanupWait:
-			if (Elapsed >= 0.35)
+			bCleanup = CountAttachedNiagaraComponents() == InitialNiagaraCount
+				&& CountAttachedAudioComponents() == InitialAudioCount
+				&& !IsAbilityActive(AfterimageData->AbilityTag)
+				&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle;
+			if (bCleanup)
 			{
-				bCleanup = CountAttachedNiagaraComponents() == InitialNiagaraCount
-					&& CountAttachedAudioComponents() == InitialAudioCount
-					&& !IsAbilityActive(AfterimageData->AbilityTag)
-					&& SkillComponent->GetCurrentPhase() == EPRPlayerSkillPhase::Idle;
-				if (!bCleanup)
-				{
-					return FailAndStop(TEXT("Checkpoint-E left a presentation component or active Afterimage state behind."));
-				}
 				Advance(ECheckpointESmokePhase::Complete);
+			}
+			else if (Elapsed > 3.0)
+			{
+				return FailAndStop(FString::Printf(
+					TEXT("Checkpoint-E did not clean local presentation and Afterimage runtime state within 3 seconds. "
+						"Active=%s Phase=%d Niagara=%d/%d Audio=%d/%d."),
+					IsAbilityActive(AfterimageData->AbilityTag) ? TEXT("true") : TEXT("false"),
+					static_cast<int32>(SkillComponent->GetCurrentPhase()),
+					CountAttachedNiagaraComponents(), InitialNiagaraCount,
+					CountAttachedAudioComponents(), InitialAudioCount));
 			}
 			break;
 

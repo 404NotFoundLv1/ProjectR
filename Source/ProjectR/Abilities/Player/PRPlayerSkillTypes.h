@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/PRCombatMitigationInterface.h"
 #include "GameplayTagContainer.h"
 
 #include "PRPlayerSkillTypes.generated.h"
@@ -35,13 +36,6 @@ enum class EPRPlayerSkillPhase : uint8
 	Active,
 	Recovery,
 	Cancelled
-};
-
-UENUM()
-enum class EPRCombatMitigationResult : uint8
-{
-	NotHandled,
-	Blocked
 };
 
 UENUM()

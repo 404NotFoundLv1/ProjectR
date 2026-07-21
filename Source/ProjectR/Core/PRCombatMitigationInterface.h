@@ -9,7 +9,14 @@
 #include "PRCombatMitigationInterface.generated.h"
 
 struct FPRDamageRequest;
-enum class EPRCombatMitigationResult : uint8;
+
+/** Result values are intentionally stable: consumers may only add behaviour, never reinterpret them. */
+UENUM()
+enum class EPRCombatMitigationResult : uint8
+{
+	NotHandled = 0,
+	Blocked = 1
+};
 
 UINTERFACE(MinimalAPI, meta=(CannotImplementInterfaceInBlueprint))
 class UPRCombatMitigationInterface : public UInterface

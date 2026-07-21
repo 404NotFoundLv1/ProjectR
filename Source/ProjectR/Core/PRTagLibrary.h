@@ -52,6 +52,7 @@ public:
 	static const FGameplayTag& GetCombatResponseHealthDamagedTag();
 	static const FGameplayTag& GetCombatResponseShieldAbsorbedTag();
 	static const FGameplayTag& GetCombatResponseShieldBrokenTag();
+	static const FGameplayTag& GetCombatResponsePredictionBlockedTag();
 
 	static const FGameplayTag& GetStateAliveTag();
 	static const FGameplayTag& GetStateDeadTag();

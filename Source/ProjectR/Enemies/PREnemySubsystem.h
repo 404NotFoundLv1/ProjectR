@@ -29,7 +29,9 @@ public:
 		APREnemyCharacter*& OutEnemy);
 	bool GetEnemyRuntimeState(FGuid SpawnId, FPREnemyRuntimeState& OutState) const;
 	bool DespawnEnemy(FGuid SpawnId);
+	bool IsRegistryReady() const;
 	FPREnemyStateChangedNative& OnEnemyStateChanged();
+	FSimpleMulticastDelegate& OnRegistryReady();
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
@@ -58,5 +60,6 @@ private:
 	TMap<FGuid, TWeakObjectPtr<APREnemyCharacter>> SpawnedEnemies;
 	bool bRegistryReady = false;
 	FPREnemyStateChangedNative EnemyStateChanged;
+	FSimpleMulticastDelegate RegistryReady;
 	TSet<FName> PresentationWarningKeys;
 };

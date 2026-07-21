@@ -289,6 +289,24 @@ date: "2026-07-10"
 
 **验证**：TDD RED 覆盖 Player pawn 缺少 Combatant 适配和 Melee 140cm 攻击带不一致；对应 GREEN BuildEditor 与原生自动化通过。固定 `L_CombatGym` PIE 已验证 ASC/属性、Melee CombatEvent=15、死亡停止 StateTree 和 runtime clean；12 个 Package 经正常 Editor 重启逐项回读 Dirty=0。B 的后续合同补验确认共享 `GE_Enemy_DefaultAttributes` 的有效顺序为 `MaxHealth, Health, MaxShield, Shield, MaxEnergy, Energy, AttackPower, MoveSpeed, CritChance, Permission, Resonance`：这修正了 A 的 Current→Max 初始资产顺序，以保证 Ranged 80/80 等非默认 P0 值不被钳制；11 项 Override/SetByCaller、Instant、无 Execution/Cue/Granted 内容保持不变。该修正不改变本 ADR 的公开接口或依赖方向，已冻结为 C–E 的只读上游。C 验证 ShieldMinion 仅以同一窄 Mobility 接口表达 Heavy；Shield `AttributeChange` Delegate 幂等镜像 `State.Guarding`，而所有 Shield spill-over/ShieldBroken 仍只来自 CombatSubsystem。C 未改变 Combat、AttributeSet、玩家技能或 Tag/Config。E 最终以固定无参四敌混合 PIE 复验四项白名单原型、唯一运行时状态、Projectile/Shield/Elite Staggered、六技能接口兼容与 runtime clean；65/65 required 自动化门和用户 `PASS` 手感结论均已记录。E 的可读性表现保持非权威，不改变本 ADR 的 Combat、接口或数据依赖方向。
 
+# ADR-023 - Auditor Boss 复用 Enemy Runtime 与本地确定性审计
+
+**状态**：Accepted。
+
+**背景**：v0.2.2 需要一个完整可击败的审计者 Boss，同时不得替换 v0.2.1 Enemy 的 Actor 自持 GAS、Registry 白名单、CombatSubsystem、CombatEvent、数据攻击或 X/Z 运动合同，也不得提前引入 Director、Save、QTE、Companion 或正式 HUD。
+
+**选项**：为 Boss 新建独立 ASC/伤害/状态系统；在 `APREnemyCharacter` 中加入 Auditor 分支；保留 Enemy Runtime 并以窄可选选择接口和 Boss 组件增量扩展。
+
+**决策**：采用 `APRBossAuditor : APREnemyCharacter` 加 `UPRAuditorBossComponent`、`UPRBossSubsystem` 与 `APRBossPrototypeGameMode`。Boss 复用同一 Enemy ASC/AttributeSet、DefaultAttributes、AbilitySet、AttackData、ServerTriggered Ability、Brain、CombatSubsystem 和 Registry 白名单。`IPREnemyAttackSelectionInterface` 只允许已验证 AttackDefinitions 内的 Tag，未实现该接口的四个既有 Enemy 保持第一个 Attack fallback。`EPRCombatMitigationResult` 的定义移入 Core mitigation header，枚举数值 `NotHandled=0`、`Blocked=1` 不变，消除 Boss 对 PlayerSkill 类型的反向耦合。
+
+**后果**：P1 使用有界 CombatEvent 采样；P2 仅本地确定性选择 DistanceCorrection 或 RepetitionPenalty/Counter；P3 用 240 Shield 和正式 mitigation 阻断被预测技能，既有 CombatSubsystem 仍发布 DamageRejected。RuntimeState 和一次性 Completion 是只读值数据面；1 个反证碎片不持久化且不触发 Profile/Slot 删除。Boss Widget 仅消费该数据面，不能拥有权威业务。
+
+**影响版本/合同**：v0.2.2、v0.2.3、v0.2.4、v0.3.2、v0.4.0、v0.4.3、v0.7.0。v0.2.3 只读状态/事件；v0.2.4 只调 DataAsset；v0.4.0 不接管 P2；v0.4.3 才持久化 Account/Run；v0.7.0 扩展章节而不替换 Enemy/Combat 基础。
+
+**迁移/回滚**：只反向撤销准确 v0.2.2 C++、Config、文档和 Package 引用。删除任何已保存 Boss Package 前仍需逐项批准；禁止 hard reset、clean、Save All、Resave All、Fix Redirectors、用户 Save 操作或静默重命名 Tag/资产。
+
+**验证**：最终 BuildEditor PASS；Boss 3/3、Enemy 10/10、PlayerSkill 5/5、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12 PASS；MCP 精确保存 23 Create + 2 Modify、Dirty=0、重启回读和 BossGym 固定 PIE PASS；用户明确回复“人工验收PASS”；最终 AutomationReport `v022-final-report-20260721d` 为 33/33 required PASS。
+
 # ADR 模板
 
 ```text

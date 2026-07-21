@@ -318,6 +318,19 @@ date: "2026-07-10"
 - 用户在 Codex 已准备的固定五阶段 `L_CombatGym` 人工序列完成操作并明确回复 `PASS`。最终 `Saved/AutomationReports/v021e-final-report-2/v021e-final-None/result.json` 为 65/65 required PASS；`ProjectRAuthoringToolExtension` 为 optional `PASS`；PhysicalGamepad、NetworkPIEReplication、Package 与 GC 是 optional `NOT_RUN`，没有冒充通过。KnownIssues 未发现新的产品阻断，KI-019/KI-020 的既有隔离规则保持不变。
 - Future Compatibility Review PASS：v0.2.2 Boss 继续仅消费 Prototype/Mobility/ShieldBreakEffect，HUD/QTE 只读 RuntimeState/CombatEvent，v0.2.4 只调整 DataAsset/表现引用，Save 不保存 Enemy 或表现运行时 Handle、Target、Token、Timer、Delegate、Effect、Spec 或 UObject 引用。
 
+# 2026-07-21 - v0.2.2 审计者 Boss 纵切片（Completed）
+
+- 完成单一 v0.2.2 审计者 Boss 纵切片；未拆分子版本或创建中间功能提交。Auditor 增量复用 Enemy Actor 自持 ASC/AttributeSet、既有 DefaultAttributes、AbilitySet、ServerTriggered Attack、Enemy Brain、X/Z 移动、CombatSubsystem、CombatEvent 和 Registry 白名单 Spawn。
+- Registry 从四项冻结 Enemy Entry 扩展为第五项 `Enemy.Type.AuditorBoss`；四个既有原型的顺序、数据和无选择器时“第一个 Attack”行为不变。新增窄 `IPREnemyAttackSelectionInterface`，仅 Auditor 实现，且返回值必须属于当前 Prototype 的已验证 AttackDefinitions。
+- 实现 P1 最近 12 秒、最多 16 项本地玩家 `Skill.*` 样本；P2 确定性 `Rule.DistanceCorrection`/`Rule.RepetitionPenalty` 与一次 AuditorCounter；P3 确定性预测、240 Prediction Shield 和正式 mitigation Block。被预测技能只产生一次既有 DamageRejected 与 `Combat.Response.PredictionBlocked`，不改属性；其他技能继续通过 CombatSubsystem 破盾。
+- Boss 阶段单向且 Defeated/PrototypeRunCompleted 各仅一次；`CounterproofFragmentsAwarded=1` 只为运行时结果。没有 Save、Profile/Slot 删除、账号、Director、LLM、QTE、Companion、正式奖励或 v0.2.3 HUD 业务。
+- Unreal MCP 对 23 个新 Boss Package 与 Registry/BossGym 两个修改 Package 完成原位配置、warnings-as-errors 编译、精确保存、Dirty=0 和正常重启回读；`L_BossGym` 仅覆盖 `BP_BossPrototypeGameMode`。没有 Save All、Resave All、Fix Redirectors 或普通文件 I/O 修改 Package。
+- 最终 BuildEditor：`Saved/AutomationReports/v022-final-build-20260721d/BuildEditor-Development/result.json` PASS。原生：Boss 3/3、Enemy 10/10、PlayerSkill 5/5、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12 均 PASS。
+- 固定 BossGym PIE 验证 P1 采样、P2 Counter、P3 Prediction、一次 Completion、1 碎片与 runtime clean；PlayerSkill B/C/D/E 和四敌 PIE 整合回归均 PASS。最终 AutomationReport `Saved/AutomationReports/v022-final-report-20260721d/v022-final-None/result.json` 为 33/33 required PASS。
+- 用户完成 BossGym 手感 runbook 并明确回复“人工验收PASS”：确认 P1 前摇、P2 规则行为、P3 预测阻断/换技破盾、1 碎片结果、无删档、相机/输入/X/Z 平面和运行稳定。
+- `ProjectRAuthoringToolExtension` 为 optional PASS；`PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 为 optional NOT_RUN，未冒充 PASS。
+- Future Compatibility Review：v0.2.3 只读 RuntimeState/事件；v0.2.4 只调 DataAsset 数值与表现；v0.3.2 只订阅；v0.4.0 不接管 P2；v0.4.3 才持久化 Account/Run/删除；v0.7.0 仅扩展章节内容，不替换 ASC、Registry、Combat mitigation 或 RuntimeState。
+
 # 版本记录模板
 
 ```text

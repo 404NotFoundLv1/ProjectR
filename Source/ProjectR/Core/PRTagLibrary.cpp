@@ -223,6 +223,12 @@ const FGameplayTag& UPRTagLibrary::GetCombatResponseShieldBrokenTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetCombatResponsePredictionBlockedTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Combat.Response.PredictionBlocked"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetStateAliveTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("State.Alive"));

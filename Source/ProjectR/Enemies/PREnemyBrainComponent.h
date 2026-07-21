@@ -44,6 +44,7 @@ private:
 	TWeakObjectPtr<const UPREnemyAttackDataAsset> ActiveAttack;
 	FGuid AttackToken;
 	TSet<FGuid> ActiveProjectileTokens;
+	TSet<TWeakObjectPtr<APREnemyProjectile>> ActiveProjectiles;
 	FVector LockedAttackDirection = FVector::ZeroVector;
 	double AttackCooldownEndTime = 0.0;
 	FTimerHandle ReevaluateTimer;
@@ -60,6 +61,7 @@ private:
 	const UPREnemyAttackDataAsset* FindConfiguredAttack() const;
 	const UPREnemyAttackDataAsset* FindAttackForTarget(AActor* Target) const;
 	bool SpawnProjectile(const UPREnemyAttackDataAsset* Attack, AActor* Target);
+	void DestroyActiveProjectiles();
 	bool TryResolveProjectileToken(const FGuid& Token);
 	void ReleaseProjectileToken(const FGuid& Token);
 	bool IsOwnerStunned() const;

@@ -17,15 +17,6 @@
 namespace PREnemyRegistry
 {
 const FSoftObjectPath RegistryPath(TEXT("/Game/ProjectR/Enemies/DA_EnemyPrototypeRegistry.DA_EnemyPrototypeRegistry"));
-const FGameplayTag MeleeMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.MeleeMinion"));
-const FGameplayTag RangedMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.RangedMinion"));
-const FGameplayTag ShieldMinionTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.ShieldMinion"));
-const FGameplayTag EliteAuditGuardTag = FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard"));
-
-bool IsCheckpointDPrototypeTag(const FGameplayTag Tag)
-{
-	return Tag == MeleeMinionTag || Tag == RangedMinionTag || Tag == ShieldMinionTag || Tag == EliteAuditGuardTag;
-}
 }
 
 void UPREnemySubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -69,7 +60,8 @@ void UPREnemySubsystem::FinishRegistryLoad()
 	if (!Registry) return;
 	for (const FPREnemyPrototypeRegistryEntry& Entry : Registry->GetEntries())
 	{
-		if (!PREnemyRegistry::IsCheckpointDPrototypeTag(Entry.PrototypeTag) || Entry.Prototype.IsNull() || Entry.EnemyClass.IsNull()) continue;
+		// The data asset is the only whitelist. No class, path, or UObject enters SpawnEnemyPrototype from callers.
+		if (!Entry.PrototypeTag.IsValid() || Entry.Prototype.IsNull() || Entry.EnemyClass.IsNull()) continue;
 		UPREnemyPrototypeDataAsset* Prototype = Entry.Prototype.LoadSynchronous();
 		UClass* LoadedClass = Entry.EnemyClass.LoadSynchronous();
 		if (Prototype && LoadedClass && LoadedClass->IsChildOf(APREnemyCharacter::StaticClass()))
@@ -123,10 +115,15 @@ void UPREnemySubsystem::FinishRegistryLoad()
 			}
 		}
 	}
-	bRegistryReady = LoadedPrototypes.Contains(PREnemyRegistry::MeleeMinionTag)
-		&& LoadedPrototypes.Contains(PREnemyRegistry::RangedMinionTag)
-		&& LoadedPrototypes.Contains(PREnemyRegistry::ShieldMinionTag)
-		&& LoadedPrototypes.Contains(PREnemyRegistry::EliteAuditGuardTag);
+	// The fixed Registry asset is the complete whitelist. Runtime code must not
+	// duplicate a list of allowed Enemy tags: every declared entry must load
+	// successfully before callers can request one of those exact entries.
+	bRegistryReady = Registry->GetEntries().Num() > 0
+		&& LoadedPrototypes.Num() == Registry->GetEntries().Num();
+	if (bRegistryReady)
+	{
+		RegistryReady.Broadcast();
+	}
 }
 
 TSubclassOf<APREnemyProjectile> UPREnemySubsystem::GetPreloadedProjectileClass(
@@ -173,7 +170,7 @@ EPREnemySpawnStatus UPREnemySubsystem::SpawnEnemyPrototype(
 	if (!bRegistryReady) return EPREnemySpawnStatus::NotReady;
 	if (!IsValidSpawnTransform(SpawnTransform)) return EPREnemySpawnStatus::InvalidTransform;
 	const FLoadedPrototype* Entry = LoadedPrototypes.Find(PrototypeTag);
-	if (!Entry || !PREnemyRegistry::IsCheckpointDPrototypeTag(PrototypeTag)) return EPREnemySpawnStatus::UnknownPrototype;
+	if (!Entry) return EPREnemySpawnStatus::UnknownPrototype;
 	OutSpawnId = FGuid::NewGuid();
 	APREnemyCharacter* Enemy = GetWorld()->SpawnActorDeferred<APREnemyCharacter>(Entry->EnemyClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (!Enemy)
@@ -220,6 +217,11 @@ bool UPREnemySubsystem::DespawnEnemy(const FGuid SpawnId)
 	return true;
 }
 
+bool UPREnemySubsystem::IsRegistryReady() const
+{
+	return bRegistryReady;
+}
+
 void UPREnemySubsystem::BroadcastState(APREnemyCharacter* Enemy) const
 {
 	if (Enemy && Enemy->GetEnemyBrain())
@@ -231,4 +233,9 @@ void UPREnemySubsystem::BroadcastState(APREnemyCharacter* Enemy) const
 FPREnemyStateChangedNative& UPREnemySubsystem::OnEnemyStateChanged()
 {
 	return EnemyStateChanged;
+}
+
+FSimpleMulticastDelegate& UPREnemySubsystem::OnRegistryReady()
+{
+	return RegistryReady;
 }

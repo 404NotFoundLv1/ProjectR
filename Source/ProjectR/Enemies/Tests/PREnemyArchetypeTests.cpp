@@ -364,11 +364,13 @@ bool FPREnemyCheckpointDAssetManifestTest::RunTest(const FString& Parameters)
 
 	if (Registry)
 	{
-		TestEqual(TEXT("Registry has exactly four D entries"), Registry->GetEntries().Num(), 4);
-		if (Registry->GetEntries().Num() == 4)
+		TestEqual(TEXT("Registry preserves the four baseline entries plus the Auditor fifth entry"), Registry->GetEntries().Num(), 5);
+		if (Registry->GetEntries().Num() == 5)
 		{
 			TestEqual(TEXT("Elite entry is appended fourth"), Registry->GetEntries()[3].PrototypeTag,
 				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.EliteAuditGuard")));
+			TestEqual(TEXT("Auditor entry is appended fifth"), Registry->GetEntries()[4].PrototypeTag,
+				FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.AuditorBoss")));
 		}
 	}
 	if (Elite)

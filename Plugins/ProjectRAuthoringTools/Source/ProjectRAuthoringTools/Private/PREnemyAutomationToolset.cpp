@@ -709,19 +709,28 @@ private:
 			return false;
 		}
 		int32 ActiveProjectileCount = 0;
-		APREnemyProjectile* ActiveProjectile = nullptr;
 		for (TActorIterator<APREnemyProjectile> ProjectileIt(PlayWorld); ProjectileIt; ++ProjectileIt)
 		{
 			++ActiveProjectileCount;
-			ActiveProjectile = *ProjectileIt;
 		}
 		MaxObservedProjectileCount = FMath::Max(MaxObservedProjectileCount, ActiveProjectileCount);
-		if (bProxyShotRequested && !bProxyDecoySpawned && ActiveProjectile)
+		if (bProxyShotRequested && !bProxyDecoySpawned)
 		{
 			FActorSpawnParameters SpawnParameters;
 			SpawnParameters.Owner = PlayerPawn;
-			FVector ProxyLocation = ActiveProjectile->GetActorLocation() + ActiveProjectile->GetActorForwardVector().GetSafeNormal() * 60.0f;
-			ProxyLocation.Y = ActiveProjectile->GetActorLocation().Y;
+			// Place the fixed proxy before the second projectile is active.  Waiting
+			// to observe that projectile first races its movement tick and can let it
+			// resolve against the player before the proxy exists.
+			FVector ToPlayer = PlayerPawn->GetActorLocation() - Enemy->GetActorLocation();
+			ToPlayer.Y = 0.0f;
+			ToPlayer = ToPlayer.GetSafeNormal();
+			if (ToPlayer.IsNearlyZero())
+			{
+				FinishError(TEXT("Fixed B smoke could not derive the fixed RangedMinion-to-player proxy direction."));
+				return false;
+			}
+			FVector ProxyLocation = Enemy->GetActorLocation() + ToPlayer * 200.0f;
+			ProxyLocation.Y = Enemy->GetActorLocation().Y;
 			APRSkillDecoyActor* Decoy = PlayWorld->SpawnActor<APRSkillDecoyActor>(
 				APRSkillDecoyActor::StaticClass(), ProxyLocation, FRotator::ZeroRotator, SpawnParameters);
 			if (!Decoy)

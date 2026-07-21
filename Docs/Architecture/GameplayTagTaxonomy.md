@@ -84,3 +84,9 @@ date: "2026-07-10"
 - 显式标签总数由 94 增至 118；根命名空间由 12 增至 13。新增根 `Enemy`，既有名称、顺序和 DevComment 不变，无 Redirect。
 - 一次冻结 v0.2.1 的 24 个稳定 Tag：四个 `Enemy.Type.*`、四个 `Enemy.Attack.*`、四个 `Cooldown.Enemy.*`、11 个 `Enemy.Data.*` SetByCaller 键和 `Enemy.AI.Event.Reevaluate`。A 仅实际消费 MeleeMinion/MeleeStrike；其余原型身份、攻击和冷却 Tag 保持 DataAsset 驱动，以避免 B–D 重新打开 Tag 合同。
 - `UPRTagLibrary` 仅为 11 个 Enemy Data 键与 Reevaluate 事件增加 checked getter，总计 59。原型、攻击及冷却 Tag 没有任意字符串公共查询器，也不增加临时测试、Boss、HUD、QTE、Reward 或 Faction Tag。
+
+# v0.2.2 Auditor Boss 增量
+
+- 显式 Tag 从 118 增至 126，根命名空间保持 13，`UPRTagLibrary` checked getter 从 59 增至 60。既有 118 项名称、顺序和 DevComment 均不变，无 Redirect。
+- 新增且仅新增八项：`Enemy.Type.AuditorBoss`、`Enemy.Attack.AuditorSweep`、`Enemy.Attack.AuditorLockShot`、`Enemy.Attack.AuditorCounter`、`Cooldown.Enemy.AuditorSweep`、`Cooldown.Enemy.AuditorLockShot`、`Cooldown.Enemy.AuditorCounter`、`Combat.Response.PredictionBlocked`。
+- `Enemy.*` 与 `Cooldown.Enemy.*` 继续由 Boss Prototype/Attack DataAsset 驱动，不增加 getter；仅 `Combat.Response.PredictionBlocked` 获得 checked getter，因为它是 Combat response 的稳定消费者事实。复用 `Rule.DistanceCorrection` 与 `Rule.RepetitionPenalty`，不创建 `Boss.Phase.*`、QTE、Director、Account/Delete、Reward 或 Inventory 占位 Tag。

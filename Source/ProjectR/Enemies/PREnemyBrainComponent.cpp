@@ -13,6 +13,7 @@
 #include "Enemies/PREnemyAIController.h"
 #include "Enemies/PREnemyAttackDataAsset.h"
 #include "Enemies/PREnemyCharacter.h"
+#include "Enemies/PREnemyAttackSelectionInterface.h"
 #include "Enemies/PREnemyPlaneMovementComponent.h"
 #include "Enemies/PREnemyProjectile.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
@@ -70,6 +71,7 @@ void UPREnemyBrainComponent::StopBrain()
 	CurrentTarget.Reset();
 	ActiveAttack.Reset();
 	AttackToken.Invalidate();
+	DestroyActiveProjectiles();
 	ActiveProjectileTokens.Empty();
 	LockedAttackDirection = FVector::ZeroVector;
 	AttackCooldownEndTime = 0.0;
@@ -160,10 +162,28 @@ void UPREnemyBrainComponent::UpdateRangeMovement()
 		return;
 	}
 
+	float PreferredMinimumRange = Prototype->Perception.PreferredMinRange;
+	float PreferredMaximumRange = Prototype->Perception.PreferredMaxRange;
+	TInlineComponentArray<UActorComponent*> Components(EnemyCharacter);
+	for (UActorComponent* Component : Components)
+	{
+		if (IPREnemyAttackSelectionInterface* Selector = Cast<IPREnemyAttackSelectionInterface>(Component);
+			Selector && Selector->GetPreferredRangeOverride(Target, PreferredMinimumRange, PreferredMaximumRange))
+		{
+			break;
+		}
+	}
+	if (!FMath::IsFinite(PreferredMinimumRange) || !FMath::IsFinite(PreferredMaximumRange)
+		|| PreferredMinimumRange < 0.0f || PreferredMaximumRange < PreferredMinimumRange)
+	{
+		UE_LOG(LogProjectR, Error, TEXT("Enemy attack selection supplied an invalid preferred range override."));
+		return;
+	}
+
 	const float DeltaX = Target->GetActorLocation().X - EnemyCharacter->GetActorLocation().X;
 	const float Distance = FMath::Abs(DeltaX);
 	const float Direction = FMath::Sign(DeltaX);
-	if (Distance > Prototype->Perception.PreferredMaxRange)
+	if (Distance > PreferredMaximumRange)
 	{
 		if (!Movement->IsPlatformSafeInDirection(Direction, Prototype->Perception.EdgeProbeForward, Prototype->Perception.EdgeProbeDepth))
 		{
@@ -175,7 +195,7 @@ void UPREnemyBrainComponent::UpdateRangeMovement()
 		Movement->SetDesiredDirectionX(Direction);
 		return;
 	}
-	if (Distance < Prototype->Perception.PreferredMinRange)
+	if (Distance < PreferredMinimumRange)
 	{
 		SetBrainState(EPREnemyBrainState::Retreat);
 		if (!Movement->IsPlatformSafeInDirection(-Direction, Prototype->Perception.EdgeProbeForward, Prototype->Perception.EdgeProbeDepth))
@@ -205,7 +225,19 @@ bool UPREnemyBrainComponent::TryActivateCurrentAttack()
 		return false;
 	}
 	FGameplayTagContainer FailureTags;
-	return EnemyCharacter->GetProjectRAbilitySystemComponent()->TryActivateAbilityByAbilityTag(Attack->AttackTag, FailureTags);
+	const bool bActivated = EnemyCharacter->GetProjectRAbilitySystemComponent()->TryActivateAbilityByAbilityTag(Attack->AttackTag, FailureTags);
+	if (bActivated)
+	{
+		TInlineComponentArray<UActorComponent*> Components(EnemyCharacter);
+		for (UActorComponent* Component : Components)
+		{
+			if (IPREnemyAttackSelectionInterface* Selector = Cast<IPREnemyAttackSelectionInterface>(Component))
+			{
+				Selector->NotifyEnemyAttackActivated(Attack->AttackTag);
+			}
+		}
+	}
+	return bActivated;
 }
 
 bool UPREnemyBrainComponent::CanBeginAttack(const UPREnemyAttackDataAsset* Attack, AActor* Target) const
@@ -277,6 +309,7 @@ void UPREnemyBrainComponent::CancelAttack()
 		World->GetTimerManager().ClearTimer(AttackTimer);
 	}
 	ActiveAttack.Reset();
+	DestroyActiveProjectiles();
 	AttackToken.Invalidate();
 	LockedAttackDirection = FVector::ZeroVector;
 	AttackCooldownEndTime = 0.0;
@@ -290,6 +323,7 @@ void UPREnemyBrainComponent::EnterStunnedState()
 		return;
 	}
 	CancelAttack();
+	DestroyActiveProjectiles();
 	ActiveProjectileTokens.Empty();
 	if (APREnemyCharacter* EnemyCharacter = Enemy.Get())
 	{
@@ -527,6 +561,22 @@ const UPREnemyAttackDataAsset* UPREnemyBrainComponent::FindConfiguredAttack() co
 	{
 		return nullptr;
 	}
+	FGameplayTag SelectedAttackTag;
+	TInlineComponentArray<UActorComponent*> Components(EnemyCharacter);
+	for (UActorComponent* Component : Components)
+	{
+		if (IPREnemyAttackSelectionInterface* Selector = Cast<IPREnemyAttackSelectionInterface>(Component);
+			Selector && Selector->SelectEnemyAttack(CurrentTarget.Get(), SelectedAttackTag))
+		{
+			for (const TObjectPtr<UPREnemyAttackDataAsset>& Attack : EnemyCharacter->GetAttackDefinitions())
+			{
+				if (Attack && Attack->AttackTag == SelectedAttackTag)
+				{
+					return Attack;
+				}
+			}
+		}
+	}
 	for (const TObjectPtr<UPREnemyAttackDataAsset>& Attack : EnemyCharacter->GetAttackDefinitions())
 	{
 		if (Attack)
@@ -543,6 +593,22 @@ const UPREnemyAttackDataAsset* UPREnemyBrainComponent::FindAttackForTarget(AActo
 	if (!EnemyCharacter || !Target)
 	{
 		return nullptr;
+	}
+	FGameplayTag SelectedAttackTag;
+	TInlineComponentArray<UActorComponent*> Components(EnemyCharacter);
+	for (UActorComponent* Component : Components)
+	{
+		if (IPREnemyAttackSelectionInterface* Selector = Cast<IPREnemyAttackSelectionInterface>(Component);
+			Selector && Selector->SelectEnemyAttack(Target, SelectedAttackTag))
+		{
+			for (const TObjectPtr<UPREnemyAttackDataAsset>& Attack : EnemyCharacter->GetAttackDefinitions())
+			{
+				if (Attack && Attack->AttackTag == SelectedAttackTag)
+				{
+					return Attack;
+				}
+			}
+		}
 	}
 	const float Distance = FMath::Abs(Target->GetActorLocation().X - EnemyCharacter->GetActorLocation().X);
 	for (const TObjectPtr<UPREnemyAttackDataAsset>& Attack : EnemyCharacter->GetAttackDefinitions())
@@ -592,11 +658,31 @@ bool UPREnemyBrainComponent::SpawnProjectile(const UPREnemyAttackDataAsset* Atta
 		ActiveProjectileTokens.Remove(AttackToken);
 		return false;
 	}
+	ActiveProjectiles.Add(Projectile);
 	return true;
+}
+
+void UPREnemyBrainComponent::DestroyActiveProjectiles()
+{
+	for (const TWeakObjectPtr<APREnemyProjectile>& Projectile : ActiveProjectiles)
+	{
+		if (APREnemyProjectile* ValidProjectile = Projectile.Get())
+		{
+			ValidProjectile->Destroy();
+		}
+	}
+	ActiveProjectiles.Empty();
 }
 
 bool UPREnemyBrainComponent::TryResolveProjectileToken(const FGuid& Token)
 {
+	for (auto It = ActiveProjectiles.CreateIterator(); It; ++It)
+	{
+		if (!It->IsValid())
+		{
+			It.RemoveCurrent();
+		}
+	}
 	return Token.IsValid() && ActiveProjectileTokens.Remove(Token) > 0;
 }
 
@@ -605,6 +691,13 @@ void UPREnemyBrainComponent::ReleaseProjectileToken(const FGuid& Token)
 	if (Token.IsValid())
 	{
 		ActiveProjectileTokens.Remove(Token);
+	}
+	for (auto It = ActiveProjectiles.CreateIterator(); It; ++It)
+	{
+		if (!It->IsValid())
+		{
+			It.RemoveCurrent();
+		}
 	}
 }
 
