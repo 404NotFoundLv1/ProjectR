@@ -10,6 +10,7 @@
 #include "PREnemyAuthoringToolset.h"
 #include "PREnemyAutomationToolset.h"
 #include "PRBossAuthoringToolset.h"
+#include "PRCombatHUDAuthoringToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -26,10 +27,12 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPREnemyAuthoringToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPREnemyAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRBossAuthoringToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRCombatHUDAuthoringToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
 	{
+		UToolsetRegistry::UnregisterToolsetClass(UPRCombatHUDAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRBossAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPREnemyAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPREnemyAuthoringToolset::StaticClass());

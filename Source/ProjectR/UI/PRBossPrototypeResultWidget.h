@@ -28,5 +28,5 @@ private:
 	FPRPrototypeRunResult Result;
 	FDelegateHandle CompletionHandle;
 
-	UPROPERTY(Transient) TObjectPtr<class UTextBlock> ResultText;
+	UPROPERTY(Transient, meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> PrototypeResultText;
 };

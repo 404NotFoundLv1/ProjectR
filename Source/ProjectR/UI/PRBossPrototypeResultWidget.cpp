@@ -37,18 +37,26 @@ void UPRBossPrototypeResultWidget::HandlePrototypeRunCompleted(const FPRPrototyp
 
 void UPRBossPrototypeResultWidget::EnsurePresentation()
 {
-	if (!WidgetTree || WidgetTree->RootWidget)
+	if (!WidgetTree)
 	{
 		return;
 	}
-	ResultText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("PrototypeResultText"));
-	WidgetTree->RootWidget = ResultText;
+	if (!PrototypeResultText)
+	{
+		PrototypeResultText = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("PrototypeResultText")));
+	}
+	if (WidgetTree->RootWidget)
+	{
+		return;
+	}
+	PrototypeResultText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("PrototypeResultText"));
+	WidgetTree->RootWidget = PrototypeResultText;
 }
 
 void UPRBossPrototypeResultWidget::RefreshPresentation()
 {
-	if (ResultText)
+	if (PrototypeResultText)
 	{
-		ResultText->SetText(FText::FromString(FString::Printf(TEXT("Prototype Complete: %d Counterproof Fragment"), Result.CounterproofFragmentsAwarded)));
+		PrototypeResultText->SetText(FText::FromString(FString::Printf(TEXT("Prototype Complete: %d Counterproof Fragment"), Result.CounterproofFragmentsAwarded)));
 	}
 }

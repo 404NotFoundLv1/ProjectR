@@ -332,6 +332,15 @@ date: "2026-07-10"
 - Future Compatibility Review：v0.2.3 只读 RuntimeState/事件；v0.2.4 只调 DataAsset 数值与表现；v0.3.2 只订阅；v0.4.0 不接管 P2；v0.4.3 才持久化 Account/Run/删除；v0.7.0 仅扩展章节内容，不替换 ASC、Registry、Combat mitigation 或 RuntimeState。
 - 正式功能实施提交为 `266e7f288623ebf1fbd7f853ad944ee4999661da`（`v0.2.2 Add Auditor boss vertical slice`），且该提交已同时位于 `main` 与 `origin/main`。公共 v0.2.2 已完成；实施未拆分子版本或创建中间功能提交。
 
+# 2026-07-22 - v0.2.3 Combat HUD 与战斗反馈（Implementation verified; version remains In Progress）
+
+- 已建立本地、只读、事件驱动的 `APRCombatHUD` 所有权链：两个正式 GameMode 的 `HUDClass` 均指向 `BP_CombatHUD`，根 `WBP_CombatHUD` 组合资源、六格技能栏、战斗反馈和既有 Boss Health/Result。UI 只消费 Attribute、Ability Runtime/Lifecycle、CombatEvent、Boss Runtime/Completion；不会影响伤害、状态、技能、敌人、Save 或地图。
+- 精确创建并保存六个 HUD Package：`BP_CombatHUD`、`WBP_CombatHUD`、`WBP_PlayerResources`、`WBP_SkillBar`、`WBP_SkillSlot`、`WBP_CombatFeedback`；仅保存两个 GameMode 的 `HUDClass` 修改。`L_CombatGym` 与 `L_BossGym` 只加载/PIE，未保存。
+- 用户单独批准后，在相同路径将错误类型的 `WBP_BossHealth` 与 `WBP_BossPrototypeResult` 重建为正确父类的 WidgetBlueprint，并补齐 native 可选绑定；不改变 Boss 业务、运行时数据、玩法规则或保存语义。
+- 固定无参数 editor-only `PRCombatHUDAuthoringToolset` 仅覆盖八个冻结 UI Package、精确配置/修复和已启动 PIE 的只读检查；它不接受任意类、路径、Tag、数值或代码，也不保存地图。
+- TDD RED 保留 Boss Widget 绑定与稳定 Skill 显示名的缺口证据；GREEN 后 BuildEditor、`ProjectR.UI.CombatHUD` 6/6，以及 Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 10/10、Boss 3/3 皆实际 PASS。Blueprint warnings-as-errors、Editor 重启回读、CombatGym/BossGym 固定 PIE 与运行时/Package Dirty=0 皆通过。
+- 最终报告为 `Saved/AutomationReports/v023-final-report-20260722/v023-final-None/result.json`，所有 required check PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 如实保持 optional `NOT_RUN`。用户完成 CombatGym 与 BossGym 手感/可读性验收并明确回复 PASS。公共 v0.2.3、`CURRENT_VERSION` 与 VersionIndex 仍保持 In Progress，等待独立、获授权的收尾转换。
+
 # 版本记录模板
 
 ```text

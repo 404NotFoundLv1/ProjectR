@@ -39,6 +39,8 @@ public class ProjectRAuthoringTools : ModuleRules
 			"PropertyAccessEditor",
 			"StructUtilsEditor",
 			"UnrealEd"
+			,"UMG"
+			,"UMGEditor"
 		});
 	}
 }

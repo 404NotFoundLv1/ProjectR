@@ -307,6 +307,24 @@ date: "2026-07-10"
 
 **验证**：最终 BuildEditor PASS；Boss 3/3、Enemy 10/10、PlayerSkill 5/5、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12 PASS；MCP 精确保存 23 Create + 2 Modify、Dirty=0、重启回读和 BossGym 固定 PIE PASS；用户明确回复“人工验收PASS”；最终 AutomationReport `v022-final-report-20260721d` 为 33/33 required PASS。
 
+# ADR-024 - Event-driven combat HUD as a read-only local consumer
+
+**状态**：Accepted
+
+**背景**：v0.2.3 需要为玩家资源、六项技能状态、战斗反馈和 Auditor Boss 信息提供正式 HUD，但不能修改 Combat、AttributeSet、Ability、Enemy/Boss 玩法、Save 或地图，也不能让 UI 成为第二套状态或伤害系统。
+
+**选项**：在每个 GameplayAbility 中分别创建 Widget；将 HUD 逻辑放入 GameMode/Widget Blueprint；或者由本地 HUD Actor 用稳定运行时状态与事件驱动一棵原生 Widget 树。
+
+**决策**：采用 `BP_NetworkRunGameMode`/`BP_BossPrototypeGameMode` 的 `HUDClass -> BP_CombatHUD -> APRCombatHUD -> WBP_CombatHUD` 链。`APRCombatHUD` 仅为本地 `APRPlayerController` 创建一次原生根 Widget；资源、技能栏、事件反馈和 Boss 区只读取 Attribute、Ability Runtime/Lifecycle、CombatEvent 与 Boss Runtime/Completion。反馈按 EventId 去重，在有限时间窗内合并，并由 Widget 自有 Timer 清理。Boss Widget 仅显示现有稳定数据；`ActiveRuleId` 明确为 Auditor local rule，不是 Director rule。
+
+**后果**：UI 不调用伤害、Effect、Ability、Spawn、Save、Reward、Director 或任何权威 API；Pawn replacement、Widget destruct、EndPlay、World cleanup 必须解除 Delegate 和 Timer。运行时 HUD、反馈条目、Handle、Target 与 UObject 引用都不持久化。经用户单独批准，原先错误类型的两个 Boss Widget Package 在原路径重建为正确的 WidgetBlueprint；该修复不改变 Boss 玩法或数据合同。
+
+**影响版本/合同**：v0.2.3 建立只读 UI 面；v0.2.4 只能调既有数据和表现；v0.3.2 QTE、v0.4.0 Director、v0.4.3 Save 只能消费稳定事件/状态，不能让运行时 UI 成为反向依赖。
+
+**迁移/回滚**：反向撤销本版本准确 C++、editor-only Toolset、GameMode `HUDClass` 引用和 HUD Package。已保存 Package 的删除需逐项明确批准；禁止 hard reset、clean、Save All、Resave All、Fix Redirectors 或静默重命名。
+
+**验证**：BuildEditor、`ProjectR.UI.CombatHUD` 6/6、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 10/10、Boss 3/3，warnings-as-errors 编译、重启回读、CombatGym/BossGym 固定 PIE 与 Dirty=0 均通过。最终报告为 `Saved/AutomationReports/v023-final-report-20260722/v023-final-None/result.json`；用户完成两张地图的 HUD 可读性 Runbook 并明确回复 PASS。
+
 # ADR 模板
 
 ```text

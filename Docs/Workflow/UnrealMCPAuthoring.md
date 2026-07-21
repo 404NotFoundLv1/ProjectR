@@ -156,6 +156,13 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 - 该 Toolset 只服务 E 的 6 个 `/Game/ProjectR/Audio/Skills/SFX_*` Manifest 路径；不进入 Runtime/Shipping、不提供任意资产作者能力。因 Runtime 播放使用现有 `UPRPlayerSkillComponent` 的异步 DataAsset 软引用缓存，Toolset 不参与玩法、输入、Ability、Combat、Cost/Cooldown 或保存。
 - 原 B/C/D 固定 PIE 公共入口不改语义。六 Spec 的最终 E 环境通过新增固定无参 `RunPIEPlayerSkillCheckpointESmoke()`、`RunPIEPlayerSkillCheckpointECRegressionSmoke()`、`RunPIEPlayerSkillCheckpointEDRegressionSmoke()` 验收；入口仅使用 `L_CombatGym`、正式 AbilitySet、固定输入和 transient 代理，清理所有运行时对象且不保存 Package。C/D 兼容入口仅解决最终六 Spec/粗帧的观察边界，不能替代或改变各检查点的冻结入口。
 
+# v0.2.3 Combat HUD 资产与 PIE 检查
+
+- `PRCombatHUDAuthoringToolset` 是经能力审计后新增的 editor-only 固定工具。它只允许操作 v0.2.3 冻结的六个 Combat HUD Package、两个既有 Boss Widget 路径和两个已列出的 GameMode `HUDClass`；不接受类、路径、Tag、数值、Blueprint 文本或任意代码参数，不提供删除、移动、重命名、Save All、Resave All 或 Fix Redirectors。
+- 对任何现有目标先回读类、父类、WidgetTree、CDO、引用、可编辑性和 Dirty 状态；精确编译后只保存实际非空的 Manifest Package。`L_CombatGym`、`L_BossGym` 只加载、运行和回读，绝不保存。若编译产生 Manifest 外 Dirty，停止并报告，不以批量保存清理。
+- `RepairCombatHUDWidgetTrees()` 是无参数、固定路径的补救入口：只修复已批准的七个 v0.2.3 WidgetTree，且仅在事先确认目标属于本任务时使用。两个 Boss Widget 的原位重建是用户明确批准的例外；调用后必须再次回读父类、原生绑定、树与引用，并将其列入精确保存清单。
+- `InspectActiveCombatHUDPIE()` 仅在已启动 PIE 中只读检查 Local PlayerController 的 `APRCombatHUD` 与 PlayerResources、SkillBar、BossHealth、BossResult、Feedback 五个子区，不创建测试 Actor、不接受输入、不保存 Package，也不能替代用户的主观可读性判断。
+
 # v0.2.1-E Enemy 整合与人工手感入口
 
 - 官方 MCP 无法从活跃 PIE 安全、固定地调用 Enemy 白名单 Spawn、四敌生命周期和原生 Combat 观察接口；经批准的 `PREnemyAutomationToolset::RunPIEEnemyIntegrationSmoke()` 因此只执行固定无参四原型整合序列。它只在 Authority `L_CombatGym` PlayWorld 使用正式 Registry 的四个 PrototypeTag 和正式 Spawn API，不接受类、路径、Tag、数值、Transform 或代码参数，不保存地图或 Package，并在成功、失败、超时和 PIE Stop 时清理 transient Actor、Timer、Delegate、Token、Spec、Effect、Tag 与 Projectile。

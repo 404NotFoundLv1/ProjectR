@@ -28,9 +28,9 @@ private:
 	FPRBossRuntimeState RuntimeState;
 	FDelegateHandle StateChangedHandle;
 
-	UPROPERTY(Transient) TObjectPtr<class UTextBlock> HealthShieldText;
-	UPROPERTY(Transient) TObjectPtr<class UTextBlock> PhaseText;
-	UPROPERTY(Transient) TObjectPtr<class UTextBlock> RuleText;
-	UPROPERTY(Transient) TObjectPtr<class UTextBlock> PredictionText;
-	UPROPERTY(Transient) TObjectPtr<class UTextBlock> AttackText;
+	UPROPERTY(Transient, meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> HealthShieldText;
+	UPROPERTY(Transient, meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> PhaseText;
+	UPROPERTY(Transient, meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> RuleText;
+	UPROPERTY(Transient, meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> PredictionText;
+	UPROPERTY(Transient, meta=(BindWidgetOptional)) TObjectPtr<class UTextBlock> AttackText;
 };
