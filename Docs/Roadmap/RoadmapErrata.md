@@ -60,6 +60,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-018 | v0.2.1 同时要求敌人死亡接入奖励/统计，并让精英硬直直接触发 QTE，但 Reward/房间结算、统计消费者和 QTE 尚未属于该版本 | v0.2.1 只通过既有 CombatEvent 发布伤害、死亡、ShieldBreak 与稳定 Enemy 身份事实；不创建 Reward、统计或 QTE 消费者。奖励/房间结算留给 v0.4.2，QTE 消费留给 v0.3.2；未来消费者只订阅事件与稳定 ID，不反向控制 Enemy 私有实现 | 防止敌人基础版本预建未冻结的奖励、统计和 QTE 业务，同时保留后续版本可验证的统一事件面 | Resolved by v0.2.1 task contract |
 
+# v0.2.2 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-019 | v5 的审计者原型把 P1–P3、完整 HUD、反证碎片和正式通关删号混在同一 Boss 版本，且未区分 Director、QTE、Companion、Save 与章节所有权 | v0.2.2 只交付本地确定性的 Auditor Boss 纵切片：击败后一次性发布 `OnPrototypeRunCompleted` 和运行时 `CounterproofFragmentsAwarded=1`。不写入 Save/背包/货币/账号；正式 Account/Run/Graveyard 删除延后至 v0.4.3。P2 仅消费既有 `Rule.DistanceCorrection`/`Rule.RepetitionPenalty` 作为 Boss 内部确定性 ID，不创建 DirectorSubsystem、动态规则或 LLM。Boss UI 仅显示本战必需状态，不替代 v0.2.3 HUD；不实现 v0.3.1 Companion、v0.3.2 QTE 或 v0.7.0 审计者完整章节 | 保持 Boss 可演示，同时避免把未冻结的持久化、账号、Director、队友、QTE、章节与 HUD 业务伪装为纵切片能力；E-019 细化既有 E-005 的删号延后原则 | Active for v0.2.2 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。
