@@ -66,6 +66,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-019 | v5 的审计者原型把 P1–P3、完整 HUD、反证碎片和正式通关删号混在同一 Boss 版本，且未区分 Director、QTE、Companion、Save 与章节所有权 | v0.2.2 只交付本地确定性的 Auditor Boss 纵切片：击败后一次性发布 `OnPrototypeRunCompleted` 和运行时 `CounterproofFragmentsAwarded=1`。不写入 Save/背包/货币/账号；正式 Account/Run/Graveyard 删除延后至 v0.4.3。P2 仅消费既有 `Rule.DistanceCorrection`/`Rule.RepetitionPenalty` 作为 Boss 内部确定性 ID，不创建 DirectorSubsystem、动态规则或 LLM。Boss UI 仅显示本战必需状态，不替代 v0.2.3 HUD；不实现 v0.3.1 Companion、v0.3.2 QTE 或 v0.7.0 审计者完整章节 | 保持 Boss 可演示，同时避免把未冻结的持久化、账号、Director、队友、QTE、章节与 HUD 业务伪装为纵切片能力；E-019 细化既有 E-005 的删号延后原则 | Active for v0.2.2 |
 
+# v0.2.3 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-020 | v5 要求 HUD 显示“当前法令”“当前 AI”和 Boss 大招预警，并把手工 `WBP_HUD` 制作与 HUD 首轮混在同一版本；但 Director 属于 v0.4.0，Companion 数据/战斗 AI 属于 v0.3.0/v0.3.1，v0.2.2 没有独立 Boss Ultimate 合同 | v0.2.3 仅建立只读、事件驱动的战斗 HUD：Boss 战可显示既有 `FPRBossRuntimeState.ActiveRuleId`，并固定标注为“审计者本地规则”；显示已有 Attack Windup、PredictionShield 和 `PredictedAbilityTag`，不伪造 Director 法令、Companion/AI 状态或 Boss Ultimate。所有 WBP 由 Codex 通过 Unreal MCP/UMGToolSet 创建、配置、编译和精确保存。本版本为单一完整路线版本，不拆分 A–E、子版本或中间功能提交 | 避免把未来系统的权威状态、业务数据或人工机械操作前置到 HUD；同时让当前 Boss 与战斗事实获得可读、可验证的正式消费者 | Active for v0.2.3 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

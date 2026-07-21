@@ -330,6 +330,7 @@ date: "2026-07-10"
 - 用户完成 BossGym 手感 runbook 并明确回复“人工验收PASS”：确认 P1 前摇、P2 规则行为、P3 预测阻断/换技破盾、1 碎片结果、无删档、相机/输入/X/Z 平面和运行稳定。
 - `ProjectRAuthoringToolExtension` 为 optional PASS；`PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 为 optional NOT_RUN，未冒充 PASS。
 - Future Compatibility Review：v0.2.3 只读 RuntimeState/事件；v0.2.4 只调 DataAsset 数值与表现；v0.3.2 只订阅；v0.4.0 不接管 P2；v0.4.3 才持久化 Account/Run/删除；v0.7.0 仅扩展章节内容，不替换 ASC、Registry、Combat mitigation 或 RuntimeState。
+- 正式功能实施提交为 `266e7f288623ebf1fbd7f853ad944ee4999661da`（`v0.2.2 Add Auditor boss vertical slice`），且该提交已同时位于 `main` 与 `origin/main`。公共 v0.2.2 已完成；实施未拆分子版本或创建中间功能提交。
 
 # 版本记录模板
 
