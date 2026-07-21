@@ -72,6 +72,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-020 | v5 要求 HUD 显示“当前法令”“当前 AI”和 Boss 大招预警，并把手工 `WBP_HUD` 制作与 HUD 首轮混在同一版本；但 Director 属于 v0.4.0，Companion 数据/战斗 AI 属于 v0.3.0/v0.3.1，v0.2.2 没有独立 Boss Ultimate 合同 | v0.2.3 仅建立只读、事件驱动的战斗 HUD：Boss 战可显示既有 `FPRBossRuntimeState.ActiveRuleId`，并固定标注为“审计者本地规则”；显示已有 Attack Windup、PredictionShield 和 `PredictedAbilityTag`，不伪造 Director 法令、Companion/AI 状态或 Boss Ultimate。所有 WBP 由 Codex 通过 Unreal MCP/UMGToolSet 创建、配置、编译和精确保存。本版本为单一完整路线版本，不拆分 A–E、子版本或中间功能提交 | 避免把未来系统的权威状态、业务数据或人工机械操作前置到 HUD；同时让当前 Boss 与战斗事实获得可读、可验证的正式消费者 | Active for v0.2.3 |
 
+# v0.2.4 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-021 | v5 建议建立 `Content/ProjectR/Data/Balance/*`，并以普通房间时长和敌人硬直作为首轮平衡目标；但当前数值已分散在正式 DataAsset、GameplayEffect 与 Character CDO，正式 Room/Encounter 属于 v0.4.2，Poise/Stagger/HitStop 系统尚未冻结 | v0.2.4 只在既有权威资产原位调整数值，不创建第二套运行时 Balance DataAsset 或 Subsystem。`Docs/BalanceNotes.md` 只记录基线、最终值、理由和证据，不是运行时权威。普通战斗 60–120 秒目标固定解释为 `L_CombatGym` 的白名单 2 Melee + 1 Ranged + 1 Shield 遭遇；不创建 Room、Encounter 或 Roguelike 系统。敌人硬直只允许调整既有命中反应或已存在的 Stunned 数据；不新建 Poise、Stagger、HitStop 或韧性系统。所有机械资产修改由 Codex 通过 Unreal MCP 完成。本版本为单一完整版本，不拆分子版本或中间功能提交 | 防止多重数值权威、提前引入未冻结玩法系统或将机械 Editor 工作转给用户，同时保留可追溯、可回滚的首轮平衡基线 | Active for v0.2.4 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。
