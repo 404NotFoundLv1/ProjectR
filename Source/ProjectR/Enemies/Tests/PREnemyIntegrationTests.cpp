@@ -14,6 +14,7 @@
 #include "Combat/PRCombatTypes.h"
 #include "Core/PRTagLibrary.h"
 
+#include "Components/CapsuleComponent.h"
 #include "Engine/Blueprint.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -323,6 +324,39 @@ bool FPREnemyEliteShieldBreakLifecycleTest::RunTest(const FString& Parameters)
 	Enemy->ClearEnemyStunnedLifecycle();
 	Enemy->ClearShieldGuardingLifecycle();
 	Enemy->EnemyBrain->StopBrain();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FPREnemyDeadPawnCollisionLifecycleTest,
+	"ProjectR.Enemy.Lifecycle.DeadPawnCollisionLifecycle",
+	PREnemyIntegrationAutomation::TestFlags)
+
+bool FPREnemyDeadPawnCollisionLifecycleTest::RunTest(const FString& Parameters)
+{
+	PREnemyIntegrationAutomation::FScopedWorld World;
+	APREnemyCharacter* Enemy = PREnemyIntegrationAutomation::SpawnDormantEnemyFixture(World.Get());
+	if (!TestNotNull(TEXT("Enemy fixture spawns for dead-collision lifecycle"), Enemy))
+	{
+		return false;
+	}
+
+	UCapsuleComponent* Capsule = Enemy->GetCapsuleComponent();
+	if (!TestNotNull(TEXT("Enemy has a collision capsule"), Capsule))
+	{
+		return false;
+	}
+	const ECollisionResponse InitialPawnResponse = Capsule->GetCollisionResponseToChannel(ECC_Pawn);
+	TestNotEqual(TEXT("Living enemy initially participates in Pawn collision"),
+		InitialPawnResponse, ECR_Ignore);
+
+	Enemy->HandleCombatLifeStateChanged(true);
+	TestEqual(TEXT("Dead enemy no longer blocks Pawn movement"),
+		Capsule->GetCollisionResponseToChannel(ECC_Pawn), ECR_Ignore);
+
+	Enemy->HandleCombatLifeStateChanged(false);
+	TestEqual(TEXT("Revived enemy restores its authored Pawn collision response"),
+		Capsule->GetCollisionResponseToChannel(ECC_Pawn), InitialPawnResponse);
 	return true;
 }
 

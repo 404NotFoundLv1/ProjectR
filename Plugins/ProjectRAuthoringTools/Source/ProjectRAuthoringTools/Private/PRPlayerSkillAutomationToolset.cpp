@@ -2303,13 +2303,19 @@ private:
 
 	bool CheckFormalSpecContract() const
 	{
-		if (!ASC.IsValid() || ASC->GetActivatableAbilities().Num() != 6)
+		if (!ASC.IsValid() || ASC->GetActivatableAbilities().Num() != 7)
 		{
 			return false;
 		}
 		const TCHAR* ExpectedTags[] = {
 			TEXT("Skill.ShadowThrust"), TEXT("Skill.FireSlash"), TEXT("Skill.ThunderDrop"),
-			TEXT("Skill.AfterimageDodge"), TEXT("Skill.VectorHook"), TEXT("Skill.CounterProofWall")};
+			TEXT("Skill.AfterimageDodge"), TEXT("Skill.VectorHook"), TEXT("Skill.CounterProofWall"),
+			TEXT("Skill.BasicAttack")};
+		const FGameplayTag ExpectedInputTags[] = {
+			UPRTagLibrary::GetInputSkillShadowThrustTag(), UPRTagLibrary::GetInputSkillFireSlashTag(),
+			UPRTagLibrary::GetInputSkillThunderDropTag(), UPRTagLibrary::GetInputDodgeTag(),
+			UPRTagLibrary::GetInputSkillVectorHookTag(), UPRTagLibrary::GetInputSkillCounterProofWallTag(),
+			UPRTagLibrary::GetInputAttackTag()};
 		const TArray<FGameplayAbilitySpec>& Specs = ASC->GetActivatableAbilities();
 		if (Specs.Num() != UE_ARRAY_COUNT(ExpectedTags))
 		{
@@ -2321,8 +2327,7 @@ private:
 			FPRAbilityRuntimeState State;
 			if (!Ability || Ability->GetProjectRAbilityTag().ToString() != ExpectedTags[Index]
 				|| !ASC->GetAbilityRuntimeStateByAbilityTag(Ability->GetProjectRAbilityTag(), State)
-				|| State.InputTag != (Index == 4 ? VectorHookData->InputTag
-					: Index == 5 ? CounterProofWallData->InputTag : State.InputTag))
+				|| State.InputTag != ExpectedInputTags[Index])
 			{
 				return false;
 			}
@@ -3009,13 +3014,14 @@ private:
 
 	bool CheckFormalSpecContract() const
 	{
-		if (!ASC.IsValid() || ASC->GetActivatableAbilities().Num() != 6)
+		if (!ASC.IsValid() || ASC->GetActivatableAbilities().Num() != 7)
 		{
 			return false;
 		}
 		const TCHAR* ExpectedTags[] = {
 			TEXT("Skill.ShadowThrust"), TEXT("Skill.FireSlash"), TEXT("Skill.ThunderDrop"),
-			TEXT("Skill.AfterimageDodge"), TEXT("Skill.VectorHook"), TEXT("Skill.CounterProofWall")};
+			TEXT("Skill.AfterimageDodge"), TEXT("Skill.VectorHook"), TEXT("Skill.CounterProofWall"),
+			TEXT("Skill.BasicAttack")};
 		const TArray<FGameplayAbilitySpec>& Specs = ASC->GetActivatableAbilities();
 		for (int32 Index = 0; Index < Specs.Num(); ++Index)
 		{
@@ -3165,7 +3171,10 @@ UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCh
 
 UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointDSmoke()
 {
-	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointDRunner::Start();
+	// The perfect-block assertion is a fixed acceptance check, not a timing
+	// tolerance probe.  Execute its first damage request in the same call stack
+	// as the press so editor-frame scheduling cannot consume the 0.14s window.
+	return PRPlayerSkillAutomationToolset::FPIEPlayerSkillCheckpointDRunner::Start(true);
 }
 
 UToolCallAsyncResultString* UPRPlayerSkillAutomationToolset::RunPIEPlayerSkillCheckpointEDRegressionSmoke()

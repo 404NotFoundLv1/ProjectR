@@ -27,6 +27,8 @@
 #include "GameplayEffect.h"
 #include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
 #include "GameFramework/WorldSettings.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "NiagaraSystem.h"
@@ -534,6 +536,14 @@ private:
 		}
 		APRBossAuditor* BossActor = Boss.Get();
 		if (!BossActor) return false;
+		ACharacter* PlayerCharacter = Cast<ACharacter>(PlayerPawn);
+		const float InitialPlanarDistance = FVector::Dist2D(PlayerPawn->GetActorLocation(), BossActor->GetActorLocation());
+		if (!PlayerCharacter || !PlayerCharacter->GetCharacterMovement() || !PlayerCharacter->GetCharacterMovement()->IsMovingOnGround()
+			|| InitialPlanarDistance <= 100.0f)
+		{
+			FinishError(TEXT("BossGym initial spawn is invalid: the player must be grounded and at least 100cm from the Auditor before smoke setup."));
+			return false;
+		}
 		UPRAbilitySystemComponent* ASC = BossActor->GetProjectRAbilitySystemComponent();
 		const UPRAttributeSet* Attributes = BossActor->GetAttributeSet();
 		if (!ASC || !Attributes || ASC->GetOwnerActor() != BossActor || ASC->GetAvatarActor() != BossActor

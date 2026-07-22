@@ -11,7 +11,7 @@ class UPRAbilitySystemComponent;
 class UPRSkillSlotWidget;
 struct FPRAbilityLifecycleEvent;
 
-/** Reads the frozen DefaultAbilitySet and reflects its six runtime AbilitySpecs. */
+/** Reflects the six P0 PlayerSkill entries in the DefaultAbilitySet; BasicAttack has no dedicated skill-bar slot. */
 UCLASS(Abstract, Blueprintable)
 class PROJECTR_API UPRSkillBarWidget : public UUserWidget
 {

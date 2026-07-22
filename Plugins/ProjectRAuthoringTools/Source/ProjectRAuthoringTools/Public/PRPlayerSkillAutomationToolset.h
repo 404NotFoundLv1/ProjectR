@@ -23,7 +23,7 @@ public:
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointCSmoke();
 
-	/** Runs the unchanged C sequence against the final six-skill AbilitySet without saving a Package. */
+	/** Runs the unchanged C sequence against six P0 skills plus the formal BasicAttack spec without saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointECRegressionSmoke();
 
@@ -35,7 +35,7 @@ public:
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointEDRegressionSmoke();
 
-	/** Runs the fixed six-skill presentation preload, local playback, and cleanup sequence without saving a Package. */
+	/** Runs the fixed six-skill presentation preload while also validating the formal BasicAttack spec, without saving a Package. */
 	UFUNCTION(meta=(AICallable))
 	static UToolCallAsyncResultString* RunPIEPlayerSkillCheckpointESmoke();
 };

@@ -125,7 +125,8 @@ bool FPREnemyCheckpointAAssetManifestTest::RunTest(const FString& Parameters)
 		TEXT("/Game/ProjectR/Enemies/Audio/SFX_Enemy_MeleeStrike.SFX_Enemy_MeleeStrike")));
 	if (Melee)
 	{
-		TestEqual(TEXT("Melee health is fixed"), Melee->Attributes.Health, 100.0f);
+		TestEqual(TEXT("Melee health matches the v0.2.4 balance baseline"), Melee->Attributes.Health, 50.0f);
+		TestEqual(TEXT("Melee max health matches the v0.2.4 balance baseline"), Melee->Attributes.MaxHealth, 50.0f);
 		TestEqual(TEXT("Melee move speed is fixed"), Melee->Attributes.MoveSpeed, 450.0f);
 		TestEqual(TEXT("Melee acquire range is fixed"), Melee->Perception.AcquireRange, 900.0f);
 	}
@@ -188,8 +189,8 @@ bool FPREnemyCheckpointBAssetManifestTest::RunTest(const FString& Parameters)
 	}
 	if (Ranged)
 	{
-		TestEqual(TEXT("Ranged health is fixed"), Ranged->Attributes.Health, 80.0f);
-		TestEqual(TEXT("Ranged max health is fixed"), Ranged->Attributes.MaxHealth, 80.0f);
+		TestEqual(TEXT("Ranged health matches the v0.2.4 balance baseline"), Ranged->Attributes.Health, 40.0f);
+		TestEqual(TEXT("Ranged max health matches the v0.2.4 balance baseline"), Ranged->Attributes.MaxHealth, 40.0f);
 		TestEqual(TEXT("Ranged move speed is fixed"), Ranged->Attributes.MoveSpeed, 380.0f);
 		TestEqual(TEXT("Ranged acquire range is fixed"), Ranged->Perception.AcquireRange, 1100.0f);
 		TestEqual(TEXT("Ranged lose range is fixed"), Ranged->Perception.LoseRange, 1400.0f);
@@ -294,10 +295,10 @@ bool FPREnemyCheckpointCAssetManifestTest::RunTest(const FString& Parameters)
 	if (Shield)
 	{
 		TestEqual(TEXT("Shield mobility is Heavy"), Shield->Mobility, EPRAbilityTargetMobility::Heavy);
-		TestEqual(TEXT("Shield health is fixed"), Shield->Attributes.Health, 140.0f);
-		TestEqual(TEXT("Shield max health is fixed"), Shield->Attributes.MaxHealth, 140.0f);
-		TestEqual(TEXT("Shield amount is fixed"), Shield->Attributes.Shield, 80.0f);
-		TestEqual(TEXT("Shield max amount is fixed"), Shield->Attributes.MaxShield, 80.0f);
+		TestEqual(TEXT("Shield health matches the v0.2.4 balance baseline"), Shield->Attributes.Health, 70.0f);
+		TestEqual(TEXT("Shield max health matches the v0.2.4 balance baseline"), Shield->Attributes.MaxHealth, 70.0f);
+		TestEqual(TEXT("Shield amount matches the v0.2.4 balance baseline"), Shield->Attributes.Shield, 40.0f);
+		TestEqual(TEXT("Shield max amount matches the v0.2.4 balance baseline"), Shield->Attributes.MaxShield, 40.0f);
 		TestEqual(TEXT("Shield energy is fixed"), Shield->Attributes.Energy, 0.0f);
 		TestEqual(TEXT("Shield max energy is fixed"), Shield->Attributes.MaxEnergy, 1.0f);
 		TestEqual(TEXT("Shield attack power is fixed"), Shield->Attributes.AttackPower, 12.0f);

@@ -109,6 +109,8 @@ private:
 	FTimerHandle PresentationBreakTimer;
 	bool bPresentationAttackActive = false;
 	bool bPresentationBreakActive = false;
+	ECollisionResponse AuthoredPawnCollisionResponse = ECR_Block;
+	bool bDeadPawnCollisionSuppressed = false;
 	TWeakObjectPtr<UNiagaraComponent> ActiveAttackVFX;
 	TWeakObjectPtr<UAudioComponent> ActiveAttackSFX;
 

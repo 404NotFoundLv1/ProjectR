@@ -15,6 +15,7 @@
 #include "Enemies/PREnemyPlaneMovementComponent.h"
 #include "Enemies/PREnemyPrototypeDataAsset.h"
 #include "Components/AudioComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "GameplayEffect.h"
 #include "Kismet/GameplayStatics.h"
@@ -79,6 +80,15 @@ void APREnemyCharacter::HandleCombatLifeStateChanged(const bool bIsDead)
 {
 	if (bIsDead)
 	{
+		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+		{
+			if (!bDeadPawnCollisionSuppressed)
+			{
+				AuthoredPawnCollisionResponse = Capsule->GetCollisionResponseToChannel(ECC_Pawn);
+				bDeadPawnCollisionSuppressed = true;
+			}
+			Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+		}
 		ClearShieldBreakResponseLifecycle();
 		ClearEnemyStunnedLifecycle();
 		ClearShieldGuardingLifecycle();
@@ -94,6 +104,16 @@ void APREnemyCharacter::HandleCombatLifeStateChanged(const bool bIsDead)
 		{
 			EnemyController->StopEnemyStateTree();
 		}
+		return;
+	}
+
+	if (bDeadPawnCollisionSuppressed)
+	{
+		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+		{
+			Capsule->SetCollisionResponseToChannel(ECC_Pawn, AuthoredPawnCollisionResponse);
+		}
+		bDeadPawnCollisionSuppressed = false;
 	}
 }
 

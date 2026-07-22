@@ -229,7 +229,7 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 	}
 
 	const TArray<FPRAbilitySetEntry>& StartupEntries = DefaultSet->GetAbilityEntries();
-	TestEqual(TEXT("Checkpoint D default ability set contains six entries"), StartupEntries.Num(), 6);
+	TestEqual(TEXT("Default ability set retains six P0 skills and appends BasicAttack"), StartupEntries.Num(), 7);
 	const TCHAR* ExpectedStartupSkills[] = {
 		TEXT("ShadowThrust"), TEXT("FireSlash"), TEXT("ThunderDrop"), TEXT("AfterimageDodge"),
 		TEXT("VectorHook"), TEXT("CounterProofWall")};
@@ -260,6 +260,26 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 			Entry.GrantedSpecTags.IsEmpty());
 		TestTrue(*FString::Printf(TEXT("Startup entry %d data"), Index),
 			Entry.AbilityData.Get() == static_cast<const UPrimaryDataAsset*>(ExpectedData));
+	}
+	const UClass* BasicAttackClass = LoadClass<UPRGameplayAbility>(
+		nullptr,
+		TEXT("/Game/ProjectR/Abilities/BasicAttack/GA_BasicAttack.GA_BasicAttack_C"));
+	const UPrimaryDataAsset* BasicAttackData = LoadObject<UPrimaryDataAsset>(
+		nullptr,
+		TEXT("/Game/ProjectR/Abilities/BasicAttack/DA_BasicAttack.DA_BasicAttack"));
+	if (TestNotNull(TEXT("BasicAttack GA asset exists"), BasicAttackClass)
+		&& TestNotNull(TEXT("BasicAttack data asset exists"), BasicAttackData)
+		&& StartupEntries.Num() == 7)
+	{
+		const FPRAbilitySetEntry& BasicAttackEntry = StartupEntries[6];
+		TestTrue(TEXT("BasicAttack remains the seventh formal AbilitySet entry"),
+			BasicAttackEntry.AbilityClass.Get() == BasicAttackClass);
+		TestEqual(TEXT("BasicAttack uses the stable Input.Attack semantic"),
+			BasicAttackEntry.InputTag.ToString(), FString(TEXT("Input.Attack")));
+		TestTrue(TEXT("BasicAttack grants on initialization"), BasicAttackEntry.bGrantOnInitialization);
+		TestTrue(TEXT("BasicAttack has no extra spec tags"), BasicAttackEntry.GrantedSpecTags.IsEmpty());
+		TestTrue(TEXT("BasicAttack source data is exact"),
+			BasicAttackEntry.AbilityData.Get() == BasicAttackData);
 	}
 	for (const FSkillExpectation& Expected : SkillExpectations)
 	{

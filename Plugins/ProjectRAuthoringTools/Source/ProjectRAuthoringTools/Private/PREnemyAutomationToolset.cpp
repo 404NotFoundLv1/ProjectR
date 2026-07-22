@@ -477,7 +477,7 @@ private:
 			const UPRAttributeSet* Attributes = Enemy->GetAttributeSet();
 			const APREnemyAIController* EnemyController = Cast<APREnemyAIController>(Enemy->GetController());
 			const bool bValid = ASC && Attributes && ASC->GetOwnerActor() == Enemy && ASC->GetAvatarActor() == Enemy
-				&& FMath::IsNearlyEqual(Attributes->GetHealth(), 100.0f)
+				&& FMath::IsNearlyEqual(Attributes->GetHealth(), 50.0f)
 				&& FMath::IsNearlyEqual(Attributes->GetAttackPower(), 10.0f)
 				&& FMath::IsNearlyEqual(Attributes->GetMoveSpeed(), 450.0f)
 				&& Enemy->GetAbilityTargetMobility() == EPRAbilityTargetMobility::Light
@@ -590,7 +590,7 @@ private:
 	void FinishSuccess()
 	{
 		CleanupRuntime();
-		Result->SetValue(TEXT("{\"status\":\"PASS\",\"prototype\":\"MeleeMinion\",\"health\":100,\"attackPower\":10,\"moveSpeed\":450,\"stateTreeRunning\":true,\"meleeCombatEvent\":15,\"deathStopsBrain\":true,\"runtimeClean\":true}"));
+		Result->SetValue(TEXT("{\"status\":\"PASS\",\"prototype\":\"MeleeMinion\",\"health\":50,\"attackPower\":10,\"moveSpeed\":450,\"stateTreeRunning\":true,\"meleeCombatEvent\":15,\"deathStopsBrain\":true,\"runtimeClean\":true}"));
 	}
 
 	void FinishError(const TCHAR* Message)
@@ -668,7 +668,7 @@ private:
 				return false;
 			}
 			const UPRAttributeSet* Attributes = Enemy->GetAttributeSet();
-			if (!Attributes || !FMath::IsNearlyEqual(Attributes->GetHealth(), 80.0f)
+			if (!Attributes || !FMath::IsNearlyEqual(Attributes->GetHealth(), 40.0f)
 				|| !FMath::IsNearlyEqual(Attributes->GetAttackPower(), 10.0f)
 				|| !FMath::IsNearlyEqual(Attributes->GetMoveSpeed(), 380.0f)
 				|| Enemy->GetAbilityTargetMobility() != EPRAbilityTargetMobility::Light)
@@ -921,8 +921,8 @@ private:
 			const UPRAttributeSet* Attributes = Enemy->GetAttributeSet();
 			const FGameplayTag Guarding = UPRTagLibrary::GetStateGuardingTag();
 			if (!EnemyASC || !Attributes || EnemyASC->GetOwnerActor() != Enemy || EnemyASC->GetAvatarActor() != Enemy
-				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 140.0f)
-				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 80.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 70.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 40.0f)
 				|| !FMath::IsNearlyEqual(Attributes->GetAttackPower(), 12.0f)
 				|| !FMath::IsNearlyEqual(Attributes->GetMoveSpeed(), 300.0f)
 				|| Enemy->GetAbilityTargetMobility() != EPRAbilityTargetMobility::Heavy
@@ -1006,12 +1006,12 @@ private:
 				return Combat->ApplyDamage(Request);
 			};
 			if (ApplyFixedDamage(30.0f) != EPRCombatRequestStatus::Applied
-				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 50.0f)
-				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 140.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 10.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 70.0f)
 				|| EnemyASC->GetTagCount(UPRTagLibrary::GetStateGuardingTag()) != 1
-				|| ApplyFixedDamage(70.0f) != EPRCombatRequestStatus::Applied
+				|| ApplyFixedDamage(20.0f) != EPRCombatRequestStatus::Applied
 				|| !FMath::IsNearlyEqual(Attributes->GetShield(), 0.0f)
-				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 120.0f)
+				|| !FMath::IsNearlyEqual(Attributes->GetHealth(), 60.0f)
 				|| EnemyASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateGuardingTag())
 				|| EnemyASC->HasMatchingGameplayTag(UPRTagLibrary::GetStateStunnedTag())
 				|| ApplyFixedDamage(10.0f) != EPRCombatRequestStatus::Applied)
@@ -1072,7 +1072,7 @@ private:
 	void FinishSuccess()
 	{
 		CleanupRuntime();
-		Result->SetValue(TEXT("{\"status\":\"PASS\",\"prototype\":\"ShieldMinion\",\"health\":140,\"shield\":80,\"guardingUnique\":true,\"shieldBrokenSingle\":true,\"shieldBashCombatEvent\":16,\"runtimeClean\":true}"));
+		Result->SetValue(TEXT("{\"status\":\"PASS\",\"prototype\":\"ShieldMinion\",\"health\":70,\"shield\":40,\"guardingUnique\":true,\"shieldBrokenSingle\":true,\"shieldBashCombatEvent\":16,\"runtimeClean\":true}"));
 	}
 
 	void FinishError(const TCHAR* Message)

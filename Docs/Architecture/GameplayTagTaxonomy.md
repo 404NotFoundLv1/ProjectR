@@ -24,7 +24,7 @@ date: "2026-07-10"
 | `Reward` | 奖励类型和稀有度 | `Reward.Rarity.Common`, `Reward.Rarity.Epic`, `Reward.Rarity.Legendary`, `Reward.Rarity.Rare`, `Reward.Type.Memory`, `Reward.Type.Relationship`, `Reward.Type.Resource`, `Reward.Type.SkillPlugin` |
 | `Room` | Roguelike 房间分类 | `Room.Type.Boss`, `Room.Type.Combat`, `Room.Type.Elite`, `Room.Type.Event`, `Room.Type.Safe`, `Room.Type.Shop` |
 | `Rule` | Director 可验证的本地法令 ID | `Rule.CooperationAudit`, `Rule.DistanceCorrection`, `Rule.RepetitionPenalty`, `Rule.SurvivalProtocol` |
-| `Skill` | 技能稳定 ID，可作为未来 AbilityTag | `Skill.AfterimageDodge`, `Skill.CounterProofWall`, `Skill.FireSlash`, `Skill.ShadowThrust`, `Skill.ThunderDrop`, `Skill.VectorHook` |
+| `Skill` | 技能稳定 ID，可作为未来 AbilityTag | `Skill.AfterimageDodge`, `Skill.BasicAttack`, `Skill.CounterProofWall`, `Skill.FireSlash`, `Skill.ShadowThrust`, `Skill.ThunderDrop`, `Skill.VectorHook` |
 | `State` | 通用角色状态 | `State.Alive`, `State.Dead`, `State.InCombat`, `State.Invulnerable`, `State.Stunned` |
 
 # 语义约束
@@ -90,3 +90,8 @@ date: "2026-07-10"
 - 显式 Tag 从 118 增至 126，根命名空间保持 13，`UPRTagLibrary` checked getter 从 59 增至 60。既有 118 项名称、顺序和 DevComment 均不变，无 Redirect。
 - 新增且仅新增八项：`Enemy.Type.AuditorBoss`、`Enemy.Attack.AuditorSweep`、`Enemy.Attack.AuditorLockShot`、`Enemy.Attack.AuditorCounter`、`Cooldown.Enemy.AuditorSweep`、`Cooldown.Enemy.AuditorLockShot`、`Cooldown.Enemy.AuditorCounter`、`Combat.Response.PredictionBlocked`。
 - `Enemy.*` 与 `Cooldown.Enemy.*` 继续由 Boss Prototype/Attack DataAsset 驱动，不增加 getter；仅 `Combat.Response.PredictionBlocked` 获得 checked getter，因为它是 Combat response 的稳定消费者事实。复用 `Rule.DistanceCorrection` 与 `Rule.RepetitionPenalty`，不创建 `Boss.Phase.*`、QTE、Director、Account/Delete、Reward 或 Inventory 占位 Tag。
+
+# v0.2.4 BasicAttack 批准增量
+
+- 经用户明确批准，显式 Tag 从 126 增至 127，根命名空间保持 13，`UPRTagLibrary` checked getter 从 60 增至 61。只追加 `Skill.BasicAttack`，既有 126 项名称、顺序、DevComment 与消费者语义均不变，无 Redirect。
+- 该 Tag 是零资源标准攻击的稳定 AbilityTag，消费既有 `Input.Attack`，不创建 `Input.BasicAttack`、Cooldown、Combat Event、Response、测试或 UI Tag。

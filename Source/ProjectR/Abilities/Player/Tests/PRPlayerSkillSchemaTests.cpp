@@ -44,6 +44,7 @@ bool FPRPlayerSkillSchemaTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Blocked status appends as five"), static_cast<uint8>(EPRCombatRequestStatus::RejectedBlocked), static_cast<uint8>(5));
 
 	const TPair<const TCHAR*, const FGameplayTag&> RuntimeTags[] = {
+		{TEXT("Skill.BasicAttack"), UPRTagLibrary::GetSkillBasicAttackTag()},
 		{TEXT("Input.Skill.ShadowThrust"), UPRTagLibrary::GetInputSkillShadowThrustTag()},
 		{TEXT("Input.Skill.FireSlash"), UPRTagLibrary::GetInputSkillFireSlashTag()},
 		{TEXT("Input.Skill.ThunderDrop"), UPRTagLibrary::GetInputSkillThunderDropTag()},

@@ -325,6 +325,14 @@ date: "2026-07-10"
 
 **验证**：BuildEditor、`ProjectR.UI.CombatHUD` 6/6、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 10/10、Boss 3/3，warnings-as-errors 编译、重启回读、CombatGym/BossGym 固定 PIE 与 Dirty=0 均通过。最终报告为 `Saved/AutomationReports/v023-final-report-20260722/v023-final-None/result.json`；用户完成两张地图的 HUD 可读性 Runbook 并明确回复 PASS。
 
+# ADR-025 - BasicAttack uses the existing ability and combat path; defeated enemies suppress only Pawn collision
+
+- Status: Accepted (v0.2.4 user-approved compatibility revision)
+- Context: `Input.Attack` was already routed by the semantic input system but had no formal player damage ability, so J produced no combat result. Defeated enemies intentionally remain Actors for a future Revive contract, but their capsule still blocked the player.
+- Decision: Append the stable `Skill.BasicAttack` tag and one seventh `DA_DefaultAbilitySet` entry backed by `UPRBasicAttackDataAsset` and `UPRGA_BasicAttack`. It is an `OnInputTriggered`, zero-resource, zero-cooldown ForwardSweep and routes all damage exclusively through `UPRCombatSubsystem`; it does not join the six P0 PlayerSkill DataAsset/presentation contract or add an InputAction, GE, HUD slot, Save field, or second damage system. On a dead `APREnemyCharacter`, retain the Actor but set only Capsule `ECC_Pawn` to `Ignore`; restore the recorded authored Pawn response if that same Actor is revived.
+- Consequences: The GameplayTag baseline is now 127 explicit tags, 13 roots, and 61 checked getters. The first six granted entries, their order, their public schemas, and the existing HUD's six skill slots remain unchanged. Fixed PlayerSkill tools validate seven granted specs while continuing their six-P0 behavior and presentation assertions. The collision repair changes neither alive-enemy combat collision nor death, registry, AttributeSet, or AI semantics.
+- Verification and rollback: Native PlayerSkill 5/5 and Enemy 11/11, fixed D and E PIE smokes, and exact saved-asset/restart reads are required. Roll back by reversing only this v0.2.4 config/source/test/document diff and restoring the exact AbilitySet entry/asset references; deleting the two created assets requires separate explicit approval.
+
 # ADR 模板
 
 ```text

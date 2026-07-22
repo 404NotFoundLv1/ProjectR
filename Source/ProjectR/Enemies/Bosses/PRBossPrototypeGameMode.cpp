@@ -32,7 +32,11 @@ void APRBossPrototypeGameMode::SpawnAuditorWhenRegistryReady()
 	Enemies->OnRegistryReady().Remove(RegistryReadyHandle);
 	FGuid SpawnId;
 	APREnemyCharacter* Boss = nullptr;
-	const FTransform SpawnTransform(FRotator::ZeroRotator, FVector(0.0f, 0.0f, 200.0f));
+	// L_BossGym's PlayerStart sits at X=0 on the raised centre platform.  Keep the
+	// fixed Boss spawn on the connected right-hand slope: the 600cm planar offset
+	// prevents an initial Pawn-capsule overlap, and Z=240cm places the Boss capsule
+	// two centimetres above that slope's 150cm walkable surface.
+	const FTransform SpawnTransform(FRotator::ZeroRotator, FVector(600.0f, 0.0f, 240.0f));
 	if (Enemies->SpawnEnemyPrototype(FGameplayTag::RequestGameplayTag(TEXT("Enemy.Type.AuditorBoss")), SpawnTransform, SpawnId, Boss)
 		!= EPREnemySpawnStatus::Spawned)
 	{

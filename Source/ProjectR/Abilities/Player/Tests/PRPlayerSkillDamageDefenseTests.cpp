@@ -329,6 +329,57 @@ bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 	SkillSource.Character->GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 	TestTrue(TEXT("Formal side-view right facing resolves along positive X"),
 		SkillSource.Character->GetMesh()->GetRightVector().Equals(FVector::ForwardVector, 0.01f));
+	const UPrimaryDataAsset* BasicAttackData = LoadObject<UPrimaryDataAsset>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/BasicAttack/DA_BasicAttack.DA_BasicAttack"));
+	UClass* BasicAttackClass = LoadClass<UGameplayAbility>(
+		nullptr, TEXT("/Game/ProjectR/Abilities/BasicAttack/GA_BasicAttack.GA_BasicAttack_C"));
+	if (!TestNotNull(TEXT("BasicAttack data asset loads for runtime combat"), BasicAttackData)
+		|| !TestNotNull(TEXT("BasicAttack GA loads for runtime combat"), BasicAttackClass))
+	{
+		Combat->OnCombatEvent().Remove(EventHandle);
+		return false;
+	}
+	SkillTarget.Character->SetActorLocation(FVector(100.0f, 0.0f, 0.0f));
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	SkillSource.ASC->SetNumericAttributeBase(UPRAttributeSet::GetEnergyAttribute(), 100.0f);
+	const FGameplayTag BasicAttackTag = FGameplayTag::RequestGameplayTag(TEXT("Skill.BasicAttack"), false);
+	int32 BasicAttackSpecCount = 0;
+	FGameplayAbilitySpecHandle BasicAttackHandle;
+	for (const FGameplayAbilitySpec& ExistingSpec : SkillSource.ASC->GetActivatableAbilities())
+	{
+		if (ExistingSpec.SourceObject.Get() == BasicAttackData
+			&& ExistingSpec.Ability
+			&& ExistingSpec.Ability->GetClass() == BasicAttackClass
+			&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(BasicAttackTag)
+			&& ExistingSpec.GetDynamicSpecSourceTags().HasTagExact(UPRTagLibrary::GetInputAttackTag()))
+		{
+			++BasicAttackSpecCount;
+			BasicAttackHandle = ExistingSpec.Handle;
+		}
+	}
+	TestEqual(TEXT("Default AbilitySet grants exactly one formal BasicAttack spec"), BasicAttackSpecCount, 1);
+	TestTrue(TEXT("Default AbilitySet BasicAttack spec is valid"), BasicAttackHandle.IsValid());
+	const int32 BasicAttackEventStart = Events.Num();
+	SkillSource.ASC->AbilityInputTagPressed(UPRTagLibrary::GetInputAttackTag());
+	World.TickFor(0.09f);
+	TestEqual(TEXT("BasicAttack keeps Energy at zero cost"), SkillSource.Attributes->GetEnergy(), 100.0f);
+	TestEqual(TEXT("BasicAttack applies 10 + 1.0 AP through Combat"), SkillTarget.Attributes->GetHealth(), 80.0f);
+	int32 BasicAttackDamageEvents = 0;
+	for (int32 Index = BasicAttackEventStart; Index < Events.Num(); ++Index)
+	{
+		const FPRCombatEvent& Event = Events[Index];
+		if (Event.EventTag == UPRTagLibrary::GetCombatEventDamageTag()
+			&& Event.AbilityTag == BasicAttackTag
+			&& Event.Target.Get() == SkillTarget.Character)
+		{
+			++BasicAttackDamageEvents;
+		}
+	}
+	TestEqual(TEXT("BasicAttack publishes one formal damage event per target"), BasicAttackDamageEvents, 1);
+	World.TickFor(0.28f);
+	SkillSource.ASC->AbilityInputTagReleased(UPRTagLibrary::GetInputAttackTag());
+	SkillTarget.ASC->SetNumericAttributeBase(UPRAttributeSet::GetHealthAttribute(), 100.0f);
+	SkillTarget.Character->SetActorLocation(FVector(200.0f, 0.0f, 0.0f));
 	const FVector DecoySpawnLocation(321.0f, 17.0f, 89.0f);
 	APRSkillDecoyActor* RuntimeDecoy = World.Get()->SpawnActor<APRSkillDecoyActor>(
 		APRSkillDecoyActor::StaticClass(), DecoySpawnLocation, FRotator::ZeroRotator);

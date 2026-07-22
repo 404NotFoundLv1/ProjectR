@@ -79,6 +79,12 @@ const FGameplayTag& UPRTagLibrary::GetInputSkillCounterProofWallTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetSkillBasicAttackTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Skill.BasicAttack"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailCanActivateTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.CanActivate"));
