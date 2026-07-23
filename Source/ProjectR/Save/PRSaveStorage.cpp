@@ -317,7 +317,8 @@ EPRSaveResult FPRSaveEnvelope::DeserializeWithCodec(
 		OutDecoded.bNeedsResave = true;
 	}
 
-	if (!LoadedSave->Profile.ProfileId.IsValid() || LoadedSave->SaveRevision <= 0)
+	if (!LoadedSave->Profile.ProfileId.IsValid() || LoadedSave->SaveRevision <= 0
+		|| !FPRCompanionContract::AreCanonicalRelationshipRecords(LoadedSave->Profile.CompanionRelationships))
 	{
 		return EPRSaveResult::CorruptData;
 	}
@@ -447,7 +448,9 @@ ISaveGameSystem::ESaveExistsResult FPRSaveStorage::CheckExists(const EPRSaveGene
 	return Backend->DoesSaveGameExist(Slot);
 }
 
-FPRSaveGenerationRead FPRSaveStorage::ReadGenerationSync(const EPRSaveGeneration Generation)
+FPRSaveGenerationRead FPRSaveStorage::ReadGenerationSync(
+	const EPRSaveGeneration Generation,
+	const FPRSaveMigrationRegistry* MigrationRegistry)
 {
 	FPRSaveGenerationRead Read;
 	Read.Generation = Generation;
@@ -479,7 +482,7 @@ FPRSaveGenerationRead FPRSaveStorage::ReadGenerationSync(const EPRSaveGeneration
 	}
 
 	FPRSaveDecodedEnvelope Decoded;
-	Read.Result = DeserializeEnvelope(Read.RawEnvelope, Decoded);
+	Read.Result = DeserializeEnvelope(Read.RawEnvelope, Decoded, MigrationRegistry);
 	Read.SaveGame = Decoded.SaveGame;
 	Read.SourceSchemaVersion = Decoded.SourceSchemaVersion;
 	Read.bNeedsResave = Decoded.bNeedsResave;

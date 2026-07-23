@@ -7,7 +7,7 @@
 
 class UPRSaveGame;
 
-/** Ordered registry for exact one-version-at-a-time business schema migrations. */
+/** Strict, copy-on-write, adjacent-schema migration registry. */
 class PROJECTR_API FPRSaveMigrationRegistry
 {
 public:
@@ -26,3 +26,6 @@ private:
 
 	TMap<int32, FRegisteredStep> Steps;
 };
+
+/** Registers every shipped ProjectR migration, currently Schema 1 -> 2. */
+PROJECTR_API void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry);

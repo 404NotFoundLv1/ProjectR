@@ -3,14 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Save/PRSaveGame.h"
 #include "Save/PRSaveTypes.h"
+#include "Save/PRSaveMigration.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "UObject/StrongObjectPtr.h"
 
 #include "PRSaveSubsystem.generated.h"
 
 class FPRSaveStorage;
-class UPRSaveGame;
 
 /** Owns the single ProjectR profile and its serialized A/B save queue. */
 UCLASS()
@@ -27,6 +28,8 @@ public:
 	EPRSaveRequestStatus RequestSaveCurrentProfile(FGuid& OutRequestId);
 	FPRSaveRuntimeState GetSaveRuntimeState() const;
 	FPRSaveOperationEventNative& OnSaveOperation();
+	bool GetLoadedProfileSnapshot(FPRProfileSaveData& OutProfile) const;
+	bool StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records);
 
 private:
 	struct FObservedGeneration
@@ -99,6 +102,7 @@ private:
 	FObservedGeneration ObservedB;
 	TUniquePtr<FSaveRequest> ActiveSave;
 	TUniquePtr<FSaveRequest> TrailingSave;
+	FPRSaveMigrationRegistry MigrationRegistry;
 	FPRSaveOperationEventNative SaveOperationEvent;
 
 #if WITH_DEV_AUTOMATION_TESTS

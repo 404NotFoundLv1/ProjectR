@@ -120,7 +120,7 @@ public:
 #endif
 
 	ISaveGameSystem::ESaveExistsResult CheckExists(EPRSaveGeneration Generation);
-	FPRSaveGenerationRead ReadGenerationSync(EPRSaveGeneration Generation);
+	FPRSaveGenerationRead ReadGenerationSync(EPRSaveGeneration Generation, const FPRSaveMigrationRegistry* MigrationRegistry = nullptr);
 	void SaveGenerationAsync(
 		EPRSaveGeneration Generation,
 		TSharedRef<const TArray<uint8>> Data,

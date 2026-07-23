@@ -3,6 +3,7 @@
 #include "Save/PRSaveMigration.h"
 
 #include "Save/PRSaveGame.h"
+#include "Core/PRRelationshipTypes.h"
 
 #include "UObject/UObjectGlobals.h"
 
@@ -26,6 +27,21 @@ bool FPRSaveMigrationRegistry::RegisterStep(
 bool FPRSaveMigrationRegistry::HasRegisteredSteps() const
 {
 	return !Steps.IsEmpty();
+}
+
+void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry)
+{
+	Registry.RegisterStep(1, 2, [](UPRSaveGame& Save)
+	{
+		if (Save.SchemaVersion != 1 || !Save.Profile.ProfileId.IsValid()
+			|| !Save.Profile.CompanionRelationships.IsEmpty())
+		{
+			return false;
+		}
+		Save.Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
+		Save.SchemaVersion = 2;
+		return true;
+	});
 }
 
 EPRSaveResult FPRSaveMigrationRegistry::Migrate(

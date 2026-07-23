@@ -47,6 +47,7 @@ FString ResultName(const EPRSaveResult Result)
 void UPRSaveSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	RegisterProjectRSaveMigrations(MigrationRegistry);
 	Storage = FPRSaveStorage::CreateProduction();
 	State = EPRSaveSubsystemState::Ready;
 	LastResult = EPRSaveResult::InvalidRequest;
@@ -109,8 +110,8 @@ EPRSaveResult UPRSaveSubsystem::LoadDefaultProfile(FGuid& OutRequestId)
 	}
 
 	State = EPRSaveSubsystemState::Loading;
-	const FPRSaveGenerationRead ReadA = Storage->ReadGenerationSync(EPRSaveGeneration::A);
-	const FPRSaveGenerationRead ReadB = Storage->ReadGenerationSync(EPRSaveGeneration::B);
+	const FPRSaveGenerationRead ReadA = Storage->ReadGenerationSync(EPRSaveGeneration::A, &MigrationRegistry);
+	const FPRSaveGenerationRead ReadB = Storage->ReadGenerationSync(EPRSaveGeneration::B, &MigrationRegistry);
 	ObservedA = ObserveGeneration(ReadA);
 	ObservedB = ObserveGeneration(ReadB);
 
@@ -201,6 +202,7 @@ EPRSaveResult UPRSaveSubsystem::CreateNewDefaultProfile(FGuid& OutRequestId)
 		LoadedSave->SchemaVersion = UPRSaveGame::CurrentSchemaVersion;
 		LoadedSave->SaveRevision = 0;
 		LoadedSave->Profile.ProfileId = FGuid::NewGuid();
+		LoadedSave->Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
 		LoadedGeneration = EPRSaveGeneration::None;
 		bNeedsResave = true;
 	}
@@ -294,6 +296,29 @@ FPRSaveRuntimeState UPRSaveSubsystem::GetSaveRuntimeState() const
 FPRSaveOperationEventNative& UPRSaveSubsystem::OnSaveOperation()
 {
 	return SaveOperationEvent;
+}
+
+bool UPRSaveSubsystem::GetLoadedProfileSnapshot(FPRProfileSaveData& OutProfile) const
+{
+	OutProfile = FPRProfileSaveData();
+	if (!IsInGameThread() || !LoadedSave)
+	{
+		return false;
+	}
+	OutProfile = LoadedSave->Profile;
+	return true;
+}
+
+bool UPRSaveSubsystem::StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRCompanionContract::AreCanonicalRelationshipRecords(Records))
+	{
+		return false;
+	}
+	LoadedSave->Profile.CompanionRelationships = Records;
+	bNeedsResave = true;
+	return true;
 }
 
 UPRSaveSubsystem::FObservedGeneration UPRSaveSubsystem::ObserveGeneration(
@@ -449,8 +474,8 @@ void UPRSaveSubsystem::StartActiveSave()
 		return;
 	}
 
-	const FPRSaveGenerationRead ReadA = Storage->ReadGenerationSync(EPRSaveGeneration::A);
-	const FPRSaveGenerationRead ReadB = Storage->ReadGenerationSync(EPRSaveGeneration::B);
+	const FPRSaveGenerationRead ReadA = Storage->ReadGenerationSync(EPRSaveGeneration::A, &MigrationRegistry);
+	const FPRSaveGenerationRead ReadB = Storage->ReadGenerationSync(EPRSaveGeneration::B, &MigrationRegistry);
 	ActiveSave->PrewriteA = ObserveGeneration(ReadA);
 	ActiveSave->PrewriteB = ObserveGeneration(ReadB);
 
@@ -537,7 +562,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 	}
 
 	FPRSaveDecodedEnvelope Decoded;
-	if (!Storage || Storage->DeserializeEnvelope(Data, Decoded) != EPRSaveResult::Success ||
+	if (!Storage || Storage->DeserializeEnvelope(Data, Decoded, &MigrationRegistry) != EPRSaveResult::Success ||
 		!Decoded.SaveGame ||
 		Decoded.SaveGame->Profile.ProfileId != ActiveSave->Snapshot->Profile.ProfileId ||
 		Decoded.SaveGame->SchemaVersion != ActiveSave->Snapshot->SchemaVersion ||

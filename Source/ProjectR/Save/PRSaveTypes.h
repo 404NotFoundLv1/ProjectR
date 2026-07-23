@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/PRRelationshipTypes.h"
 
 #include "PRSaveTypes.generated.h"
 
@@ -79,6 +80,9 @@ struct PROJECTR_API FPRProfileSaveData
 
 	UPROPERTY(SaveGame)
 	FGuid ProfileId;
+
+	UPROPERTY(SaveGame)
+	TArray<FPRCompanionRelationshipRecord> CompanionRelationships;
 };
 
 USTRUCT()

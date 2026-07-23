@@ -57,6 +57,7 @@ UPRSaveGame* MakeSave(const int64 Revision, const FGuid ProfileId = FGuid::NewGu
 	Save->SchemaVersion = UPRSaveGame::CurrentSchemaVersion;
 	Save->SaveRevision = Revision;
 	Save->Profile.ProfileId = ProfileId;
+	Save->Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
 	return Save;
 }
 
@@ -226,11 +227,18 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 {
 	const UPRSaveGame* SaveGame = GetDefault<UPRSaveGame>();
-	TestEqual(TEXT("Current schema is one"), UPRSaveGame::CurrentSchemaVersion, 1);
+	TestEqual(TEXT("Current schema is two"), UPRSaveGame::CurrentSchemaVersion, 2);
 	TestEqual(TEXT("Minimum migratable schema is one"), UPRSaveGame::MinimumMigratableVersion, 1);
 	TestEqual(TEXT("Schema defaults missing"), SaveGame->SchemaVersion, 0);
 	TestEqual(TEXT("Revision defaults zero"), SaveGame->SaveRevision, int64{0});
 	TestFalse(TEXT("Profile id defaults invalid"), SaveGame->Profile.ProfileId.IsValid());
+	TestTrue(TEXT("Default profile has no implicit future companion records"), SaveGame->Profile.CompanionRelationships.IsEmpty());
+	const FProperty* CompanionRelationshipsProperty = FindFProperty<FProperty>(FPRProfileSaveData::StaticStruct(), GET_MEMBER_NAME_CHECKED(FPRProfileSaveData, CompanionRelationships));
+	TestNotNull(TEXT("Profile declares explicit companion relationship partition"), CompanionRelationshipsProperty);
+	if (CompanionRelationshipsProperty)
+	{
+		TestTrue(TEXT("Companion relationships express SaveGame intent"), CompanionRelationshipsProperty->HasAnyPropertyFlags(CPF_SaveGame));
+	}
 
 	TArray<FName> DeclaredProperties;
 	for (TFieldIterator<FProperty> It(UPRSaveGame::StaticClass(), EFieldIteratorFlags::ExcludeSuper); It; ++It)
