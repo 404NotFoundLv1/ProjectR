@@ -62,6 +62,12 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 完整 UMG Designer Tree、StateTree/BehaviorTree、AnimBlueprint 状态机、Niagara 和 Automation 的专用 Toolset 当前未启用。进入相关版本时先启用并重审计；重审计后仍有缺口才创建专用 Toolset。GASToolsets 由 v0.1.1 选择性启用，其边界见下文。
 # MCP Operation Manifest
 执行前记录目标 Package、只读/创建/修改类型、Toolset/Tool、碰撞与可编辑性结果、操作顺序、失败停止点、是否需要重启/批准。执行后记录实际 Package、保存、Dirty、Blueprint compile、引用验证、重启加载和 PIE。
+# v0.3.0 Companion 固定 PIE 自动化
+
+- 官方 Toolset 已实际完成四个固定 Companion DataAsset 的创建、配置、精确保存、回读与重启验证；但它不能在活动 PIE 中调用仅限 C++ 的 `UPRCompanionSubsystem` 来验证主同步选择和地图旅行。
+- 因此新增 editor-only `ProjectRAuthoringTools.PRCompanionAutomationToolset.RunPIECompanionSyncSmoke()`。该入口无参数，仅在 Authority PIE 中选择固定的 `Companion.Axiom`、验证两个固定后台身份并旅行至 `L_BossGym`；它不接受任意路径、类、Tag、代码、Save Slot 或 Profile 输入，不保存 Package，也不读写存档。
+- Runner 只在 Registry 就绪条件满足前轮询，最长 20 秒；运行时 Subsystem 对固定、不可变的三项正式 Registry 同步加载，以保证 GameInstance 生命周期中的身份数据确定可用。
+
 # 安全规则
 - 不通过 shell 或普通文件 IO 修改 `.uasset/.umap`。
 - 写入串行；不让多个 Agent 同时写同一 Editor。

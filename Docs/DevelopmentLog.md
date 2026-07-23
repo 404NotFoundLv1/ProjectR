@@ -351,6 +351,16 @@ date: "2026-07-10"
 - Future Compatibility Review PASS：v0.3.x Companion/QTE 只消费稳定事件与最终资产；v0.4.x Director/Room/Reward/Meta 仅施加白名单增量；v0.7.x 内容不替换 Combat/Enemy/Boss 基础；v0.8.x 输入重绑定/难度不改变语义；v0.9.1/v1.0.1 可重放固定 Gym 与追溯 BalanceNotes。
 - 正式功能实施提交为 `ebaee4551f49dd9f10dc3123cb4d6758b8bdf97d`（`v0.2.4 First combat feel and balance pass`），且该提交已同时位于 `main` 与 `origin/main`。最终 47/47 required PASS 和用户人工验收 PASS 均为实际证据；PhysicalGamepad、NetworkPIEReplication、Development/Shipping Package 与 GC 如实保持 optional `NOT_RUN`。公共 v0.2.4 已完成。
 
+# 2026-07-23 - v0.3.0 Companion 数据、关系与主同步结构（Completed）
+
+- 创建并精确保存 `/Game/ProjectR/Companions/DA_Companion_Axiom`、`DA_Companion_Kindle`、`DA_Companion_Null` 和 `DA_CompanionRegistry`。MCP 回读、Data Validation、精确保存、全局 Dirty=0 及正常 Editor 重启回读均通过；无地图、Config、Tag 或用户 Save 变化。
+- `UPRCompanionSubsystem` 以固定 Registry 管理三名 Companion 的身份、canonical `Trust/Affection/Evaluation/Overload=50/50/50/0` 关系快照和 run-local 1 Primary + 2 Background 选择。Schema 1→2 迁移与新 Profile 都产生默认关系；无 Profile 时只读默认快照完整，但关系写入仍被拒绝，绝不发起 I/O。
+- BuildEditor `v030-final-build-companion-registry-sync` PASS；`ProjectR.Companion` 3/3 PASS（`Saved/Logs/v030-final-ProjectR-Companion.log`）。先前 TDD RED 已复现 profile-less projection 缺失，修复后 `PrimarySyncAndTravel` PASS。
+- 官方 MCP 不提供活动 PIE 的固定 C++ Companion API 调用，新增最小 editor-only、无参数 `PRCompanionAutomationToolset`；固定 PIE smoke PASS：Axiom Primary、2 个 Background、BossGym travel、`saveIO=false`、`packagesSaved=false`。StopPIE 后 PIE=false，四个正式 Package 均为 Dirty=false。
+- 最终 AutomationReport 为 `Saved/AutomationReports/v030-final-report-20260723b/v030-final-None/result.json`，实际为 36/36 required PASS。该结果只汇总实际已运行的 Build、原生自动化、MCP 回读/保存/重启与固定 PIE 证据。
+- 本版本无必需人工验收。`PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 均保持 optional `NOT_RUN`；没有 Companion Actor、AI、QTE、Dialogue、Ability、Widget 或未来玩法。
+- Future Compatibility Review：v0.3.1 只能消费 Data/relationship/sync snapshots 建立 Actor/支援；v0.3.2 只能用受控 Delta；v0.3.3/3.4 只消费 persona/event；v0.4.3 以后才通过迁移扩展 Account/Run，不能替换 Schema 2 关系语义或 A/B 存储。
+
 # 版本记录模板
 
 ```text

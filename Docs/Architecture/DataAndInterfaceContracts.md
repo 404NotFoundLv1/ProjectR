@@ -211,10 +211,11 @@ date: "2026-07-10"
 **建立版本**：v0.3.0。  
 **消费者**：AI 实体、QTE、救援、对话、任务、结局。
 
-- Companion 以稳定 CompanionId/GameplayTag 标识。
-- Relationship 持久化 Trust、Affection、Evaluation Tags、Overload 和关键事件 ID。
-- 战斗支援读取不可变关系快照，关系变化通过 `FPRRelationshipDelta` 请求并由所有者校验。
-- AI 无法以支援伤害完成普通/精英/Boss 终结；阈值属于 Companion Combat Policy 数据。
+- Companion 以稳定 CompanionId/GameplayTag 标识；v0.3.0 固定 Axiom、Kindle、Null 三项，Registry 顺序不可变。
+- `FPRRelationshipState` 只持久化 `Trust`、`Affection`、`Evaluation`、`Overload` 四个 `int32 [0,100]`，默认 `50/50/50/0`。`FPRCompanionRelationshipRecord` 只含 `CompanionId` 与 State，必须为三项 canonical 顺序；不保存关键事件 ID、UObject、Spec、EffectHandle、Timer 或 Delegate。
+- `UPRCompanionSubsystem` 是关系与 run-local 主同步的唯一 owner：每轮恰有一个 Primary 和两个按 Registry 派生的 Background；重复选择幂等。没有已加载 Profile 时读 API 返回默认 canonical 快照，但 Delta 必须拒绝且不发起 I/O；成功 Create/Load 才投影 Schema 2 的持久化关系，选择本身不持久化。
+- Relationship 变化只由具名 `FPRRelationshipDelta` 经 Subsystem 逐字段 Clamp 后 stage 到已加载 Profile，实际值变化才广播一次 `FPRRelationshipChangedEvent`。SaveSubsystem 只持有值类型，不依赖 Companion 类。
+- 战斗支援、QTE、对话和保护系统是后续消费者；v0.3.0 不创建 AI、Ability、QTE、Dialogue、Widget 或 Companion Combat Policy。
 
 # 6. QTEResult 合同
 

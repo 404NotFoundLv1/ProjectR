@@ -4,9 +4,7 @@
 
 #include "Companions/PRCompanionDataAsset.h"
 #include "Companions/PRCompanionRegistryDataAsset.h"
-#include "Engine/AssetManager.h"
 #include "Engine/GameInstance.h"
-#include "Engine/StreamableManager.h"
 #include "Engine/World.h"
 #include "ProjectR.h"
 #include "Save/PRSaveSubsystem.h"
@@ -153,10 +151,13 @@ bool UPRCompanionSubsystem::IsRegistryReady() const
 
 void UPRCompanionSubsystem::LoadFixedRegistry()
 {
-	if (!RegistryAsset.IsNull())
+	if (RegistryAsset.IsNull()) return;
+	// This is the sole, fixed, three-entry identity registry. Loading it
+	// synchronously makes GameInstance startup deterministic across PIE travel;
+	// no caller can substitute an arbitrary asset or path.
+	if (RegistryAsset.LoadSynchronous())
 	{
-		UAssetManager::GetStreamableManager().RequestAsyncLoad(
-			RegistryAsset.ToSoftObjectPath(), FStreamableDelegate::CreateUObject(this, &UPRCompanionSubsystem::FinishRegistryLoad));
+		FinishRegistryLoad();
 	}
 }
 
@@ -200,7 +201,10 @@ void UPRCompanionSubsystem::LoadRelationshipProjection()
 	}
 	else
 	{
-		RelationshipRecords.Empty();
+		// A profile-less session must still expose the canonical relationship
+		// baseline. Mutation remains rejected until a profile is loaded, but
+		// read-only runtime consumers never receive an incomplete roster.
+		RelationshipRecords = FPRCompanionContract::BuildDefaultRelationshipRecords();
 	}
 }
 

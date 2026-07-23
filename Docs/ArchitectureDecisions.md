@@ -333,6 +333,18 @@ date: "2026-07-10"
 - Consequences: The GameplayTag baseline is now 127 explicit tags, 13 roots, and 61 checked getters. The first six granted entries, their order, their public schemas, and the existing HUD's six skill slots remain unchanged. Fixed PlayerSkill tools validate seven granted specs while continuing their six-P0 behavior and presentation assertions. The collision repair changes neither alive-enemy combat collision nor death, registry, AttributeSet, or AI semantics.
 - Verification and rollback: Native PlayerSkill 5/5 and Enemy 11/11, fixed D and E PIE smokes, and exact saved-asset/restart reads are required. Roll back by reversing only this v0.2.4 config/source/test/document diff and restoring the exact AbilitySet entry/asset references; deleting the two created assets requires separate explicit approval.
 
+# ADR-026 - Companion identity, relationship projection and run-local primary sync
+
+**状态**：Accepted。
+
+**背景**：v0.3.0 需要持久化三名 Companion 的长期关系并提供跨地图可用的唯一主同步选择，但不得提前创建 Actor、支援战斗、QTE、对话、UI 或永久偏好。Save 已冻结 A/B `PRSV`，Schema 1 只有 ProfileId。
+
+**决策**：固定三项 `UPrimaryDataAsset` 和 canonical Registry（Axiom、Kindle、Null）；`UPRCompanionSubsystem : UGameInstanceSubsystem` 拥有只读关系投影和 run-local Primary/Background 分配。关系值固定为 Trust/Affection/Evaluation/Overload 的 `int32 [0,100]`、默认 `50/50/50/0`；Save Schema 2 仅在 Profile 中追加 canonical relationship records，并以精确 1→2 迁移填充默认值。Primary 不持久化，在 Create/Load/PIE 生命周期清除、普通旅行保留。固定 Registry 同步加载，以消除 GameInstance 初始化期间异步读取的不确定性。
+
+**后果**：后续 Actor、QTE、Dialogue、保护和关系系统只消费稳定身份、快照与事件；Save 不保存运行时 Primary、对象、GAS Handle、Timer 或 Delegate。无 Profile 会话仍可读取默认完整 roster，但不能修改或写盘。
+
+**迁移/回滚**：Schema 1 只通过 1→2 增量迁移；未来字段继续逐版本追加。回滚仅反向撤销本版本 C++、文档和四项 Package 引用，禁止更改 ProfileId、A/B、Envelope 或用户 Save。
+
 # ADR 模板
 
 ```text
