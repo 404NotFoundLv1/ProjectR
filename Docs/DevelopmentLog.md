@@ -361,6 +361,12 @@ date: "2026-07-10"
 - 本版本无必需人工验收。`PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 均保持 optional `NOT_RUN`；没有 Companion Actor、AI、QTE、Dialogue、Ability、Widget 或未来玩法。
 - Future Compatibility Review：v0.3.1 只能消费 Data/relationship/sync snapshots 建立 Actor/支援；v0.3.2 只能用受控 Delta；v0.3.3/3.4 只消费 persona/event；v0.4.3 以后才通过迁移扩展 Account/Run，不能替换 Schema 2 关系语义或 A/B 存储。
 
+# 2026-07-23 - v0.3.0 文档闭环与 v0.3.1 合同转换
+
+- v0.3.0 正式实施提交为 `66caf2a3e59221f4b3310df339032d6b6aa134e9`（`v0.3.0 Add companion data relationship and sync structure`）；最终 AutomationReport `Saved/AutomationReports/v030-final-report-20260723b/v030-final-None/result.json` 为 36/36 required PASS。PhysicalGamepad、NetworkPIEReplication、Package、GC 保持 optional `NOT_RUN`。
+- 当前版本转换只建立 v0.3.1 任务合同并推进版本指针；未执行 Build、PIE、MCP 写入或 v0.3.1 运行时/资产实现。
+- v0.3.1 固定为单一完整版本：World-owned Primary Companion Pawn、三种确定性支援、受控 no-kill 和只读 SupportEvent；QTE、Dialogue、濒死救援、Director 与关系 UI 仍留在后续版本。
+
 # 版本记录模板
 
 ```text
