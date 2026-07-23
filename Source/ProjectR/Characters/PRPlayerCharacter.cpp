@@ -195,6 +195,7 @@ void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	const UInputAction* DodgeAction = nullptr;
 	const UInputAction* InteractAction = nullptr;
 	const UInputAction* ExecuteAction = nullptr;
+	const UInputAction* QTERejectAction = nullptr;
 	const UInputAction* ShadowThrustAction = nullptr;
 	const UInputAction* FireSlashAction = nullptr;
 	const UInputAction* ThunderDropAction = nullptr;
@@ -207,6 +208,7 @@ void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		DodgeAction,
 		InteractAction,
 		ExecuteAction,
+		QTERejectAction,
 		ShadowThrustAction,
 		FireSlashAction,
 		ThunderDropAction,
@@ -232,6 +234,7 @@ void APRPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		{DodgeAction, UPRTagLibrary::GetInputDodgeTag()},
 		{InteractAction, UPRTagLibrary::GetInputInteractTag()},
 		{ExecuteAction, UPRTagLibrary::GetInputExecuteTag()},
+		{QTERejectAction, UPRTagLibrary::GetInputQTERejectTag()},
 		{ShadowThrustAction, UPRTagLibrary::GetInputSkillShadowThrustTag()},
 		{FireSlashAction, UPRTagLibrary::GetInputSkillFireSlashTag()},
 		{ThunderDropAction, UPRTagLibrary::GetInputSkillThunderDropTag()},
@@ -276,6 +279,11 @@ void APRPlayerCharacter::HandleInputTagReleased(FGameplayTag InputTag)
 	{
 		ASC->AbilityInputTagReleased(InputTag);
 	}
+}
+
+FPRSemanticInputEventNative& APRPlayerCharacter::OnSemanticInputEvent()
+{
+	return SemanticInputEvent;
 }
 
 void APRPlayerCharacter::HandleMoveInput(const FInputActionValue& Value)
@@ -328,11 +336,21 @@ void APRPlayerCharacter::HandleJumpStopped()
 
 void APRPlayerCharacter::HandleSemanticPressed(const FInputActionValue& Value, FGameplayTag InputTag)
 {
+	FPRSemanticInputEvent Event;
+	Event.InputTag = InputTag;
+	Event.bPressed = true;
+	Event.WorldTimeSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	SemanticInputEvent.Broadcast(Event);
 	HandleInputTagPressed(InputTag);
 }
 
 void APRPlayerCharacter::HandleSemanticReleased(const FInputActionValue& Value, FGameplayTag InputTag)
 {
+	FPRSemanticInputEvent Event;
+	Event.InputTag = InputTag;
+	Event.bPressed = false;
+	Event.WorldTimeSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	SemanticInputEvent.Broadcast(Event);
 	HandleInputTagReleased(InputTag);
 }
 
@@ -483,6 +501,7 @@ bool APRPlayerCharacter::ResolveRequiredInputActions(
 	const UInputAction*& DodgeAction,
 	const UInputAction*& InteractAction,
 	const UInputAction*& ExecuteAction,
+	const UInputAction*& QTERejectAction,
 	const UInputAction*& ShadowThrustAction,
 	const UInputAction*& FireSlashAction,
 	const UInputAction*& ThunderDropAction,
@@ -509,13 +528,14 @@ bool APRPlayerCharacter::ResolveRequiredInputActions(
 	DodgeAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputDodgeTag());
 	InteractAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputInteractTag());
 	ExecuteAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputExecuteTag());
+	QTERejectAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputQTERejectTag());
 	ShadowThrustAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillShadowThrustTag());
 	FireSlashAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillFireSlashTag());
 	ThunderDropAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillThunderDropTag());
 	VectorHookAction = InputConfig->FindInputActionForTag(UPRTagLibrary::GetInputSkillVectorHookTag());
 	CounterProofWallAction = InputConfig->FindInputActionForTag(
 		UPRTagLibrary::GetInputSkillCounterProofWallTag());
-	return MoveAction && JumpAction && AttackAction && DodgeAction && InteractAction && ExecuteAction
+	return MoveAction && JumpAction && AttackAction && DodgeAction && InteractAction && ExecuteAction && QTERejectAction
 		&& ShadowThrustAction && FireSlashAction && ThunderDropAction && VectorHookAction
 		&& CounterProofWallAction;
 }

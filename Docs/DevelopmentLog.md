@@ -375,6 +375,21 @@ date: "2026-07-10"
 - BuildEditor `20260723T142338Z-4ccbba79` PASS；`ProjectR.Companion` 7/7 PASS；固定 Combat smoke 与 travel sync smoke 均 PASS 并返回 runner transient clean/no Save I/O。Primary Pawn 属于当前 PIE 选择状态，完整世界对象清理由 StopPIE/World Cleanup 单独验证。Input、GAS、Combat、Ability、Save、Debug（`-game`）、PlayerSkill、Enemy、Boss、CombatHUD 分别在独立会话以退出码 0 完成。
 - 没有 GameplayTag/Config、地图、Save、玩家技能、Combat、AttributeSet、Enemy/Boss、HUD 或 Input diff；没有创建未来 QTE、Dialogue、救援、Director、LLM 或 AI 系统。Future Compatibility Review PASS：v0.3.2 只订阅 SupportEvent，v0.3.3/3.4 只消费值事实，v0.4.0 不接管 Pawn/Timer；Save 继续不持久化运行时对象或 Handle。
 
+# 2026-07-24 - v0.3.1 文档闭环与 v0.3.2 QTE 合同转换
+
+- v0.3.1 正式实施提交为 `01bee52ab5a6369a5b1627cbcfe0d5fe257bade4`（`v0.3.1 Add companion combat support no-kill rule`）；最终报告 `Saved/AutomationReports/v031-final-report-20260723b/v031-final-None/result.json` 为 44/44 required PASS。
+- `PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 继续如实记录为 optional `NOT_RUN`。
+- 当前转换只关闭 v0.3.1 并建立单一完整 v0.3.2 任务合同；未在转换期间执行 Build、PIE、MCP 写入或 QTE 运行时/资产实现。
+- v0.3.2 固定为一次完成 12 个 P0 QTE：确定性 DataAsset/Registry、单 Active 状态机、有限输入、关系 Delta、值型 `FPRQTEResult` 与只读 Prompt UI。对话、正式濒死保护、Director、画像、奖励与 Save Schema 扩展仍属于后续版本。
+
+# 2026-07-24 - v0.3.2 Twelve P0 QTE combos（Implemented）
+
+- 新增 Axiom、Kindle、Null 各四项的固定 QTE DataAsset、唯一 Registry、Reject InputAction 与只读 `WBP_QTEPrompt`；只修改 `DA_PlayerInputConfig` 和 `IMC_Player`。所有 15 项 Create 与 2 项 Modify Package 在精确保存、Blueprint warnings-as-errors 编译与正常 Editor 重启后回读成功，所有 Package 和两张 Gym 地图均为 Dirty=false。
+- `UPRQTESubsystem` 仅消费稳定 CombatEvent/AbilityOutcome/CompanionSupportEvent，保持单 Active、去重、频率限制、成功/失败/拒绝/超时/取消分离和 Death/Travel/Pawn replacement/World cleanup 清理。伤害和状态继续只通过既有 Combat/GAS，关系继续只通过 `UPRCompanionSubsystem::ApplyRelationshipDelta`；没有新增 Save Schema、Combat、Enemy/Boss、HUD 权威、地图或未来业务。
+- Prompt 读到已验证 DataAsset 的名称、意图与冻结输入的本地控制标签后才显示；RuntimeState 中的 DisplayName/PromptText 是 transient 表现字段，不能持久化或反向决定玩法。新增三项无参数 editor-only 人工预览入口，使用真实事件链并在超时/结果后清理，不接受路径、Tag、数值或自由代码。
+- TDD 记录两项真实 RED：`20260723T211005Z-afecba6e`（缺 `DisplayName/PromptText`）及 `20260723T211628Z-6ca0db9a`（缺输入格式化）；对应 GREEN 后最终 BuildEditor `20260723T212059Z-ea1ef05e` PASS。原生回归实际为 QTE 5/5、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、CombatHUD 6/6，全部 PASS；12 个单项固定 PIE 均 PASS 且 runtime clean。
+- 用户完成 Axiom/Kindle/Null Prompt 清晰度预览并于 2026-07-24 回复 PASS。最终报告为 `Saved/AutomationReports/v032-final-report-20260724b/v032-final-None/result.json`；PhysicalGamepad、NetworkPIEReplication、Package 与 GC 为 optional NOT_RUN。Future Compatibility Review：后续 Dialogue/Profile/Director 只订阅值型 QTEResult，不接管 Timer、Widget、目标或伤害；Save 永不持久化运行时 QTE 引用。
+
 # 版本记录模板
 
 ```text

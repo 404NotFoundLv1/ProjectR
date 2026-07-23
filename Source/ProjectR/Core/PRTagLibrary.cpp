@@ -49,6 +49,12 @@ const FGameplayTag& UPRTagLibrary::GetInputExecuteTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetInputQTERejectTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.QTE.Reject"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetInputSkillShadowThrustTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Input.Skill.ShadowThrust"));
@@ -370,5 +376,11 @@ const FGameplayTag& UPRTagLibrary::GetQTEResultRejectedTag()
 const FGameplayTag& UPRTagLibrary::GetQTEResultTimeoutTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("QTE.Result.Timeout"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetQTEResultCancelledTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("QTE.Result.Cancelled"));
 	return Tag;
 }

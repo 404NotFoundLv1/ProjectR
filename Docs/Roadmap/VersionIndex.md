@@ -27,8 +27,8 @@ date: "2026-07-10"
 | v0.2.3 | 战斗纵切片 | 战斗 HUD 与技能反馈 | Completed | v0.2.2 | Versions/v0.2.3.md |
 | v0.2.4 | 战斗纵切片 | 第一轮手感和平衡 | Completed | v0.2.3 | Versions/v0.2.4.md |
 | v0.3.0 | AI 队友与 QTE 纵切片 | AI 队友数据、关系和主同步结构 | Completed | v0.2.4 | Versions/v0.3.0.md |
-| v0.3.1 | AI 队友与 QTE 纵切片 | AI 实体、跟随、支援和压血不击杀 | In Progress | v0.3.0 | Versions/v0.3.1.md |
-| v0.3.2 | AI 队友与 QTE 纵切片 | 12 个 P0 QTE 完整实现 | Planned | v0.3.1 | 进入阶段前生成 |
+| v0.3.1 | AI 队友与 QTE 纵切片 | AI 实体、跟随、支援和压血不击杀 | Completed | v0.3.0 | Versions/v0.3.1.md |
+| v0.3.2 | AI 队友与 QTE 纵切片 | 12 个 P0 QTE 完整实现 | In Progress | v0.3.1 | Versions/v0.3.2.md |
 | v0.3.3 | AI 队友与 QTE 纵切片 | 动态交流与战斗短句系统 | Planned | v0.3.2 | 进入阶段前生成 |
 | v0.3.4 | AI 队友与 QTE 纵切片 | 濒死保护与分歧缓存区完整化 | Planned | v0.3.3 | 进入阶段前生成 |
 | v0.4.0 | 首脑法令、肉鸽与 Meta 成长 | 玩家画像与首脑法令白名单 | Planned | v0.3.4 | 进入阶段前生成 |

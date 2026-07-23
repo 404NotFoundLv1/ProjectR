@@ -95,3 +95,9 @@ date: "2026-07-10"
 
 - 经用户明确批准，显式 Tag 从 126 增至 127，根命名空间保持 13，`UPRTagLibrary` checked getter 从 60 增至 61。只追加 `Skill.BasicAttack`，既有 126 项名称、顺序、DevComment 与消费者语义均不变，无 Redirect。
 - 该 Tag 是零资源标准攻击的稳定 AbilityTag，消费既有 `Input.Attack`，不创建 `Input.BasicAttack`、Cooldown、Combat Event、Response、测试或 UI Tag。
+
+# v0.3.2 QTE 增量
+
+- 显式 Tag 从 127 增至 129，根命名空间保持 13，`UPRTagLibrary` checked getter 从 61 增至 63。仅追加 `Input.QTE.Reject` 与 `QTE.Result.Cancelled`；既有 Tag 的名称、顺序、DevComment 与消费者语义不变，无 Redirect。
+- `Input.QTE.Reject` 是 QTE Prompt 的有限取消语义，映射冻结为 `R` 与 `Gamepad_DPad_Left`；它不替代 Ability Input。`QTE.Result.Cancelled` 与 Failure、Rejected、Timeout 语义互斥，供只读结果消费者区分生命周期清理。
+- 其余 QTE Type/Result、Combat/Ability/Companion Tag 一律复用既有合同；v0.3.2 不新增测试、Director、Reward、Save 或未来版本占位 Tag。

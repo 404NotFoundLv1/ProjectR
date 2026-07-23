@@ -17,3 +17,23 @@
 /Content/ProjectR/Companions/Runtime/DA_CompanionRuntime_Axiom.uasset -filter -diff -merge -text
 /Content/ProjectR/Companions/Runtime/DA_CompanionRuntime_Kindle.uasset -filter -diff -merge -text
 /Content/ProjectR/Companions/Runtime/DA_CompanionRuntime_Null.uasset -filter -diff -merge -text
+
+# v0.3.2 QTE configuration and prompt assets are deliberately tiny (103.05 KiB total).
+# Keep these exact files in ordinary Git; all other UE packages remain LFS-managed.
+/Content/ProjectR/Input/Actions/IA_QTE_Reject.uasset -filter -diff -merge -text
+/Content/ProjectR/Input/DA_PlayerInputConfig.uasset -filter -diff -merge -text
+/Content/ProjectR/Input/IMC_Player.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Axiom/DA_QTE_Axiom_CooperativeRefutation.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Axiom/DA_QTE_Axiom_PhaseCut.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Axiom/DA_QTE_Axiom_ProbabilityShield.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Axiom/DA_QTE_Axiom_WeaknessAxiom.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/DA_QTERegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Kindle/DA_QTE_Kindle_Breakout.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Kindle/DA_QTE_Kindle_BurnoutTornado.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Kindle/DA_QTE_Kindle_DetonationRelay.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Kindle/DA_QTE_Kindle_ReverseBurnRescue.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Null/DA_QTE_Null_DecoyJudgment.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Null/DA_QTE_Null_GarbageCollection.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Null/DA_QTE_Null_VerdictTamper.uasset -filter -diff -merge -text
+/Content/ProjectR/QTE/Null/DA_QTE_Null_VulnerabilityBackstab.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/QTE/WBP_QTEPrompt.uasset -filter -diff -merge -text

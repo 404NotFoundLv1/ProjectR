@@ -100,21 +100,21 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 		TEXT("Input.Move"), TEXT("Input.Jump"), TEXT("Input.Attack"), TEXT("Input.Dodge"),
 		TEXT("Input.Interact"), TEXT("Input.Execute"), TEXT("Input.Skill.ShadowThrust"),
 		TEXT("Input.Skill.FireSlash"), TEXT("Input.Skill.ThunderDrop"),
-		TEXT("Input.Skill.VectorHook"), TEXT("Input.Skill.CounterProofWall")};
+		TEXT("Input.Skill.VectorHook"), TEXT("Input.Skill.CounterProofWall"), TEXT("Input.QTE.Reject")};
 	const TCHAR* ExpectedInputActions[] = {
 		TEXT("IA_Move"), TEXT("IA_Jump"), TEXT("IA_Attack"), TEXT("IA_Dodge"),
 		TEXT("IA_Interact"), TEXT("IA_Execute"), TEXT("IA_Skill_ShadowThrust"),
 		TEXT("IA_Skill_FireSlash"), TEXT("IA_Skill_ThunderDrop"),
-		TEXT("IA_Skill_VectorHook"), TEXT("IA_Skill_CounterProofWall")};
-	TestEqual(TEXT("Input config contains eleven semantic actions"), InputConfig->TaggedInputActions.Num(), 11);
-	for (int32 Index = 0; Index < FMath::Min(InputConfig->TaggedInputActions.Num(), 11); ++Index)
+		TEXT("IA_Skill_VectorHook"), TEXT("IA_Skill_CounterProofWall"), TEXT("IA_QTE_Reject")};
+	TestEqual(TEXT("Input config contains twelve semantic actions including QTE reject"), InputConfig->TaggedInputActions.Num(), 12);
+	for (int32 Index = 0; Index < FMath::Min(InputConfig->TaggedInputActions.Num(), 12); ++Index)
 	{
 		const FPRTaggedInputAction& Entry = InputConfig->TaggedInputActions[Index];
 		TestEqual(*FString::Printf(TEXT("Input tag %d"), Index), Entry.InputTag.ToString(), FString(ExpectedInputTags[Index]));
 		TestEqual(*FString::Printf(TEXT("Input action %d"), Index),
 			static_cast<const UInputAction*>(Entry.InputAction.Get()), LoadInputAction(ExpectedInputActions[Index]));
 	}
-	for (int32 Index = 6; Index < 11; ++Index)
+	for (int32 Index = 6; Index < 12; ++Index)
 	{
 		const UInputAction* Action = InputConfig->TaggedInputActions[Index].InputAction;
 		if (TestNotNull(*FString::Printf(TEXT("Formal skill IA %d"), Index), Action))
@@ -133,7 +133,7 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 		EKeys::F, EKeys::Gamepad_RightShoulder, EKeys::J, EKeys::K, EKeys::L,
 		EKeys::U, EKeys::Gamepad_LeftShoulder, EKeys::I, EKeys::Gamepad_RightTrigger,
 		EKeys::O, EKeys::Gamepad_LeftTrigger, EKeys::H, EKeys::Gamepad_DPad_Up,
-		EKeys::Semicolon, EKeys::Gamepad_DPad_Down};
+		EKeys::Semicolon, EKeys::Gamepad_DPad_Down, EKeys::R, EKeys::Gamepad_DPad_Left};
 	const TCHAR* ExpectedMappingActions[] = {
 		TEXT("IA_Move"), TEXT("IA_Move"), TEXT("IA_Move"), TEXT("IA_Jump"), TEXT("IA_Jump"),
 		TEXT("IA_Attack"), TEXT("IA_Attack"), TEXT("IA_Dodge"), TEXT("IA_Dodge"),
@@ -143,9 +143,9 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 		TEXT("IA_Skill_FireSlash"), TEXT("IA_Skill_FireSlash"),
 		TEXT("IA_Skill_ThunderDrop"), TEXT("IA_Skill_ThunderDrop"),
 		TEXT("IA_Skill_VectorHook"), TEXT("IA_Skill_VectorHook"),
-		TEXT("IA_Skill_CounterProofWall"), TEXT("IA_Skill_CounterProofWall")};
-	TestEqual(TEXT("IMC contains twenty-six mappings"), Mappings.Num(), 26);
-	for (int32 Index = 0; Index < FMath::Min(Mappings.Num(), 26); ++Index)
+		TEXT("IA_Skill_CounterProofWall"), TEXT("IA_Skill_CounterProofWall"), TEXT("IA_QTE_Reject"), TEXT("IA_QTE_Reject")};
+	TestEqual(TEXT("IMC contains twenty-eight mappings including fixed QTE reject"), Mappings.Num(), 28);
+	for (int32 Index = 0; Index < FMath::Min(Mappings.Num(), 28); ++Index)
 	{
 		TestEqual(*FString::Printf(TEXT("IMC key %d"), Index), Mappings[Index].Key, ExpectedKeys[Index]);
 		TestEqual(*FString::Printf(TEXT("IMC action %d"), Index), Mappings[Index].Action.Get(), LoadInputAction(ExpectedMappingActions[Index]));

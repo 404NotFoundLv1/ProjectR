@@ -21,6 +21,7 @@ public:
 	static const FGameplayTag& GetInputDodgeTag();
 	static const FGameplayTag& GetInputInteractTag();
 	static const FGameplayTag& GetInputExecuteTag();
+	static const FGameplayTag& GetInputQTERejectTag();
 	static const FGameplayTag& GetInputSkillShadowThrustTag();
 	static const FGameplayTag& GetInputSkillFireSlashTag();
 	static const FGameplayTag& GetInputSkillThunderDropTag();
@@ -80,6 +81,7 @@ public:
 	static const FGameplayTag& GetQTEResultFailureTag();
 	static const FGameplayTag& GetQTEResultRejectedTag();
 	static const FGameplayTag& GetQTEResultTimeoutTag();
+	static const FGameplayTag& GetQTEResultCancelledTag();
 
 private:
 	static FGameplayTag RequestRequiredTag(const FName& TagName);

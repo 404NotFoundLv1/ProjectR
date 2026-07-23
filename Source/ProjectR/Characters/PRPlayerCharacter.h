@@ -9,6 +9,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
+#include "Input/PRInputTypes.h"
 #include "TimerManager.h"
 
 #include "PRPlayerCharacter.generated.h"
@@ -45,6 +46,7 @@ public:
 		const FPRDamageRequest& Request,
 		FGameplayTagContainer& OutResponseTags) const override;
 	UPRPlayerSkillComponent* GetPlayerSkillComponent() const;
+	FPRSemanticInputEventNative& OnSemanticInputEvent();
 
 protected:
 	virtual void BeginPlay() override;
@@ -83,7 +85,8 @@ private:
 		const UInputAction*& AttackAction,
 		const UInputAction*& DodgeAction,
 		const UInputAction*& InteractAction,
-		const UInputAction*& ExecuteAction,
+	const UInputAction*& ExecuteAction,
+		const UInputAction*& QTERejectAction,
 		const UInputAction*& ShadowThrustAction,
 		const UInputAction*& FireSlashAction,
 		const UInputAction*& ThunderDropAction,
@@ -105,6 +108,7 @@ private:
 	uint8 SavedCustomMovementMode = 0;
 	bool bHitReactionActive = false;
 	bool bCombatDeathLocked = false;
+	FPRSemanticInputEventNative SemanticInputEvent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UCameraComponent> SideViewCameraComponent;

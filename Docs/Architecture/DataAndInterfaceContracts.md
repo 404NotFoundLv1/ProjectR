@@ -232,6 +232,13 @@ date: "2026-07-10"
 - 失败、拒绝、超时必须是不同 ResultTag。
 - QTE DataAsset 的 ID 和触发 Tag 发布后冻结。
 
+# v0.3.2 QTE runtime and prompt increment
+
+- `UPRQTESubsystem` is the sole owner of candidate selection, deduplication, single-active state, cooldown, result publication and lifecycle cleanup. It preloads only the twelve fixed registry DataAssets. Combat, Companion, UI, Enemy and Boss systems never receive a reverse dependency on the subsystem.
+- `FPRQTERuntimeState` may carry `DisplayName` and `PromptText` as transient, read-only presentation text copied from the validated QTE DataAsset on activation. They are not new gameplay authority and are never saved; no RuntimeState, QTE target, Widget, Timer, Delegate, ASC, SpecHandle or EffectHandle enters SaveGame.
+- `UPRQTEPromptWidget` only renders that state and submits one of its validated semantic input tags. Its control labels are a fixed local mapping of the frozen input contract (for example `Input.Attack -> J / LMB` and `Input.Skill.ShadowThrust -> U`); it cannot create damage, effects, relationship changes, QTE requests or result decisions.
+- Death, travel, Pawn replacement, World cleanup, PIE Stop and subsystem deinitialization all cancel at most one active request, clear bindings/timers/widget state and publish no relationship delta. Future consumers receive only the value-form `FPRQTEResult`.
+
 # 7. Director 合同
 
 **所有者**：Director。  

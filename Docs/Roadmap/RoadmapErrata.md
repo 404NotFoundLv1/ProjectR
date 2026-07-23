@@ -84,6 +84,7 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-022 | v5 将 Companion 数据、支援 AI、QTE 和动态台词混入同一阶段，且未区分每轮主同步选择与长期关系持久化 | v0.3.0 只建立三名 Companion 的稳定身份/人设展示元数据、0–100 关系、唯一主同步运行时选择和 Save Schema 1→2 迁移；不创建 Actor、AI、Ability、QTE、对话或动态台词。主同步是每轮运行时状态，不写入 Save；长期关系才持久化。支援 Actor/压血不击杀延后至 v0.3.1，QTE 延后至 v0.3.2，动态台词/对话延后至 v0.3.3，濒死保护/分歧缓存延后至 v0.3.4。所有 DataAsset 机械操作由 Codex 经 Unreal MCP 完成；本版本为单一完整版本，不拆分子版本或中间功能提交 | 防止把没有所有者、输入、Actor 生命周期或持久化语义的未来玩法伪装为数据，保持 Schema 迁移、关系事件和未来消费者的稳定边界 | Resolved by v0.3.0 |
 | E-023 | 原始路线把三种支援、压血不击杀、Boss 阶段边界和运行时 Pawn 所有权留为隐含实现细节 | v0.3.1 固定为 WorldSubsystem 拥有唯一 Primary Pawn；Axiom=Shield、Kindle=LightDamage、Null=ControlMark；Normal/Elite 分别保留 20%/35% Health，Auditor 依既有 66%/33% 阶段阈值停止直接支援伤害；SupportEvent 为 v0.3.2 的只读值事件 | 防止 Companion 反向控制 Save、Combat、Boss 私有阶段或形成第二套伤害/生命周期系统 | Active for v0.3.1 |
+| E-024 | 原始路线建议将 12 个 QTE 按框架与三名 Companion 拆分；这会让关系、输入、结果与清理合同在同一版本内分裂 | v0.3.2 作为单一完整版本一次实现全部 12 个 P0 QTE；只建立一套确定性 Registry、状态机、有限输入与只读 Prompt UI，不创建中间功能提交 | 先冻结唯一 QTE 事件面和生命周期，避免 v0.3.3 对话、v0.3.4 救援、v0.4.0 Director 依赖多个不兼容的半成品 | Active for v0.3.2 |
 
 # 已接受的架构决策
 
