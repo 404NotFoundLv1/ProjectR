@@ -78,6 +78,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-021 | v5 建议建立 `Content/ProjectR/Data/Balance/*`，并以普通房间时长和敌人硬直作为首轮平衡目标；但当前数值已分散在正式 DataAsset、GameplayEffect 与 Character CDO，正式 Room/Encounter 属于 v0.4.2，Poise/Stagger/HitStop 系统尚未冻结 | v0.2.4 只在既有权威资产原位调整数值，不创建第二套运行时 Balance DataAsset 或 Subsystem。`Docs/BalanceNotes.md` 只记录基线、最终值、理由和证据，不是运行时权威。普通战斗 60–120 秒目标固定解释为 `L_CombatGym` 的白名单 2 Melee + 1 Ranged + 1 Shield 遭遇；不创建 Room、Encounter 或 Roguelike 系统。敌人硬直只允许调整既有命中反应或已存在的 Stunned 数据；不新建 Poise、Stagger、HitStop 或韧性系统。所有机械资产修改由 Codex 通过 Unreal MCP 完成。本版本为单一完整版本，不拆分子版本或中间功能提交 | 防止多重数值权威、提前引入未冻结玩法系统或将机械 Editor 工作转给用户，同时保留可追溯、可回滚的首轮平衡基线 | Active for v0.2.4 |
 
+# v0.3.0 启动合同勘误
+
+| 编号 | v5 问题 | v6 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-022 | v5 将 Companion 数据、支援 AI、QTE 和动态台词混入同一阶段，且未区分每轮主同步选择与长期关系持久化 | v0.3.0 只建立三名 Companion 的稳定身份/人设展示元数据、0–100 关系、唯一主同步运行时选择和 Save Schema 1→2 迁移；不创建 Actor、AI、Ability、QTE、对话或动态台词。主同步是每轮运行时状态，不写入 Save；长期关系才持久化。支援 Actor/压血不击杀延后至 v0.3.1，QTE 延后至 v0.3.2，动态台词/对话延后至 v0.3.3，濒死保护/分歧缓存延后至 v0.3.4。所有 DataAsset 机械操作由 Codex 经 Unreal MCP 完成；本版本为单一完整版本，不拆分子版本或中间功能提交 | 防止把没有所有者、输入、Actor 生命周期或持久化语义的未来玩法伪装为数据，保持 Schema 迁移、关系事件和未来消费者的稳定边界 | Active for v0.3.0 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

@@ -341,14 +341,15 @@ date: "2026-07-10"
 - TDD RED 保留 Boss Widget 绑定与稳定 Skill 显示名的缺口证据；GREEN 后 BuildEditor、`ProjectR.UI.CombatHUD` 6/6，以及 Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 10/10、Boss 3/3 皆实际 PASS。Blueprint warnings-as-errors、Editor 重启回读、CombatGym/BossGym 固定 PIE 与运行时/Package Dirty=0 皆通过。
 - 正式实施提交为 `ba3a5a1a40135db87bd6344deabc55a91400f820`（`v0.2.3 Add combat HUD and feedback`），且已与 `origin/main` 同步。最终报告为 `Saved/AutomationReports/v023-final-report-20260722/v023-final-None/result.json`，所有 required check PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 如实保持 optional `NOT_RUN`。用户完成 CombatGym 与 BossGym 手感/可读性验收并明确回复 PASS。公共 v0.2.3 已完成。
 
-# 2026-07-22 - v0.2.4 首轮战斗功能验证与平衡（Implementation evidence complete）
+# 2026-07-22 - v0.2.4 首轮战斗功能验证与平衡（Completed）
 
 - v0.2.4 保持单一版本与单一实现提交边界。经用户明确批准，普通敌人正式 Prototype 仅调整为 Melee 50 Health、Ranged 40 Health、Shield 70 Health/40 Shield；攻击、速度、攻击节奏、Elite、Auditor、六项 P0 Skill 和 Player 默认属性均保留。五次固定 CombatGym 人工功能验证中位时长为 16.225 秒；用户接受当前较快节奏仅作为代码功能验证，关卡节奏留给后续版本。
 - 用户随后批准 `Skill.BasicAttack` 兼容修订：J/`Input.Attack` 获得正式零资源、零冷却、150 cm/45 cm ForwardSweep，伤害只经 `UPRCombatSubsystem`；AbilitySet 在冻结前六项后追加第七 Spec，HUD 仍只显示六项 P0 Skill。Dead Enemy 保留 Revive 可能性但忽略 Pawn 碰撞，Revive 恢复原始响应。ADR-025、DataAndInterfaceContracts 与 GameplayTagTaxonomy 已记录该唯一 Tag 增量（127 explicit/13 roots/61 getters）。
 - BossGym 悬空根因是 Auditor 在 PlayerStart 下方同位生成造成 Pawn-capsule overlap。TDD RED 后把固定生成点改为右侧斜坡 `(600, 0, 240)`；最终 Boss fixed PIE 验证玩家初始落地且与 Boss 分离，P1/P2/P3、一次 Completion、1 Fragment 与 runtime cleanup 全部 PASS，不保存地图。
 - 最终 BuildEditor `v024-final-build-20260722` PASS；Input、GAS、Combat、Ability、Save、Debug、PlayerSkill、Enemy、Boss、CombatHUD 均在独立进程中以退出码 0 完成。固定 PlayerSkill E/ED、四敌整合、Boss Smoke、死亡风险和最终 40 项权威数值快照均 PASS；MCP 后读确认受影响资产及两张地图 Dirty=false。
 - 用户手动完成剩余 BossGym runbook 并明确回复全部 PASS。手动指标工具未持续运行，因此未伪造 Boss 分段时长/资源数据；其主观结论被记录为人工验收，原时长范围只作未来关卡节奏观察。最终 AutomationReport `v024-final-report-20260722/v024-final-None/result.json` 为 47/47 required PASS；PhysicalGamepad、NetworkPIEReplication、Development/Shipping Package 与 GC 是 optional NOT_RUN。未创建第二套平衡权威、未来系统、地图或 Save/Profile 写入。
-- Future Compatibility Review PASS：v0.3.x Companion/QTE 只消费稳定事件与最终资产；v0.4.x Director/Room/Reward/Meta 仅施加白名单增量；v0.7.x 内容不替换 Combat/Enemy/Boss 基础；v0.8.x 输入重绑定/难度不改变语义；v0.9.1/v1.0.1 可重放固定 Gym 与追溯 BalanceNotes。未推进 `CURRENT_VERSION`，正式提交仍待用户单独批准。
+- Future Compatibility Review PASS：v0.3.x Companion/QTE 只消费稳定事件与最终资产；v0.4.x Director/Room/Reward/Meta 仅施加白名单增量；v0.7.x 内容不替换 Combat/Enemy/Boss 基础；v0.8.x 输入重绑定/难度不改变语义；v0.9.1/v1.0.1 可重放固定 Gym 与追溯 BalanceNotes。
+- 正式功能实施提交为 `ebaee4551f49dd9f10dc3123cb4d6758b8bdf97d`（`v0.2.4 First combat feel and balance pass`），且该提交已同时位于 `main` 与 `origin/main`。最终 47/47 required PASS 和用户人工验收 PASS 均为实际证据；PhysicalGamepad、NetworkPIEReplication、Development/Shipping Package 与 GC 如实保持 optional `NOT_RUN`。公共 v0.2.4 已完成。
 
 # 版本记录模板
 
