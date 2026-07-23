@@ -216,6 +216,9 @@ date: "2026-07-10"
 - `UPRCompanionSubsystem` 是关系与 run-local 主同步的唯一 owner：每轮恰有一个 Primary 和两个按 Registry 派生的 Background；重复选择幂等。没有已加载 Profile 时读 API 返回默认 canonical 快照，但 Delta 必须拒绝且不发起 I/O；成功 Create/Load 才投影 Schema 2 的持久化关系，选择本身不持久化。
 - Relationship 变化只由具名 `FPRRelationshipDelta` 经 Subsystem 逐字段 Clamp 后 stage 到已加载 Profile，实际值变化才广播一次 `FPRRelationshipChangedEvent`。SaveSubsystem 只持有值类型，不依赖 Companion 类。
 - 战斗支援、QTE、对话和保护系统是后续消费者；v0.3.0 不创建 AI、Ability、QTE、Dialogue、Widget 或 Companion Combat Policy。
+- v0.3.1 增量：`UPRCompanionRuntimeSubsystem` 是 World-owned 的唯一运行时 Pawn/support owner；它只订阅 `UPRCompanionSubsystem::OnPrimarySyncChanged`，每个 World 至多持有一个 `APRCompanionPawn`，并在重选、旅行、Pawn replacement、World cleanup、PIE Stop 与 Deinitialize 幂等清理。Background 永远不生成 Pawn、ASC、Combatant、AttackProxy 或攻击 Timer。
+- `FPRCompanionSupportEvent` 是只读、值类型的下游事实：只含 EventId、CompanionId、SupportType、Result、SourceId、TargetId、数值、位置与世界时间；绝不保存 UObject、ASC、Spec/Effect Handle、Target、Timer 或 Delegate。v0.3.2 QTE 只可订阅此事件并经既有 Delta API 请求关系变化，不能读取 Companion 私有运行时状态。
+- Axiom 仅通过 Player ASC 应用固定 Shield GE；Kindle 只通过 `UPRCombatSubsystem::ApplyDamage` 造成被 no-kill floor 截断的伤害；Null 对普通/Elite 复用既有 Stunned，对 Boss 只发布 ControlMark 事件。Companion 不直接写 Health/Shield，不拥有第二套 Damage、Mitigation、Target 或关系权威。
 
 # 6. QTEResult 合同
 

@@ -7,3 +7,13 @@
 /Content/ProjectR/Companions/DA_Companion_Kindle.uasset -filter -diff -merge -text
 /Content/ProjectR/Companions/DA_Companion_Null.uasset -filter -diff -merge -text
 /Content/ProjectR/Companions/DA_CompanionRegistry.uasset -filter -diff -merge -text
+
+# v0.3.1 runtime/configuration assets are also deliberately tiny (93.69 KiB total).
+# Keep these exact files in ordinary Git to avoid consuming LFS quota during normal pushes.
+/Content/ProjectR/Companions/Blueprints/BP_Companion_Axiom.uasset -filter -diff -merge -text
+/Content/ProjectR/Companions/Blueprints/BP_Companion_Kindle.uasset -filter -diff -merge -text
+/Content/ProjectR/Companions/Blueprints/BP_Companion_Null.uasset -filter -diff -merge -text
+/Content/ProjectR/Companions/Effects/GE_Companion_Axiom_Shield.uasset -filter -diff -merge -text
+/Content/ProjectR/Companions/Runtime/DA_CompanionRuntime_Axiom.uasset -filter -diff -merge -text
+/Content/ProjectR/Companions/Runtime/DA_CompanionRuntime_Kindle.uasset -filter -diff -merge -text
+/Content/ProjectR/Companions/Runtime/DA_CompanionRuntime_Null.uasset -filter -diff -merge -text

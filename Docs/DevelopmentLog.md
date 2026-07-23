@@ -367,6 +367,14 @@ date: "2026-07-10"
 - 当前版本转换只建立 v0.3.1 任务合同并推进版本指针；未执行 Build、PIE、MCP 写入或 v0.3.1 运行时/资产实现。
 - v0.3.1 固定为单一完整版本：World-owned Primary Companion Pawn、三种确定性支援、受控 no-kill 和只读 SupportEvent；QTE、Dialogue、濒死救援、Director 与关系 UI 仍留在后续版本。
 
+# 2026-07-23 - v0.3.1 Companion 实体、支援与 no-kill（Completed）
+
+- 新增 `UPRCompanionRuntimeSubsystem`、`APRCompanionPawn`、`UPRCompanionComponent` 和固定 Runtime DataAsset；Primary Companion 只生成一个非战斗 Pawn，背景两名只保留逻辑身份。生命周期在重选、旅行、Pawn replacement、World cleanup、PIE Stop 与 Deinitialize 均按相同幂等边界清理 Pawn、Timer、Delegate 与弱引用。
+- Axiom/Kindle/Null 分别实现 20 Shield、12 点 no-kill LightDamage 与 Stunned/ControlMark。Axiom Instant GE 以有效的 ASC Spec 作为成功事实（Instant 不保留 ActiveEffect Handle）；Kindle 仍只经 CombatSubsystem，Normal/Elite/Auditor floor 保证 Companion 永不最终击杀，玩家可按正式 Combat 收尾。
+- MCP 精确创建并保存七项 Companion Package；重启回读确认 Runtime CDO 值为 Axiom 8s/self/20、Kindle 4s/800cm/12、Null 6s/700cm/0，Shield GE 为 Instant、Shield +20、无 Execution/Cue。Blueprint warnings-as-errors 编译后，七项和所有冻结引用、两张 Gym 地图均 Dirty=false。
+- BuildEditor `20260723T142338Z-4ccbba79` PASS；`ProjectR.Companion` 7/7 PASS；固定 Combat smoke 与 travel sync smoke 均 PASS 并返回 runner transient clean/no Save I/O。Primary Pawn 属于当前 PIE 选择状态，完整世界对象清理由 StopPIE/World Cleanup 单独验证。Input、GAS、Combat、Ability、Save、Debug（`-game`）、PlayerSkill、Enemy、Boss、CombatHUD 分别在独立会话以退出码 0 完成。
+- 没有 GameplayTag/Config、地图、Save、玩家技能、Combat、AttributeSet、Enemy/Boss、HUD 或 Input diff；没有创建未来 QTE、Dialogue、救援、Director、LLM 或 AI 系统。Future Compatibility Review PASS：v0.3.2 只订阅 SupportEvent，v0.3.3/3.4 只消费值事实，v0.4.0 不接管 Pawn/Timer；Save 继续不持久化运行时对象或 Handle。
+
 # 版本记录模板
 
 ```text

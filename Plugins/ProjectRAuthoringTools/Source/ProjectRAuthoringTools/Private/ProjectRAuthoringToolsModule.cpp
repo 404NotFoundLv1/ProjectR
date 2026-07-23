@@ -13,6 +13,7 @@
 #include "PRBalanceAutomationToolset.h"
 #include "PRCombatHUDAuthoringToolset.h"
 #include "PRCompanionAutomationToolset.h"
+#include "PRCompanionAuthoringToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -32,11 +33,13 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPRBalanceAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRCombatHUDAuthoringToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRCompanionAutomationToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRCompanionAuthoringToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
 	{
 		UToolsetRegistry::UnregisterToolsetClass(UPRCompanionAutomationToolset::StaticClass());
+		UToolsetRegistry::UnregisterToolsetClass(UPRCompanionAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRCombatHUDAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRBalanceAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRBossAuthoringToolset::StaticClass());
