@@ -404,6 +404,13 @@ date: "2026-07-10"
 - 新鲜独立回归与固定 PIE smoke 均通过；阶段性 AutomationReport 曾如实将 `HumanDialogueClarity` 记录为 required `NOT_RUN`。用户完成三位伙伴可读性预览并于 2026-07-24 明确回复 `PASS`。针对预览返回过晚而看不到短句的复现，新增 `HumanPreviewReadiness` RED/GREEN：工具现在在 Axiom 首句可见时返回 `previewActive=true`，随后继续展示 Kindle、Null，不改变运行时 Dialogue 合同或 UE Package。
 - 最终 AutomationReport 为 `Saved/AutomationReports/v033-final-report-20260724/v033-final-None/result.json`，33/33 required PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 如实为 optional NOT_RUN。Future Compatibility Review PASS：v0.3.4 仅消费 ChoiceResult/低生命值事实，v0.4.2 仅可加入 Room-safe 值事件适配，v0.5.2 可受限接入 Provider，但固定 DataAsset 始终是离线 fallback。未推进 CURRENT_VERSION、VersionIndex 或创建功能提交，等待用户单独授权。
 
+# 2026-07-24 - v0.3.3 文档闭环与 v0.3.4 分歧缓存合同转换
+
+- v0.3.3 正式实施提交为 `ab1f10a667913d72f311b2f8263a175c345cbc88`（`v0.3.3 Add dynamic companion dialogue system`），已与 `origin/main` 同步；最终报告 `Saved/AutomationReports/v033-final-report-20260724/v033-final-None/result.json` 为 33/33 required PASS，用户 Dialogue 清晰度验收为 PASS。
+- `PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 继续如实记录为 optional `NOT_RUN`。
+- 本转换只关闭 v0.3.3 并建立单一完整 v0.3.4 合同；未运行 Build、PIE、Automation、MCP 写入或资产保存，也未实现濒死保护、分歧 UI、画像、Room、Reward、账号删除、墓园或技能树。
+- v0.3.4 固定为一次性濒死分歧：只消费稳定 Death/Dialogue/Primary/Relationship 值事实，复活继续只经 Combat，关系继续只经 Companion/Save。v0.4.0、v0.4.2、v0.4.3、v0.4.4 分别消费结果或补齐正式画像、Room/Reward、墓园/账号与解锁业务。
+
 # 版本记录模板
 
 ```text

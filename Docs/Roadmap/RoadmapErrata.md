@@ -86,6 +86,7 @@ date: "2026-07-10"
 | E-023 | 原始路线把三种支援、压血不击杀、Boss 阶段边界和运行时 Pawn 所有权留为隐含实现细节 | v0.3.1 固定为 WorldSubsystem 拥有唯一 Primary Pawn；Axiom=Shield、Kindle=LightDamage、Null=ControlMark；Normal/Elite 分别保留 20%/35% Health，Auditor 依既有 66%/33% 阶段阈值停止直接支援伤害；SupportEvent 为 v0.3.2 的只读值事件 | 防止 Companion 反向控制 Save、Combat、Boss 私有阶段或形成第二套伤害/生命周期系统 | Active for v0.3.1 |
 | E-024 | 原始路线建议将 12 个 QTE 按框架与三名 Companion 拆分；这会让关系、输入、结果与清理合同在同一版本内分裂 | v0.3.2 作为单一完整版本一次实现全部 12 个 P0 QTE；只建立一套确定性 Registry、状态机、有限输入与只读 Prompt UI，不创建中间功能提交 | 先冻结唯一 QTE 事件面和生命周期，避免 v0.3.3 对话、v0.3.4 救援、v0.4.0 Director 依赖多个不兼容的半成品 | Resolved by v0.3.2 |
 | E-025 | 原始路线把动态交流、房间间隙和未来 LLM 对话混为同一阶段，并假设手工创建对话资产 | v0.3.3 只建立本地确定性短句与安全状态有限选择：安全状态来自现有战斗清除、Boss 完成或固定 Gym 预览；Room 延后 v0.4.2，LLM/记忆层延后 v0.5.2，资产由 Codex 经 MCP 生产 | 保持实时战斗离线确定性，避免提前创建 Room、LLM、自由文本、长期记忆或人工资产流程 | Active for v0.3.3 |
+| E-026 | 原始路线让 v0.3.4 的濒死选择直接写入玩家画像和账号墓园，并假设已有回房、撤离、资源保留、奖励与技能树解锁 | v0.3.4 只在当前 Gym/Prototype 语义中以既有 `Combat.Event.Death` 和 `UPRCombatSubsystem::Revive` 实现一次性分歧；发布值型 `FPRDivergenceResult`，但不实现画像、墓园、Room/Reward、账号删除或解锁。画像留给 v0.4.0，Room/Reward 留给 v0.4.2，墓园/账号留给 v0.4.3，技能树资格留给 v0.4.4 | 防止在没有正式 RunState、房间、奖励和账户所有者时伪造持久化或地图业务，同时为下游提供稳定结果面 | Active for v0.3.4 |
 
 # 已接受的架构决策
 
