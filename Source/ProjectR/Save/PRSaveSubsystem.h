@@ -108,5 +108,6 @@ private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;
 	friend class FPRSaveFilesystemIsolationTest;
+	friend class FPRDialogueRuntimeChoiceTest;
 #endif
 };

@@ -173,3 +173,8 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 
 - 官方 MCP 无法从活跃 PIE 安全、固定地调用 Enemy 白名单 Spawn、四敌生命周期和原生 Combat 观察接口；经批准的 `PREnemyAutomationToolset::RunPIEEnemyIntegrationSmoke()` 因此只执行固定无参四原型整合序列。它只在 Authority `L_CombatGym` PlayWorld 使用正式 Registry 的四个 PrototypeTag 和正式 Spawn API，不接受类、路径、Tag、数值、Transform 或代码参数，不保存地图或 Package，并在成功、失败、超时和 PIE Stop 时清理 transient Actor、Timer、Delegate、Token、Spec、Effect、Tag 与 Projectile。
 - `RunPIEEnemyHumanFeelSequence()` 只机械准备/重置固定的 Melee、Ranged、Shield、Elite、Mixed 五阶段场景并返回 `READY_FOR_HUMAN`；它不产生手感结论、不修改资产，也不把任何主观判断写为 PASS。用户的明确回复才是 `HumanEnemyFeelJudgment` 的唯一证据。
+
+# v0.3.3 Dialogue 固定作者与预览工具
+
+- `PRDialogueAuthoringToolset` 仅暴露无参数 `CreateV033DialogueManifest`、`RepairV033DialogueManifest`、`ValidateV033DialogueManifest` 和 `SaveV033DialogueManifest`。它只允许 v0.3.3 的五个准确 Package；不接受路径、类、Tag、文本、数值、代码或删除输入，不能 Save All、保存地图、移动、改名或删除资产。
+- `PRDialogueAutomationToolset` 仅在已启动的 authoritative `L_CombatGym` PIE 中执行固定 smoke 或准备三位伙伴语气预览。它只使用正式 Registry、固定白名单 Enemy Spawn 和 Combat 值事件；所有成功、失败、超时、PIE Stop 与 World Cleanup 路径清理 transient Actor。人类预览在 Axiom 的首条 Bark 仍展示时返回 `READY` 和 `previewActive=true`，ticker 再顺序展示 Kindle、Null；该机械就绪信号不能替代用户对 `HumanDialogueClarity` 的明确 PASS。

@@ -144,6 +144,8 @@ bool FPRCombatSchemaTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Damage SourceId defaults empty"), DamageDefaults.SourceId.IsNone());
 	TestEqual(TEXT("Damage defaults zero"), DamageDefaults.RawDamage, 0.0f);
 	TestFalse(TEXT("Critical defaults false"), DamageDefaults.bCritical);
+	const FPRCombatEvent EventDefaults;
+	TestEqual(TEXT("Combat event default max-health snapshot is zero"), EventDefaults.MaxHealth, 0.0f);
 	const FPRReviveRequest ReviveDefaults;
 	TestEqual(TEXT("Revive health defaults full"), ReviveDefaults.HealthFraction, 1.0f);
 	TestEqual(TEXT("Revive shield defaults full"), ReviveDefaults.ShieldFraction, 1.0f);
@@ -288,7 +290,9 @@ bool FPRCombatDamageLifecycleTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(TEXT("Critical metadata propagated"), Events[0].bCritical);
 		TestTrue(TEXT("DamageTags propagated"), Events[0].DamageTags.HasTagExact(UPRTagLibrary::GetStateStunnedTag()));
+		TestEqual(TEXT("Shield-hit event snapshots the target max health"), Events[0].MaxHealth, 100.0f);
 		TestEqual(TEXT("First shield absorbed"), Events[0].ShieldAbsorbed, 20.0f);
+		TestEqual(TEXT("Spill-over event snapshots the target max health"), Events[1].MaxHealth, 100.0f);
 		TestEqual(TEXT("Spill-over health damage"), Events[1].HealthDamage, 10.0f);
 		TestTrue(TEXT("Shield break response"), Events[1].ResponseTags.HasTagExact(UPRTagLibrary::GetCombatResponseShieldBrokenTag()));
 	}

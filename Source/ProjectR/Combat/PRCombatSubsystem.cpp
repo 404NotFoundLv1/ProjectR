@@ -141,6 +141,7 @@ FPRCombatEvent MakeDamageEvent(
 	Event.RawDamage = NormalizedDamage;
 	Event.RemainingHealth = Target.Attributes->GetHealth();
 	Event.RemainingShield = Target.Attributes->GetShield();
+	Event.MaxHealth = Target.Attributes->GetMaxHealth();
 	Event.bCritical = Request.bCritical;
 	Event.DamageTags = Request.DamageTags;
 	Event.WorldTimeSeconds = IsValid(World) ? World->GetTimeSeconds() : 0.0;
@@ -162,6 +163,7 @@ FPRCombatEvent MakeReviveEvent(
 	Event.Target = Request.Target;
 	Event.RemainingHealth = Target.Attributes->GetHealth();
 	Event.RemainingShield = Target.Attributes->GetShield();
+	Event.MaxHealth = Target.Attributes->GetMaxHealth();
 	Event.ResponseTags.AddTag(UPRTagLibrary::GetStateAliveTag());
 	Event.WorldTimeSeconds = IsValid(World) ? World->GetTimeSeconds() : 0.0;
 	return Event;

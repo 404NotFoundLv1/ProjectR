@@ -397,6 +397,13 @@ date: "2026-07-10"
 - 本转换只关闭 v0.3.2 并建立单一完整 v0.3.3 对话合同；未运行 Build、PIE、MCP 写入，也未实现 Dialogue、Room、LLM、濒死保护或未来业务。
 - v0.3.3 固定为本地确定性战斗短句与安全状态有限选择：只消费 Combat/QTE/Companion/Boss 的稳定值事件，关系仍经既有受控 Delta/Save 合同；Room 延后 v0.4.2，LLM 与长期记忆延后 v0.5.2。
 
+# 2026-07-24 - v0.3.3 Dialogue 实施与验收（Completed）
+
+- 已完成单一 v0.3.3 的 C++、固定五项 Dialogue Package、窄 Authoring/Automation Toolset、TDD、Build、重启回读与固定 PIE smoke；未创建子版本或中间功能提交。Dialogue 只消费 Combat/QTE/Support/Boss/Enemy 的稳定值事件，关系只经既有 Delta 并且实际变化时才请求一次 Save。
+- 资产精确清单为 Registry、Axiom、Kindle、Null 三个 DataAsset 和 `WBP_CompanionDialogue`。MCP 原位校验先发现并拒绝旧的通用安全选择文本，随后固定 Repair 只保存三份 DataAsset；最终逐字 Voice/Choice 合同、Widget 编译、重启回读和 Dirty=0 均 PASS，Gym 地图未保存。
+- 新鲜独立回归与固定 PIE smoke 均通过；阶段性 AutomationReport 曾如实将 `HumanDialogueClarity` 记录为 required `NOT_RUN`。用户完成三位伙伴可读性预览并于 2026-07-24 明确回复 `PASS`。针对预览返回过晚而看不到短句的复现，新增 `HumanPreviewReadiness` RED/GREEN：工具现在在 Axiom 首句可见时返回 `previewActive=true`，随后继续展示 Kindle、Null，不改变运行时 Dialogue 合同或 UE Package。
+- 最终 AutomationReport 为 `Saved/AutomationReports/v033-final-report-20260724/v033-final-None/result.json`，33/33 required PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 如实为 optional NOT_RUN。Future Compatibility Review PASS：v0.3.4 仅消费 ChoiceResult/低生命值事实，v0.4.2 仅可加入 Room-safe 值事件适配，v0.5.2 可受限接入 Provider，但固定 DataAsset 始终是离线 fallback。未推进 CURRENT_VERSION、VersionIndex 或创建功能提交，等待用户单独授权。
+
 # 版本记录模板
 
 ```text

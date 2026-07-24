@@ -37,3 +37,11 @@
 /Content/ProjectR/QTE/Null/DA_QTE_Null_VerdictTamper.uasset -filter -diff -merge -text
 /Content/ProjectR/QTE/Null/DA_QTE_Null_VulnerabilityBackstab.uasset -filter -diff -merge -text
 /Content/ProjectR/UI/QTE/WBP_QTEPrompt.uasset -filter -diff -merge -text
+
+# v0.3.3 dialogue data and read-only prompt are deliberately tiny (47.35 KiB total).
+# Keep only this exact five-package manifest in ordinary Git; all other UE packages remain LFS-managed.
+/Content/ProjectR/Data/Dialogue/DA_CompanionDialogueRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Dialogue/DA_CompanionDialogue_Axiom.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Dialogue/DA_CompanionDialogue_Kindle.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Dialogue/DA_CompanionDialogue_Null.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/Dialogue/WBP_CompanionDialogue.uasset -filter -diff -merge -text

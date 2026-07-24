@@ -39,6 +39,7 @@ struct PROJECTR_API FPRCombatEvent
 	float HealthDamage = 0.0f;
 	float RemainingHealth = 0.0f;
 	float RemainingShield = 0.0f;
+	float MaxHealth = 0.0f;
 	bool bCritical = false;
 	FGameplayTagContainer DamageTags;
 	FGameplayTagContainer ResponseTags;

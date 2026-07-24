@@ -130,7 +130,7 @@ date: "2026-07-10"
 - `UPRCombatSubsystem::ApplyDamage(FPRDamageRequest)` 与 `Revive(FPRReviveRequest)` 是唯一公共 C++ 入口；不暴露 Blueprint API。
 - 伤害只沿 `DamageRequest -> GE_Damage -> UPRDamageExecutionCalculation -> IncomingDamage -> UPRAttributeSet` 结算一次。Execution 只输出 Meta 属性，AttributeSet 是唯一 Shield/Health 扣减点，Subsystem 只读取结算前后差值并发布事实。
 - `FPRDamageRequest` 冻结 `SourceId`、`DamageSource`、`Instigator`、`Target`、`AbilityTag`、`RawDamage`、`bCritical` 和 `DamageTags`。零、负数、NaN、Inf 或缺失必需引用为 `Invalid`；有限值超过 200000 Clamp 并记录 Warning。
-- `FPRCombatEvent` 冻结 `EventId`、`EventTag`、`SourceId`、`TargetId`、`DamageSource`、`Instigator`、`Target`、`AbilityTag`、`RawDamage`、`ShieldAbsorbed`、`HealthDamage`、`RemainingHealth`、`RemainingShield`、`bCritical`、`DamageTags`、`ResponseTags`、`bFatal` 和 `WorldTimeSeconds`。稳定 ID/Tag/数值可持久化；弱 UObject 引用不可持久化。
+- `FPRCombatEvent` 冻结 `EventId`、`EventTag`、`SourceId`、`TargetId`、`DamageSource`、`Instigator`、`Target`、`AbilityTag`、`RawDamage`、`ShieldAbsorbed`、`HealthDamage`、`RemainingHealth`、`RemainingShield`、`MaxHealth`、`bCritical`、`DamageTags`、`ResponseTags`、`bFatal` 和 `WorldTimeSeconds`。稳定 ID/Tag/数值可持久化；弱 UObject 引用不可持久化。v0.3.3 仅用 `MaxHealth` 与 `RemainingHealth` 的值型快照推导低生命 Dialogue，Combat 不依赖 Dialogue。
 - 成功伤害广播 `Combat.Event.Damage`；致死顺序严格为 `Damage -> State.Dead -> Combat.Event.Death`。Dead/Invulnerable 拒绝广播 `Combat.Event.DamageRejected`，不会修改属性；Dead 优先于 Invulnerable。
 - Shield 吸收、破盾与 Health 扣减只通过 `Combat.Response.*` 写入 `ResponseTags`，不额外创建第二套伤害事件。
 - `State.Alive` 与 `State.Dead` 互斥并以 TagOnly loose tag 复制；死亡状态、ASC 与属性归 PlayerState，跨 Pawn 替换保留。复活以快照回滚保证属性和 Tag 原子切换，不重放默认属性 GE。
@@ -238,6 +238,14 @@ date: "2026-07-10"
 - `FPRQTERuntimeState` may carry `DisplayName` and `PromptText` as transient, read-only presentation text copied from the validated QTE DataAsset on activation. They are not new gameplay authority and are never saved; no RuntimeState, QTE target, Widget, Timer, Delegate, ASC, SpecHandle or EffectHandle enters SaveGame.
 - `UPRQTEPromptWidget` only renders that state and submits one of its validated semantic input tags. Its control labels are a fixed local mapping of the frozen input contract (for example `Input.Attack -> J / LMB` and `Input.Skill.ShadowThrust -> U`); it cannot create damage, effects, relationship changes, QTE requests or result decisions.
 - Death, travel, Pawn replacement, World cleanup, PIE Stop and subsystem deinitialization all cancel at most one active request, clear bindings/timers/widget state and publish no relationship delta. Future consumers receive only the value-form `FPRQTEResult`.
+
+# v0.3.3 Dialogue runtime increment
+
+- `UPRCompanionDialogueSubsystem` 是唯一 World-owned Dialogue 队列与状态 owner；仅订阅值型 `FPRCombatEvent`、`FPRQTEResult`、`FPRCompanionSupportEvent`、`FPRBossRuntimeState`、`FPRPrototypeRunResult` 和 `FPREnemyRuntimeState`。它不读取或控制上游私有 Target、Timer、Widget 或 UObject。
+- `FPRDialogueRuntimeState` 与 `FPRDialogueResult` 都是 transient 值型表现/结果事实。单一 Active 状态只可为 `Idle`、`Bark` 或 `Choice`；队列最多四项，按 priority、事件时间、LineId 稳定排序，事件 10 秒去重，短句按“CompanionId + LineId”独立冷却，排队项 3 秒后淘汰。
+- 安全 Choice 仅在“已有正式敌人观察且全部死亡”或 Boss 完成后连续 2 秒无新伤害/新敌人时出现，并且必须有已加载 Profile。`Acknowledge` 只请求 Trust +1/Affection +1，`Analyze` 只请求 Trust +1/Evaluation +1；`UPRCompanionSubsystem::ApplyRelationshipDelta` 是唯一关系写入口。仅当快照实际变化时调用一次 `UPRSaveSubsystem::RequestSaveCurrentProfile`。
+- `UPRCompanionDialogueComponent` 与 `UPRCompanionDialogueWidget` 仅负责本地显示和冻结 `Input.Interact`/`Input.Execute` 选择提交；不得拥有队列、关系、保存、伤害、QTE 或安全状态权威。死亡、Primary/Pawn replacement、旅行、World cleanup、PIE Stop 与 Deinitialize 必须取消活动选择并清理 Widget、Timer、Delegate、队列和弱引用；这些运行时对象不得进入 Save。
+- 固定 Registry 只含 Axiom、Kindle、Null 的三份 DataAsset 和一个 Widget Class。没有 GameplayTag、Input、Save Schema、地图、Combat/QTE/Companion/Boss 核心逻辑或网络/LLM/TTS/自由文本增量；未来 v0.3.4、v0.4.2、v0.5.2 只能消费值型结果或在同一验证入口前增加受限输入。
 
 # 7. Director 合同
 
