@@ -247,6 +247,15 @@ date: "2026-07-10"
 - `UPRCompanionDialogueComponent` 与 `UPRCompanionDialogueWidget` 仅负责本地显示和冻结 `Input.Interact`/`Input.Execute` 选择提交；不得拥有队列、关系、保存、伤害、QTE 或安全状态权威。死亡、Primary/Pawn replacement、旅行、World cleanup、PIE Stop 与 Deinitialize 必须取消活动选择并清理 Widget、Timer、Delegate、队列和弱引用；这些运行时对象不得进入 Save。
 - 固定 Registry 只含 Axiom、Kindle、Null 的三份 DataAsset 和一个 Widget Class。没有 GameplayTag、Input、Save Schema、地图、Combat/QTE/Companion/Boss 核心逻辑或网络/LLM/TTS/自由文本增量；未来 v0.3.4、v0.4.2、v0.5.2 只能消费值型结果或在同一验证入口前增加受限输入。
 
+# v0.3.4 Divergence Cache increment
+
+- `UPRDivergenceSubsystem : UGameInstanceSubsystem` 是每个当前 GameInstance/Profile 会话的唯一濒死保护 owner。它只订阅值型 `FPRCombatEvent`、`FPRDialogueResult`、Primary Sync 与 Save Operation；只接受 `Combat.Event.Death` 且 `TargetId=Player`。它不得读取 Dialogue 队列、QTE/Support 私有状态，也不得直接改写 Health、Shield、Dead、Relationship 或 Save 数据。
+- `FPRDivergenceRuntimeState` 与 `FPRDivergenceResult` 是只读值面。结果固定包含 Request/Result/DeathEvent ID、Primary、Choice、Resolution、FutureDisposition、Revive 比例、关系前后快照、Delta、SaveRequestId、最近同 Primary 的有效 Dialogue Result/Choice ID 与 WorldTime；不含 UObject、ASC、Spec/Effect Handle、Target、Widget、Timer 或 Delegate。
+- 资格必须同时为 Authority、当前 Player Avatar 已 `State.Dead`、有效 Primary、已加载 Profile、`Trust >= 50`、`Overload < 80`、本轮未消费。成功创建活动请求即消费本轮资格；普通旅行不重置，只有成功 Create/Load Profile 开始新会话。重复 Death、超时、Primary/Pawn replacement、World Cleanup、PIE Stop 与 Deinitialize 均不返还资格。
+- 三项固定选择只使用既有语义输入：`Input.Interact`/E=Rescue、`Input.QTE.Reject`/R=Leave、`Input.Execute`/F=FaceChallenge。Rescue 只经 `UPRCombatSubsystem::Revive` 以 Health `0.25`/Shield `0` 应用；Leave 不调用 Revive 并保持 Dead；FaceChallenge 只经同一入口以 Health `0.10`/Shield `0` 应用。Rescue/FaceChallenge 的 Revive 未返回 Applied 时不得请求关系或保存。
+- Relationship 继续只由 `UPRCompanionSubsystem::ApplyRelationshipDelta` 逐字段 Clamp；仅当前后快照实际变化时才向 `UPRSaveSubsystem::RequestSaveCurrentProfile` 请求一次保存。九组固定 Delta 和 FutureDisposition 由 `DA_DivergenceCache` 配置；系统不新增 Save Schema、GameplayTag、InputAction 或地图语义。
+- `UPRDivergenceComponent` 与 `UPRDivergenceCacheWidget` 只在本地渲染活动状态并把三项冻结输入提交回 Subsystem。它们不拥有 Revive、关系、保存、计时权威或任何未来 Room/Reward/Profile/Graveyard 业务；活动结束、Avatar replacement、旅行、World Cleanup 与 Deinitialize 必须移除 Widget、Delegate、Timer 与弱引用。
+
 # 7. Director 合同
 
 **所有者**：Director。  

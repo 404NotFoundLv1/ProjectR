@@ -45,3 +45,8 @@
 /Content/ProjectR/Data/Dialogue/DA_CompanionDialogue_Kindle.uasset -filter -diff -merge -text
 /Content/ProjectR/Data/Dialogue/DA_CompanionDialogue_Null.uasset -filter -diff -merge -text
 /Content/ProjectR/UI/Dialogue/WBP_CompanionDialogue.uasset -filter -diff -merge -text
+
+# v0.3.4 divergence data and read-only cache prompt are deliberately tiny (35.58 KiB total).
+# Keep only this exact two-package manifest in ordinary Git; all other UE packages remain LFS-managed.
+/Content/ProjectR/Data/Divergence/DA_DivergenceCache.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/Companion/WBP_DivergenceCache.uasset -filter -diff -merge -text

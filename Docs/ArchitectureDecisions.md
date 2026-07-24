@@ -345,6 +345,22 @@ date: "2026-07-10"
 
 **迁移/回滚**：Schema 1 只通过 1→2 增量迁移；未来字段继续逐版本追加。回滚仅反向撤销本版本 C++、文档和四项 Package 引用，禁止更改 ProfileId、A/B、Envelope 或用户 Save。
 
+# ADR-027 - One-per-run near-death divergence is a value-driven GameInstance service
+
+**状态**：Accepted。
+
+**背景**：v0.3.4 需要在玩家的正式死亡后提供一次有限救援选择，同时保持 Combat 的 Death/Revive 权威、Companion 的关系权威、Save Schema 2 和 Dialogue/QTE 的数据边界。World-owned 组件会在普通地图旅行中丢失“本轮已消费”事实；把逻辑放入 Widget、Dialogue 队列或 Companion Support 会制造第二套复活、保存或关系入口。
+
+**选项**：由 Widget 直接处理死亡与关系；由 Companion/Dialogue/QTE 扩展各自系统；或建立只消费稳定事件且跨普通旅行保持的 GameInstance 服务。
+
+**决策**：采用 `UPRDivergenceSubsystem : UGameInstanceSubsystem` 与本地 `UPRDivergenceComponent`/`UPRDivergenceCacheWidget`。Subsystem 只接受 Player 的 `Combat.Event.Death`、最近的值型 Dialogue Result、Primary Sync 与 Save Operation；资格一次消费并只由成功 Create/Load Profile 重置。三种结果固定为 Rescue(25%/0)、Leave(保持 Dead)、FaceChallenge(10%/0)，所有复活均经 `UPRCombatSubsystem::Revive`，关系均经既有 `UPRCompanionSubsystem::ApplyRelationshipDelta`，实际快照变化时才请求一次 Save。
+
+**后果**：`FPRDivergenceResult` 成为 v0.4.0 Profile、v0.4.2 Room/Reward、v0.4.3 Graveyard/Account 和 v0.4.4 Unlock 的唯一稳定结果面；没有 UObject、Handle、Target、Timer、Widget 或私有队列泄漏到 Save/下游。普通旅行保持本轮消费，Pawn/Primary replacement、World Cleanup、PIE Stop 与 Deinitialize 取消活动选择但不返还资格。UI 不拥有伤害、关系、保存或未来撤离语义。
+
+**迁移/回滚**：不升级 Save Schema，不修改 Combat/AttributeSet/QTE/Companion Support/Dialogue 队列、Input、GameplayTag 或地图。回滚只反向撤销 v0.3.4 的 Divergence C++、两项 Package、editor-only Toolset 与文档 diff；删除已保存 Package 仍需逐项批准。
+
+**验证**：原生 `ProjectR.Divergence` 覆盖固定值、资格边界和配置；固定 PIE 在隔离测试 Profile 验证 Rescue/Leave/FaceChallenge、单次保存语义与 runtime clean；完整历史回归、Widget warnings-as-errors、精确保存、重启回读及人工三声线/三选项清晰度验收是完成门。
+
 # ADR 模板
 
 ```text

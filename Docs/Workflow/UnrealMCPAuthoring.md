@@ -178,3 +178,8 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 
 - `PRDialogueAuthoringToolset` 仅暴露无参数 `CreateV033DialogueManifest`、`RepairV033DialogueManifest`、`ValidateV033DialogueManifest` 和 `SaveV033DialogueManifest`。它只允许 v0.3.3 的五个准确 Package；不接受路径、类、Tag、文本、数值、代码或删除输入，不能 Save All、保存地图、移动、改名或删除资产。
 - `PRDialogueAutomationToolset` 仅在已启动的 authoritative `L_CombatGym` PIE 中执行固定 smoke 或准备三位伙伴语气预览。它只使用正式 Registry、固定白名单 Enemy Spawn 和 Combat 值事件；所有成功、失败、超时、PIE Stop 与 World Cleanup 路径清理 transient Actor。人类预览在 Axiom 的首条 Bark 仍展示时返回 `READY` 和 `previewActive=true`，ticker 再顺序展示 Kindle、Null；该机械就绪信号不能替代用户对 `HumanDialogueClarity` 的明确 PASS。
+
+# v0.3.4 Divergence 固定作者与预览工具
+
+- `PRDivergenceAuthoringToolset` 仅暴露无参数 `CreateV034DivergenceManifest`、`RepairV034DivergenceManifest`、`ValidateV034DivergenceManifest` 与 `SaveV034DivergenceManifest`。它只操作 `/Game/ProjectR/Data/Divergence/DA_DivergenceCache` 和 `/Game/ProjectR/UI/Companion/WBP_DivergenceCache`，不接受类、路径、Tag、数值、文本、Blueprint 图或代码输入，也不提供删除、移动、改名、Save All、Resave All、Fix Redirectors 或地图保存能力。
+- `PRDivergenceAutomationToolset` 只在已启动的 authoritative `L_CombatGym` PIE 执行固定 smoke 或三位 Primary 的人工预览。Smoke 在隔离的内存关系档案中顺序验证 Rescue、Leave、FaceChallenge；Preview 在 Axiom 可见时返回 `READY`，再固定展示 Kindle、Null。所有成功、失败、超时、PIE Stop、Pawn 替换和 World Cleanup 路径都清理 Widget、Actor、Delegate、Timer、Effect、Spec 与测试状态，且不会触碰用户 Save/Profile。用户明确 PASS 才能使 `HumanDivergenceClarity` 通过。

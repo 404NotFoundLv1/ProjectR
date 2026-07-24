@@ -426,3 +426,12 @@ Human judgment：
 Known risks：
 Commit：
 ```
+
+# 2026-07-25 - v0.3.4 濒死保护与分歧缓存区（Completed）
+
+- 已完成单一 v0.3.4：`UPRDivergenceSubsystem` 只消费玩家正式 Death、值类型 DialogueResult、Primary 同步和 Save Operation；其一轮一次状态保留在 GameInstance，跨地图保持，仅在成功 Create/Load 后重置。复活只经 `UPRCombatSubsystem::Revive`，关系只经现有 Companion Delta，且只有实际变化时请求一次保存。
+- 三个确定性选择均已验证：Rescue 以 25% Health / 0 Shield 复活，Leave 保持 Dead，FaceChallenge 以 10% Health / 0 Shield 复活。九组 RelationshipDelta、Trust 49/50、Overload 79/80、重复死亡、Pawn 替换、World Cleanup 与旅行边界均由原生测试和固定 PIE 覆盖。
+- 精确创建并保存 `/Game/ProjectR/Data/Divergence/DA_DivergenceCache` 与 `/Game/ProjectR/UI/Companion/WBP_DivergenceCache`；合计 35,631 bytes，因此仅这两个文件使用普通 Git 例外，未产生新的 LFS 对象。既有 Package、地图、Tag、Input、Config 与 Save Schema 均未修改。
+- BuildEditor、`ProjectR.Divergence` 3/3、固定 PIE smoke、重启回载、Widget warnings-as-errors 编译、精确保存与 Dirty=0 均 PASS；历史独立回归为 Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、QTE 5/5、Dialogue 5/5、CombatHUD 6/6。
+- 用户于 2026-07-25 完成 Axiom、Kindle、Null 的固定分歧预览，并明确回复 `PASS`。最终报告为 `Saved/AutomationReports/v034-final-report-20260725/v034-final-None/result.json`，所有 required check PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 如实保持 optional `NOT_RUN`。
+- Future Compatibility Review PASS：v0.4.0 仅消费 `FPRDivergenceResult` 值以建立画像；v0.4.2 只解释 FutureDisposition 的 Room/Reward 语义；v0.4.3 才投影至 RunSummary/Graveyard/Account；v0.4.4 只在既有资格边界追加解锁策略。未推进 CURRENT_VERSION 或创建功能提交，等待用户明确授权。
