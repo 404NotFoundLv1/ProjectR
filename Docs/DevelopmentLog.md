@@ -390,6 +390,13 @@ date: "2026-07-10"
 - TDD 记录两项真实 RED：`20260723T211005Z-afecba6e`（缺 `DisplayName/PromptText`）及 `20260723T211628Z-6ca0db9a`（缺输入格式化）；对应 GREEN 后最终 BuildEditor `20260723T212059Z-ea1ef05e` PASS。原生回归实际为 QTE 5/5、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、CombatHUD 6/6，全部 PASS；12 个单项固定 PIE 均 PASS 且 runtime clean。
 - 用户完成 Axiom/Kindle/Null Prompt 清晰度预览并于 2026-07-24 回复 PASS。最终报告为 `Saved/AutomationReports/v032-final-report-20260724b/v032-final-None/result.json`；PhysicalGamepad、NetworkPIEReplication、Package 与 GC 为 optional NOT_RUN。Future Compatibility Review：后续 Dialogue/Profile/Director 只订阅值型 QTEResult，不接管 Timer、Widget、目标或伤害；Save 永不持久化运行时 QTE 引用。
 
+# 2026-07-24 - v0.3.2 文档闭环与 v0.3.3 Dialogue 合同转换
+
+- v0.3.2 正式实施提交为 `7226df3815d0efe41fe20d609f31b1688a2d40e1`（`v0.3.2 Add twelve P0 QTE combos`），已与 `origin/main` 同步；最终 AutomationReport `Saved/AutomationReports/v032-final-report-20260724b/v032-final-None/result.json` 为 43/43 required PASS。
+- `PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 保持 optional `NOT_RUN`；用户已完成 Axiom、Kindle、Null 的 Prompt 可读性预览并明确回复 `PASS`。
+- 本转换只关闭 v0.3.2 并建立单一完整 v0.3.3 对话合同；未运行 Build、PIE、MCP 写入，也未实现 Dialogue、Room、LLM、濒死保护或未来业务。
+- v0.3.3 固定为本地确定性战斗短句与安全状态有限选择：只消费 Combat/QTE/Companion/Boss 的稳定值事件，关系仍经既有受控 Delta/Save 合同；Room 延后 v0.4.2，LLM 与长期记忆延后 v0.5.2。
+
 # 版本记录模板
 
 ```text
