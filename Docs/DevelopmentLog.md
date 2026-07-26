@@ -442,3 +442,17 @@ Commit：
 - 最终 AutomationReport `Saved/AutomationReports/v034-final-report-20260725/v034-final-None/result.json` 状态为 PASS，全部 required checks PASS；用户固定分歧卡清晰度验收为 PASS。
 - PhysicalGamepad、NetworkPIEReplication、Package、GC 保持 optional `NOT_RUN`。本次仅关闭 v0.3.4 文档状态，没有运行 Build、PIE、MCP、Package 或 GC。
 - VersionIndex 与任务页标记 v0.3.4 `Completed`；`CURRENT_VERSION.md` 仍指向 v0.3.4，但状态改为 `Completed`。未创建 v0.4.0 任务合同，未规划或实现下一版本。
+
+# 2026-07-26 - v0.4.0 玩家画像与法令白名单合同转换
+
+- 只读复核确认 v0.3.4 已由实现提交 `5703aaf374a1b0461498bf0afe1013bf5cc815fa` 和收尾提交 `99d51d14e0e8a0bd138e998458b803769763c37a` 完整关闭；`main == origin/main`，既有最终报告、人工 PASS 和 optional `NOT_RUN` 事实均未改写。
+- 创建单一 `Docs/Versions/v0.4.0.md` 合同，并将 `CURRENT_VERSION.md` 与 VersionIndex 推进到 v0.4.0 / `In Progress`。v0.4.0 不拆分子版本、检查点合同或中间功能提交。
+- E-027 冻结有界运行会话 PlayerProfile、四项现有 Rule Tag 白名单、只记录验证结果的 Applied Rule Handle，以及默认不联网并确定性回退 Mock 的 Provider 边界；十二条可执行法令、Room/Reward 和正式 Run/Account 持久化继续留给后续所有者版本。
+- 本转换没有运行 Build、Automation、PIE、MCP、Package 或 GC，没有创建或修改 UE Package，也没有实施任何 PlayerProfile、Director、Provider、Validator 或 Rule 运行时代码。
+
+# 2026-07-26 - v0.4.0 实施与验证
+
+- 新增 `Source/ProjectR/Director/` 的 PlayerProfile、Director Request/Response、Mock/HTTP 边界、Validator、固定 Rule Registry、Applied Handle 及四项自动化；未修改 GameplayTag、Save Schema、地图或上游业务源码。
+- 经 Unreal MCP 创建并精确保存五项唯一 Package：Registry 与四项 Rule DataAsset；重启 Editor 后回读 Registry 的四个软引用顺序保持正确，五项均非 dirty。
+- `ProjectREditor Win64 Development` Build 通过；`ProjectR.Director` 4/4 通过；`ProjectR.Debug` 在 `-game` 上下文 12/12 通过；`L_RealityHub` 固定 PIE 成功启动并停止。
+- Future Compatibility Review：v0.4.1 只能消费稳定 RuleId/Validator/Applied Handle 以增加执行策略；v0.4.2 只能消费已验证 Handle，不能访问原始 Provider Response；当前版本未引入 Room、Reward、RunState、Account、UI、真实端点或凭据。

@@ -92,6 +92,12 @@ date: "2026-07-10"
 | E-025 | 原始路线把动态交流、房间间隙和未来 LLM 对话混为同一阶段，并假设手工创建对话资产 | v0.3.3 只建立本地确定性短句与安全状态有限选择：安全状态来自现有战斗清除、Boss 完成或固定 Gym 预览；Room 延后 v0.4.2，LLM/记忆层延后 v0.5.2，资产由 Codex 经 MCP 生产 | 保持实时战斗离线确定性，避免提前创建 Room、LLM、自由文本、长期记忆或人工资产流程 | Active for v0.3.3 |
 | E-026 | 原始路线让 v0.3.4 的濒死选择直接写入玩家画像和账号墓园，并假设已有回房、撤离、资源保留、奖励与技能树解锁 | v0.3.4 只在当前 Gym/Prototype 语义中以既有 `Combat.Event.Death` 和 `UPRCombatSubsystem::Revive` 实现一次性分歧；发布值型 `FPRDivergenceResult`，但不实现画像、墓园、Room/Reward、账号删除或解锁。画像留给 v0.4.0，Room/Reward 留给 v0.4.2，墓园/账号留给 v0.4.3，技能树资格留给 v0.4.4 | 防止在没有正式 RunState、房间、奖励和账户所有者时伪造持久化或地图业务，同时为下游提供稳定结果面 | Active for v0.3.4 |
 
+# v0.4.0 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.4.0 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-027 | v6 要求 v0.4.0 建立 PlayerProfile、Director Rule 白名单和可替换 HTTP Provider，但正式 RunState/AccountRecord 属于 v0.4.3，十二条可执行法令属于 v0.4.1；仓库也没有正式远程端点、凭据或网络等待合同 | v0.4.0 的 PlayerProfile 只是在 `UGameInstanceSubsystem` 中保存的有界运行会话画像：成功 Create/Load Profile 开始新画像会话，普通地图旅行保持画像，不修改 Save Schema或持久化原始事件。现有 `Rule.CooperationAudit`、`Rule.DistanceCorrection`、`Rule.RepetitionPenalty`、`Rule.SurvivalProtocol` 构成本版本固定白名单；Applied Rule Handle 只表示经过 Validator 的运行时激活记录，不施加 GameplayEffect、Combat、Room、Reward 或资源效果。HTTP 仅保留可替换 Provider/Transport 边界，默认不联网、不配置端点或密钥；不可用、超时或非法响应立即使用确定性 Mock。正式十二条执行策略留给 v0.4.1，Room/Reward 留给 v0.4.2，RunSummary/AccountRecord及画像持久化留给 v0.4.3 | 保持实时玩法离线确定性，避免在所有者尚未建立时提前冻结 Save/Run 业务或把 Provider 输出直接变成执行权限，同时为后续法令、章节和远程服务保留稳定的 Request/Response/Validator 接口 | Active for v0.4.0 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

@@ -1,11 +1,11 @@
 # Current Development Version
 
-Version: v0.3.4
+Version: v0.4.0
 
-Task file: `Docs/Versions/v0.3.4.md`
+Task file: `Docs/Versions/v0.4.0.md`
 
-Status: Completed
+Status: In Progress
 
-This version is complete.
+Implement only the current version contract.
 
-Do not implement or plan the next version until a separate version-transition task is explicitly authorized.
+Do not advance CURRENT_VERSION until v0.4.0 is complete and a separate version-transition task is explicitly authorized.

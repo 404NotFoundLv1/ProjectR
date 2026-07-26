@@ -21,6 +21,7 @@ Before any implementation:
 7. `Docs/Workflow/CodingStandard.md` before C++ or configuration work
 8. `Docs/Workflow/AssetNaming.md` before asset work
 9. Only the directly relevant product/design sections
+10. `Docs/Workflow/VersionPromptHandoff.md` when taking over ProjectR from another Codex task or generating version-planning prompts
 
 Implement only the current version. Do not advance CURRENT_VERSION yourself.
 

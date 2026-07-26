@@ -50,3 +50,11 @@
 # Keep only this exact two-package manifest in ordinary Git; all other UE packages remain LFS-managed.
 /Content/ProjectR/Data/Divergence/DA_DivergenceCache.uasset -filter -diff -merge -text
 /Content/ProjectR/UI/Companion/WBP_DivergenceCache.uasset -filter -diff -merge -text
+
+# v0.4.0 Director whitelist DataAssets are deliberately tiny (14.11 KiB total).
+# Keep only this exact five-package manifest in ordinary Git; all other UE packages remain LFS-managed.
+/Content/ProjectR/Data/Director/DA_DirectorRuleRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Director/Rules/DA_DirectorRule_CooperationAudit.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Director/Rules/DA_DirectorRule_DistanceCorrection.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Director/Rules/DA_DirectorRule_RepetitionPenalty.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Director/Rules/DA_DirectorRule_SurvivalProtocol.uasset -filter -diff -merge -text
