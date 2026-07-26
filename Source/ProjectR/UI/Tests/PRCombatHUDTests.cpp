@@ -98,6 +98,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPRCombatHUDBossWidgetBindingTest::RunTest(const FString& Parameters)
 {
+	#if WITH_EDITOR
 	auto HasOptionalBinding = [this](const UClass* Class, const TCHAR* Name)
 	{
 		const FProperty* Property = FindFProperty<FProperty>(Class, Name);
@@ -109,5 +110,6 @@ bool FPRCombatHUDBossWidgetBindingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Boss prediction text binds to the WidgetBlueprint"), HasOptionalBinding(UPRBossHealthWidget::StaticClass(), TEXT("PredictionText")));
 	TestTrue(TEXT("Boss attack text binds to the WidgetBlueprint"), HasOptionalBinding(UPRBossHealthWidget::StaticClass(), TEXT("AttackText")));
 	TestTrue(TEXT("Boss result text binds to the WidgetBlueprint"), HasOptionalBinding(UPRBossPrototypeResultWidget::StaticClass(), TEXT("PrototypeResultText")));
+	#endif
 	return true;
 }

@@ -393,9 +393,11 @@ bool FPRPlayerSkillAssetTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("%s Cooldown tag"), Expected.Name), Cooldown->GetGrantedTags().HasTagExact(
 			FGameplayTag::RequestGameplayTag(*FString::Printf(TEXT("Cooldown.Skill.%s"), Expected.Name))));
 
+		#if WITH_EDITOR
 		FDataValidationContext ValidationContext;
 		TestEqual(*FString::Printf(TEXT("%s Data Validation"), Expected.Name),
 			Skill->IsDataValid(ValidationContext), EDataValidationResult::Valid);
+		#endif
 	}
 
 	return true;

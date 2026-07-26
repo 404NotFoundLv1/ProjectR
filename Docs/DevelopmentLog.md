@@ -456,3 +456,8 @@ Commit：
 - 经 Unreal MCP 创建并精确保存五项唯一 Package：Registry 与四项 Rule DataAsset；重启 Editor 后回读 Registry 的四个软引用顺序保持正确，五项均非 dirty。
 - `ProjectREditor Win64 Development` Build 通过；`ProjectR.Director` 4/4 通过；`ProjectR.Debug` 在 `-game` 上下文 12/12 通过；`L_RealityHub` 固定 PIE 成功启动并停止。
 - Future Compatibility Review：v0.4.1 只能消费稳定 RuleId/Validator/Applied Handle 以增加执行策略；v0.4.2 只能消费已验证 Handle，不能访问原始 Provider Response；当前版本未引入 Room、Reward、RunState、Account、UI、真实端点或凭据。
+- 2026-07-27 补验关闭原先缺少的完成门：追溯到真实 TDD RED（历史 Mock/Transport 断言与新增画像测试 API 缺失），对应 GREEN Build PASS。`UPRPlayerProfileSubsystem` 现在在 World BeginPlay 绑定当前 PlayerState 属性变化与 ASC 生命周期，并在旅行、World cleanup/Deinitialize 解绑；新增自动化把 Ability、Combat、QTE、Relationship 与 Divergence 投影限定在 `WITH_DEV_AUTOMATION_TESTS` 值型注入缝。
+- 新鲜 `ProjectR.Director` 6/6、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug（`-game`）12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、QTE 5/5、Dialogue 5/5、Divergence 3/3、CombatHUD 6/6 均 PASS。先前无 GameInstance 的通用聚合运行只用于诊断，未被当作回归 PASS。
+- 新增最小 editor-only、无参数 `PRDirectorAutomationToolset::RunPIEDirectorSmoke()`；它在 `L_RealityHub` authoritative PIE 返回 profile samples、Mock、HTTP disabled、非法 RequestId 拒绝、准确 Handle 移除、新 Profile session reset、`saveTouched=false` 和 runtime clean 的结构化 PASS。它不接受路径、类、Tag、代码、JSON、网络或 Save 参数，也不保存 Package/地图。
+- 原实施期的五项 Director Package 精确保存事实保持不变；补验正常重启 Editor 后重新回读五项资产，全部 `Dirty=false`。最终结构化记录为 `Saved/AutomationReports/v040-supplemental-final-report-20260727/v040-supplemental-None/result.json`。用户已完成四项固定 Mock Rule 的原因/反制说明预览并于 2026-07-27 回复 `PASS`。
+- `PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 如实保持 optional `NOT_RUN`；`ProjectRAuthoringToolExtension` 为 optional PASS。本轮不推进 `CURRENT_VERSION` 或创建提交，等待单独的版本转换授权。

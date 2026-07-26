@@ -276,6 +276,9 @@ FPRPlayerProfileSnapshot
 
 Response 只允许 RuleId、Level、ReasonTags、VisibleReason、有限参数和表达文本。Validator 执行 Schema、白名单、Clamp、长度、超时和 fallback。未知 RuleId 永不进入执行层。
 
+- `UPRPlayerProfileSubsystem` 是跨普通地图旅行的唯一画像 owner；它只消费既有 Combat、Ability Lifecycle、QTE、Relationship、Primary Sync、Divergence、PlayerState 属性和成功 Create/Load 会话的值型事实。它在每个 World BeginPlay 重新绑定当前 PlayerState/ASC，在 World cleanup、Pawn replacement 和 Deinitialize 准确解绑；Snapshot 仅保留有界、排序、去重后的数值投影，绝不保存 Actor、UObject、Timer、Delegate、Handle 或原始事件。
+- Mock 对同一规范化 Request/Registry 必须逐字段确定；HTTP Provider 在无未来 Transport/凭据时不可用并立即进入 Mock。迟到、重复或错误 RequestId Completion 必须被丢弃。Provider 输出、表达文本和有限参数都只能经 Validator 进入固定 Registry；Applied Rule Handle 仅记录已经验证的选择，v0.4.0 不产生 Gameplay、Room、Reward、Save 或 UI 权威效果。
+
 # 8. Room 与 Reward 合同
 
 **所有者**：Roguelike。  

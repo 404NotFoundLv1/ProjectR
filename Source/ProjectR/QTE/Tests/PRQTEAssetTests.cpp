@@ -30,16 +30,20 @@ bool FPRQTEAssetsConfiguredTest::RunTest(const FString& Parameters)
 	using namespace PRQTEAssetAutomation;
 	UPRQTERegistryDataAsset* Registry = LoadObject<UPRQTERegistryDataAsset>(nullptr, RegistryPath);
 	if (!TestNotNull(TEXT("Fixed QTE registry exists"), Registry)) return false;
+	#if WITH_EDITOR
 	FDataValidationContext RegistryContext;
 	TestEqual(TEXT("Registry is valid"), Registry->IsDataValid(RegistryContext), EDataValidationResult::Valid);
+	#endif
 	TestEqual(TEXT("Registry has exactly twelve ordered entries"), Registry->GetEntries().Num(), 12);
 	for (int32 Index = 0; Index < Registry->GetEntries().Num(); ++Index)
 	{
 		UPRQTEDataAsset* Asset = Registry->GetEntries()[Index].LoadSynchronous();
 		if (!TestNotNull(*FString::Printf(TEXT("Entry %d loads"), Index), Asset)) continue;
 		TestEqual(*FString::Printf(TEXT("Entry %d canonical identifier"), Index), Asset->QTEId, FPRQTEContract::GetExpectedQTEIds()[Index]);
+		#if WITH_EDITOR
 		FDataValidationContext AssetContext;
 		TestEqual(*FString::Printf(TEXT("Entry %d validates"), Index), Asset->IsDataValid(AssetContext), EDataValidationResult::Valid);
+		#endif
 		TestFalse(*FString::Printf(TEXT("Entry %d has a player-facing display name"), Index), Asset->DisplayName.IsEmpty());
 		TestFalse(*FString::Printf(TEXT("Entry %d has a player-facing prompt"), Index), Asset->PromptText.IsEmpty());
 		TestTrue(*FString::Printf(TEXT("Entry %d owns a finite effect definition"), Index), Asset->SuccessEffects.Num() == 1 && Asset->SuccessEffects[0].MaxTargets >= 0);

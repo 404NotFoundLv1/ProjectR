@@ -79,9 +79,11 @@ bool FPRCompanionRuntimeAssetTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Runtime magnitude is exact"), Asset->SupportMagnitude, Entry.Magnitude);
 		TestEqual(TEXT("Runtime effect binding is exact"), Asset->SupportEffectClass != nullptr, Entry.bHasEffect);
 		TestTrue(TEXT("Runtime Pawn class is configured"), !Asset->PawnClass.IsNull());
+		#if WITH_EDITOR
 		FDataValidationContext Context;
 		TestEqual(TEXT("Runtime asset passes the fixed manifest validation"),
 			Asset->IsDataValid(Context), EDataValidationResult::Valid);
+		#endif
 	}
 	UPRCompanionRuntimeDataAsset* Invalid = NewObject<UPRCompanionRuntimeDataAsset>();
 	Invalid->CompanionId = FPRCompanionContract::AxiomTag();
@@ -89,9 +91,11 @@ bool FPRCompanionRuntimeAssetTest::RunTest(const FString& Parameters)
 	Invalid->BaseSupportInterval = 8.0f;
 	Invalid->SupportRange = 0.0f;
 	Invalid->SupportMagnitude = 20.0f;
+	#if WITH_EDITOR
 	FDataValidationContext InvalidContext;
 	TestEqual(TEXT("Axiom rejects a mismatched fixed support schema"),
 		Invalid->IsDataValid(InvalidContext), EDataValidationResult::Invalid);
+	#endif
 	UClass* ShieldClass = LoadClass<UGameplayEffect>(nullptr,
 		TEXT("/Game/ProjectR/Companions/Effects/GE_Companion_Axiom_Shield.GE_Companion_Axiom_Shield_C"));
 	UGameplayEffect* Shield = ShieldClass ? ShieldClass->GetDefaultObject<UGameplayEffect>() : nullptr;

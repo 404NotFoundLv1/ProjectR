@@ -20,6 +20,7 @@
 #include "PRDialogueAutomationToolset.h"
 #include "PRDivergenceAuthoringToolset.h"
 #include "PRDivergenceAutomationToolset.h"
+#include "PRDirectorAutomationToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -46,10 +47,12 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPRDialogueAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRDivergenceAuthoringToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRDivergenceAutomationToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRDirectorAutomationToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
 	{
+		UToolsetRegistry::UnregisterToolsetClass(UPRDirectorAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRQTEAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRDivergenceAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRDivergenceAuthoringToolset::StaticClass());

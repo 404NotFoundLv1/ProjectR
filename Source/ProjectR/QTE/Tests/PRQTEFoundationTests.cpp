@@ -22,20 +22,26 @@ bool FPRQTEFoundationContractTest::RunTest(const FString& Parameters)
 
 	UPRQTEDataAsset* Asset = NewObject<UPRQTEDataAsset>();
 	Asset->QTEId = TEXT("Axiom_WeaknessAxiom");
+	#if WITH_EDITOR
 	FDataValidationContext AssetContext;
 	TestEqual(TEXT("Incomplete QTE data is invalid"), Asset->IsDataValid(AssetContext), EDataValidationResult::Invalid);
+	#endif
 	Asset->CompanionId = FGameplayTag::RequestGameplayTag(TEXT("Companion.Axiom"));
 	Asset->QTEType = FGameplayTag::RequestGameplayTag(TEXT("QTE.Type.Attack"));
 	Asset->AcceptedInputTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Input.Attack")));
 	Asset->WindowSeconds = 1.0f;
 	Asset->SuccessEffects.AddDefaulted();
 	Asset->SuccessEffects[0].EffectKind = static_cast<EPRQTEEffectKind>(255);
+	#if WITH_EDITOR
 	FDataValidationContext IllegalEffectContext;
 	TestEqual(TEXT("Illegal effect values are rejected"), Asset->IsDataValid(IllegalEffectContext), EDataValidationResult::Invalid);
+	#endif
 
 	UPRQTERegistryDataAsset* Registry = NewObject<UPRQTERegistryDataAsset>();
+	#if WITH_EDITOR
 	FDataValidationContext RegistryContext;
 	TestEqual(TEXT("An absent v0.3.2 registry is invalid"), Registry->IsDataValid(RegistryContext), EDataValidationResult::Invalid);
+	#endif
 	return true;
 }
 

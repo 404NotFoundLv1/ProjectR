@@ -361,6 +361,20 @@ date: "2026-07-10"
 
 **验证**：原生 `ProjectR.Divergence` 覆盖固定值、资格边界和配置；固定 PIE 在隔离测试 Profile 验证 Rescue/Leave/FaceChallenge、单次保存语义与 runtime clean；完整历史回归、Widget warnings-as-errors、精确保存、重启回读及人工三声线/三选项清晰度验收是完成门。
 
+# ADR-028 - 有界画像、验证法令与离线 Provider 边界
+
+**状态**：Accepted。
+
+**背景**：v0.4.0 需要从既有 Combat、Ability、QTE、Relationship、Primary Sync 与 Divergence 事实生成可被未来 Director 消费的稳定画像，同时不得让战斗等待网络、让 Provider 直接执行玩法，或把原始事件/响应与运行时对象写入 Save。直接让上游系统依赖 Director、保存原始 Provider 数据或在 Widget 中验证 Rule 都会破坏单向依赖和离线安全边界。
+
+**决策**：采用 GameInstance-owned `UPRPlayerProfileSubsystem`，在每个 World BeginPlay 绑定当前 PlayerState/ASC 的既有公开事件，并在旅行、World cleanup、Pawn replacement 与 Deinitialize 精确解绑。画像只发布有界、排序、去重的 `FPRPlayerProfileSnapshot`；唯一流向固定为 Snapshot → Request → Provider → Response → Validator → Local Registry → Applied Handle。Mock 必须确定，HTTP 默认不可用、没有端点/密钥且立即 fallback；所有 Completion 回到 Game Thread，错误/迟到/重复 RequestId 必须丢弃。Validator 是进入 Registry 的唯一门，未知 Rule 永不能创建 Handle。
+
+**后果**：v0.4.0 的 Handle 只表示已验证的法令选择记录，不产生 Gameplay、Room、Reward、Save 或 UI 权威效果。v0.4.1 只可在相同 RuleId/Validator/Handle 之上增加执行器；v0.4.2 只消费已验证 Handle；v0.4.3 才将有界摘要投影到 Save。未来远程 Provider 仍须保留同一 Validator、超时与 Mock fallback，平台安全层之外不得出现客户端凭据。
+
+**迁移/回滚**：不变更 Save Schema、GameplayTag、Config、地图、上游 Combat/Ability/QTE/Companion/Divergence 公共接口或既有 Package。回滚只反向撤销 v0.4.0 Director 源码、固定 Rule Package、editor-only 自动化工具和对应文档；禁止 hard reset、clean、Save All、Resave All、Fix Redirectors、用户 Save 操作或普通文件 I/O 修改 Package。
+
+**验证**：历史 TDD RED/补充 GREEN、BuildEditor、Director 6/6、各独立历史回归、五项资产的精确保存/重启回读/Dirty=0、固定 L_RealityHub PIE 与用户对四条 Mock 原因/反制说明的 PASS 均有实际记录于 `Saved/AutomationReports/v040-supplemental-final-report-20260727/v040-supplemental-None/result.json`。
+
 # ADR 模板
 
 ```text

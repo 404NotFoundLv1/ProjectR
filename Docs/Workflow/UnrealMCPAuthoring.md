@@ -183,3 +183,8 @@ v0.0.2 的 GameplayTagsToolset 含 `ListTags`、`GetTagInfo`、`FindReferencersB
 
 - `PRDivergenceAuthoringToolset` 仅暴露无参数 `CreateV034DivergenceManifest`、`RepairV034DivergenceManifest`、`ValidateV034DivergenceManifest` 与 `SaveV034DivergenceManifest`。它只操作 `/Game/ProjectR/Data/Divergence/DA_DivergenceCache` 和 `/Game/ProjectR/UI/Companion/WBP_DivergenceCache`，不接受类、路径、Tag、数值、文本、Blueprint 图或代码输入，也不提供删除、移动、改名、Save All、Resave All、Fix Redirectors 或地图保存能力。
 - `PRDivergenceAutomationToolset` 只在已启动的 authoritative `L_CombatGym` PIE 执行固定 smoke 或三位 Primary 的人工预览。Smoke 在隔离的内存关系档案中顺序验证 Rescue、Leave、FaceChallenge；Preview 在 Axiom 可见时返回 `READY`，再固定展示 Kindle、Null。所有成功、失败、超时、PIE Stop、Pawn 替换和 World Cleanup 路径都清理 Widget、Actor、Delegate、Timer、Effect、Spec 与测试状态，且不会触碰用户 Save/Profile。用户明确 PASS 才能使 `HumanDivergenceClarity` 通过。
+
+# v0.4.0 Director 固定 PIE 自动化
+
+- 官方 Toolset 没有在活动 PIE 中以固定、可审计方式触发 C++-only PlayerProfile/Director API 的入口，因此新增 editor-only `PRDirectorAutomationToolset::RunPIEDirectorSmoke()`。它没有参数，只在 authoritative `L_RealityHub` PlayWorld 使用值型固定样本；验证 Profile 投影、Mock 确定性、HTTP 默认不可用、错误 RequestId 拒绝、精确 Handle 移除和新 Profile session reset。
+- 该 Tool 不接受资产路径、类、Tag、代码、JSON、网络、Save Slot 或 Profile 输入；不保存 Package/地图、不创建真实请求，也不触碰用户 Save。所有成功、失败、PIE Stop、World cleanup 与析构路径清理测试对象、Delegate、Timer、Request、Handle 和 transient 状态；结果显式返回 `saveTouched=false` 与 `runtimeClean=true`。

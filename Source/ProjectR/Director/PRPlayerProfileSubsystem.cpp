@@ -2,6 +2,7 @@
 
 #include "Director/PRPlayerProfileSubsystem.h"
 #include "Abilities/PRAbilitySystemComponent.h"
+#include "Abilities/PRAttributeSet.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Companions/PRCompanionSubsystem.h"
 #include "Core/PRPlayerState.h"
@@ -30,6 +31,7 @@ void UPRPlayerProfileSubsystem::Deinitialize()
 	if (UPRCompanionSubsystem* Companions = GetGameInstance()->GetSubsystem<UPRCompanionSubsystem>()) { Companions->OnRelationshipChanged().Remove(RelationshipChangedHandle); Companions->OnPrimarySyncChanged().Remove(PrimarySyncHandle); }
 	if (UPRDivergenceSubsystem* Divergence = GetGameInstance()->GetSubsystem<UPRDivergenceSubsystem>()) Divergence->OnDivergenceResult().Remove(DivergenceResultHandle);
 	FWorldDelegates::OnPostWorldInitialization.Remove(PostWorldInitializationHandle); FWorldDelegates::OnWorldCleanup.Remove(WorldCleanupHandle);
+	UnbindPlayerSources();
 	HandleWorldCleanup(BoundWorld.Get(), false, true);
 	bHasSession = false;
 	Snapshot = FPRPlayerProfileSnapshot();
@@ -77,16 +79,47 @@ void UPRPlayerProfileSubsystem::HandlePostWorldInitialization(UWorld* World, con
 {
 	if (!World || World->GetGameInstance() != GetGameInstance()) return;
 	HandleWorldCleanup(BoundWorld.Get(), false, true); BoundWorld = World;
+	WorldBeginPlayHandle = World->OnWorldBeginPlay.AddUObject(this, &UPRPlayerProfileSubsystem::HandleWorldBeginPlay);
 	if (UPRCombatSubsystem* Combat = World->GetSubsystem<UPRCombatSubsystem>()) CombatEventHandle = Combat->OnCombatEvent().AddUObject(this, &UPRPlayerProfileSubsystem::HandleCombatEvent);
 	if (UPRQTESubsystem* QTE = World->GetSubsystem<UPRQTESubsystem>()) QTEResultHandle = QTE->OnQTEResult().AddUObject(this, &UPRPlayerProfileSubsystem::HandleQTEResult);
+	BindPlayerSources(World);
+}
+
+void UPRPlayerProfileSubsystem::HandleWorldBeginPlay()
+{
+	if (UWorld* World = BoundWorld.Get(); World && World->GetGameInstance() == GetGameInstance()) BindPlayerSources(World);
 }
 
 void UPRPlayerProfileSubsystem::HandleWorldCleanup(UWorld* World, bool bSessionEnded, bool bCleanupResources)
 {
 	if (!World || World != BoundWorld.Get()) return;
+	UnbindPlayerSources();
+	if (WorldBeginPlayHandle.IsValid()) World->OnWorldBeginPlay.Remove(WorldBeginPlayHandle);
 	if (UPRCombatSubsystem* Combat = World->GetSubsystem<UPRCombatSubsystem>()) Combat->OnCombatEvent().Remove(CombatEventHandle);
 	if (UPRQTESubsystem* QTE = World->GetSubsystem<UPRQTESubsystem>()) QTE->OnQTEResult().Remove(QTEResultHandle);
-	BoundWorld = nullptr; CombatEventHandle.Reset(); QTEResultHandle.Reset(); AbilityLifecycleHandle.Reset();
+	BoundWorld = nullptr; WorldBeginPlayHandle.Reset(); CombatEventHandle.Reset(); QTEResultHandle.Reset();
+}
+
+void UPRPlayerProfileSubsystem::BindPlayerSources(UWorld* World)
+{
+	if (!World || World->GetGameInstance() != GetGameInstance()) return;
+	APlayerController* Controller = World->GetFirstPlayerController();
+	APRPlayerState* PlayerState = Controller ? Controller->GetPlayerState<APRPlayerState>() : nullptr;
+	UPRAbilitySystemComponent* AbilitySystem = PlayerState ? PlayerState->GetProjectRAbilitySystemComponent() : nullptr;
+	if (!IsValid(PlayerState) || !IsValid(AbilitySystem)) return;
+	if (BoundPlayerState.Get() == PlayerState && BoundAbilitySystem.Get() == AbilitySystem) return;
+	UnbindPlayerSources();
+	BoundPlayerState = PlayerState;
+	BoundAbilitySystem = AbilitySystem;
+	AbilityLifecycleHandle = AbilitySystem->OnAbilityLifecycleEvent().AddUObject(this, &UPRPlayerProfileSubsystem::HandleAbilityLifecycle);
+	AttributeChangedHandle = PlayerState->OnAttributeChanged().AddUObject(this, &UPRPlayerProfileSubsystem::HandleAttributeChanged);
+}
+
+void UPRPlayerProfileSubsystem::UnbindPlayerSources()
+{
+	if (UPRAbilitySystemComponent* AbilitySystem = BoundAbilitySystem.Get(); AbilitySystem && AbilityLifecycleHandle.IsValid()) AbilitySystem->OnAbilityLifecycleEvent().Remove(AbilityLifecycleHandle);
+	if (APRPlayerState* PlayerState = BoundPlayerState.Get(); PlayerState && AttributeChangedHandle.IsValid()) PlayerState->OnAttributeChanged().Remove(AttributeChangedHandle);
+	BoundPlayerState.Reset(); BoundAbilitySystem.Reset(); AbilityLifecycleHandle.Reset(); AttributeChangedHandle.Reset();
 }
 
 void UPRPlayerProfileSubsystem::HandleCombatEvent(const FPRCombatEvent& Event)
@@ -116,6 +149,13 @@ void UPRPlayerProfileSubsystem::HandleAbilityLifecycle(const FPRAbilityLifecycle
 	Snapshot.SkillMetrics.Sort([](const FPRPlayerProfileSkillMetric& Left, const FPRPlayerProfileSkillMetric& Right) { return Left.SkillTag.ToString() < Right.SkillTag.ToString(); }); PublishProfileChange();
 }
 
+void UPRPlayerProfileSubsystem::HandleAttributeChanged(const FPRAttributeChange& Change)
+{
+	if (!bHasSession || Change.Attribute != UPRAttributeSet::GetEnergyAttribute() || Change.NewValue >= Change.OldValue) return;
+	Snapshot.Resources.EnergySpent = FMath::Max(0.0f, Snapshot.Resources.EnergySpent + (Change.OldValue - Change.NewValue));
+	PublishProfileChange();
+}
+
 void UPRPlayerProfileSubsystem::AddTaggedCount(TArray<FPRPlayerProfileTaggedCount>& Counts, const FGameplayTag Tag, const int32 Amount)
 {
 	if (!Tag.IsValid() || Amount <= 0) return; FPRPlayerProfileTaggedCount* Existing = Counts.FindByPredicate([Tag](const FPRPlayerProfileTaggedCount& Item) { return Item.Tag == Tag; }); if (!Existing) { if (Counts.Num() >= 16) return; Existing = &Counts.AddDefaulted_GetRef(); Existing->Tag = Tag; } Existing->Count = FMath::Min(TNumericLimits<int32>::Max(), Existing->Count + Amount); Counts.Sort([](const FPRPlayerProfileTaggedCount& Left, const FPRPlayerProfileTaggedCount& Right) { return Left.Tag.ToString() < Right.Tag.ToString(); });
@@ -126,4 +166,9 @@ void UPRPlayerProfileSubsystem::PublishProfileChange() { if (bHasSession) Profil
 
 #if WITH_DEV_AUTOMATION_TESTS
 void UPRPlayerProfileSubsystem::BeginProfileSessionForAutomation() { BeginProfileSession(); }
+void UPRPlayerProfileSubsystem::InjectAbilityLifecycleForAutomation(const FPRAbilityLifecycleEvent& Event) { HandleAbilityLifecycle(Event); }
+void UPRPlayerProfileSubsystem::InjectCombatEventForAutomation(const FPRCombatEvent& Event) { HandleCombatEvent(Event); }
+void UPRPlayerProfileSubsystem::InjectQTEResultForAutomation(const FPRQTEResult& Result) { HandleQTEResult(Result); }
+void UPRPlayerProfileSubsystem::InjectRelationshipChangedForAutomation(const FPRRelationshipChangedEvent& Event) { HandleRelationshipChanged(Event); }
+void UPRPlayerProfileSubsystem::InjectDivergenceResultForAutomation(const FPRDivergenceResult& Result) { HandleDivergenceResult(Result); }
 #endif
