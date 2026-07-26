@@ -44,5 +44,6 @@ private:
 	FVector LastFollowDirection = FVector(-1.0f, 0.0f, 0.0f);
 	FTimerHandle FollowTimer;
 	FTimerHandle SupportTimer;
+	int32 SupportAttemptSequence = 0;
 	bool bRuntimeInitialized = false;
 };

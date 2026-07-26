@@ -179,7 +179,13 @@ float UPRCompanionComponent::GetEffectiveInterval(float& OutOverload) const
 	{
 		OutOverload = static_cast<float>(Relationship.State.Overload);
 	}
-	return UPRCompanionRuntimeSubsystem::CalculateEffectiveSupportInterval(*RuntimeData, static_cast<int32>(OutOverload));
+	float DirectorMultiplier = 1.0f;
+	int32 UnusedSuppressionStride = 1;
+	if (UPRCompanionRuntimeSubsystem* Runtime = GetWorld()->GetSubsystem<UPRCompanionRuntimeSubsystem>())
+	{
+		Runtime->GetSupportPolicy(DirectorMultiplier, UnusedSuppressionStride);
+	}
+	return UPRCompanionRuntimeSubsystem::CalculateEffectiveSupportInterval(*RuntimeData, static_cast<int32>(OutOverload)) * DirectorMultiplier;
 }
 
 void UPRCompanionComponent::ScheduleNextSupport()
@@ -301,6 +307,20 @@ void UPRCompanionComponent::ExecuteSupport()
 	if (!bRuntimeInitialized || !RuntimeData || !Pawn || !Pawn->HasAuthority() || !GetWorld())
 	{
 		PublishSupportEvent(MoveTemp(Event));
+		return;
+	}
+	float UnusedMultiplier = 1.0f;
+	int32 SuppressionStride = 1;
+	if (UPRCompanionRuntimeSubsystem* Runtime = GetWorld()->GetSubsystem<UPRCompanionRuntimeSubsystem>())
+	{
+		Runtime->GetSupportPolicy(UnusedMultiplier, SuppressionStride);
+	}
+	++SupportAttemptSequence;
+	if (SuppressionStride > 1 && (SupportAttemptSequence % SuppressionStride) != 0)
+	{
+		Event.Result = EPRCompanionSupportResult::RejectedInvalidState;
+		PublishSupportEvent(MoveTemp(Event));
+		ScheduleNextSupport();
 		return;
 	}
 

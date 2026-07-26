@@ -148,10 +148,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPRGASAttributeClampTest::RunTest(const FString& Parameters)
 {
-	AddExpectedError(
-		TEXT("No GameplayCueNotifyPaths were specified"),
-		EAutomationExpectedErrorFlags::Contains,
-		1);
 	PRGASAutomation::FScopedTestWorld TestWorld;
 	APRPlayerState* PlayerState = PRGASAutomation::SpawnBlueprintActor<APRPlayerState>(
 		TestWorld.Get(),

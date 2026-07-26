@@ -9,6 +9,7 @@
 #include "Core/PRGameInstance.h"
 #include "Core/PRMapId.h"
 #include "Core/PRPlayerState.h"
+#include "Director/PRDirectorSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
@@ -99,7 +100,7 @@ EPRDebugCommandResultCode MapDamageStatus(EPRCombatRequestStatus Status)
 TArray<FPRDebugCommandDescriptor> FPRDebugBuiltInCommands::BuildDescriptors()
 {
 	TArray<FPRDebugCommandDescriptor> Descriptors;
-	Descriptors.Reserve(11);
+	Descriptors.Reserve(12);
 	Descriptors.Add(MakeDescriptor(
 		EPRDebugCommandId::StatusSnapshot,
 		TEXT("Debug.Status"),
@@ -167,8 +168,8 @@ TArray<FPRDebugCommandDescriptor> FPRDebugBuiltInCommands::BuildDescriptors()
 		EPRDebugCommandId::GenerateDirectorRule,
 		TEXT("Director.GenerateRule"),
 		LOCTEXT("DirectorName", "Generate Director Rule"),
-		LOCTEXT("DirectorDescription", "Reserved until the Director whitelist API exists."),
-		EPRDebugCommandAvailability::NotAvailable,
+		LOCTEXT("DirectorDescription", "Request one validated deterministic Director rule through the formal provider and validator path."),
+		EPRDebugCommandAvailability::Available,
 		true));
 	Descriptors.Add(MakeDescriptor(
 		EPRDebugCommandId::SpawnQTE,
@@ -191,6 +192,13 @@ TArray<FPRDebugCommandDescriptor> FPRDebugBuiltInCommands::BuildDescriptors()
 		LOCTEXT("BossDescription", "Reserved until the formal boss flow exists."),
 		EPRDebugCommandAvailability::NotAvailable,
 		true));
+	Descriptors.Add(MakeDescriptor(
+		EPRDebugCommandId::RemoveDirectorRules,
+		TEXT("Director.RemoveRules"),
+		LOCTEXT("RemoveDirectorRulesName", "Remove Director Rules"),
+		LOCTEXT("RemoveDirectorRulesDescription", "Remove only the currently validated Director rule handles in this session."),
+		EPRDebugCommandAvailability::Available,
+		true));
 	return Descriptors;
 }
 
@@ -210,6 +218,10 @@ FPRDebugCommandResult FPRDebugBuiltInCommands::Execute(
 		return ReadSaveState(Request, GameInstance);
 	case EPRDebugCommandId::ReturnToCombatGym:
 		return TravelToCombatGym(Request, GameInstance);
+	case EPRDebugCommandId::GenerateDirectorRule:
+		return GenerateDirectorRule(Request, GameInstance);
+	case EPRDebugCommandId::RemoveDirectorRules:
+		return RemoveDirectorRules(Request, GameInstance);
 	default:
 		return MakeResult(
 			Request,
@@ -381,6 +393,49 @@ FPRDebugCommandResult FPRDebugBuiltInCommands::TravelToCombatGym(
 			? EPRDebugCommandResultCode::Success
 			: EPRDebugCommandResultCode::Failed,
 		LOCTEXT("TravelRequested", "Combat Gym travel requested."));
+}
+
+FPRDebugCommandResult FPRDebugBuiltInCommands::GenerateDirectorRule(
+	const FPRDebugCommandRequest& Request,
+	UGameInstance* GameInstance)
+{
+	UPRDirectorSubsystem* Director = GameInstance != nullptr ? GameInstance->GetSubsystem<UPRDirectorSubsystem>() : nullptr;
+	if (Director == nullptr)
+	{
+		return MakeResult(Request, EPRDebugCommandResultCode::InvalidContext, LOCTEXT("DirectorInvalid", "Director runtime is not available."));
+	}
+	FGuid EvaluationId;
+	const EPRDirectorRequestStatus Status = Director->RequestEvaluation(EvaluationId);
+	return MakeResult(
+		Request,
+		Status == EPRDirectorRequestStatus::Started || Status == EPRDirectorRequestStatus::ProviderUnavailable
+			? EPRDebugCommandResultCode::Success
+			: Status == EPRDirectorRequestStatus::Busy ? EPRDebugCommandResultCode::Rejected : EPRDebugCommandResultCode::InvalidContext,
+		Status == EPRDirectorRequestStatus::Started || Status == EPRDirectorRequestStatus::ProviderUnavailable
+			? LOCTEXT("DirectorRequested", "Validated Director evaluation requested.")
+			: LOCTEXT("DirectorRejected", "Director evaluation is unavailable in the current runtime context."));
+}
+
+FPRDebugCommandResult FPRDebugBuiltInCommands::RemoveDirectorRules(
+	const FPRDebugCommandRequest& Request,
+	UGameInstance* GameInstance)
+{
+	UPRDirectorSubsystem* Director = GameInstance != nullptr ? GameInstance->GetSubsystem<UPRDirectorSubsystem>() : nullptr;
+	if (Director == nullptr)
+	{
+		return MakeResult(Request, EPRDebugCommandResultCode::InvalidContext, LOCTEXT("DirectorRemoveInvalid", "Director runtime is not available."));
+	}
+	TArray<FPRAppliedDirectorRuleHandle> Handles;
+	Director->GetAppliedRules(Handles);
+	for (const FPRAppliedDirectorRuleHandle& Handle : Handles)
+	{
+		const EPRDirectorRuleOperationResult Result = Director->RemoveAppliedRule(Handle);
+		if (Result != EPRDirectorRuleOperationResult::Removed)
+		{
+			return MakeResult(Request, EPRDebugCommandResultCode::Failed, LOCTEXT("DirectorRemoveFailed", "A validated Director rule could not be removed."));
+		}
+	}
+	return MakeResult(Request, EPRDebugCommandResultCode::Success, LOCTEXT("DirectorRemoveSuccess", "Validated Director rules removed."));
 }
 
 #undef LOCTEXT_NAMESPACE

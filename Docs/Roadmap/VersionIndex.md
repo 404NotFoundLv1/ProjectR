@@ -34,8 +34,8 @@ date: "2026-07-10"
 | v0.3.2 | AI 队友与 QTE 纵切片 | 12 个 P0 QTE 完整实现 | Completed | v0.3.1 | Versions/v0.3.2.md |
 | v0.3.3 | AI 队友与 QTE 纵切片 | 动态交流与战斗短句系统 | Completed | v0.3.2 | Versions/v0.3.3.md |
 | v0.3.4 | AI 队友与 QTE 纵切片 | 濒死保护与分歧缓存区完整化 | Completed | v0.3.3 | Versions/v0.3.4.md |
-| v0.4.0 | 首脑法令、肉鸽与 Meta 成长 | 玩家画像与首脑法令白名单 | In Progress | v0.3.4 | Versions/v0.4.0.md |
-| v0.4.1 | 首脑法令、肉鸽与 Meta 成长 | 实现 12 条可执行法令 | Planned | v0.4.0 | 进入阶段前生成 |
+| v0.4.0 | 首脑法令、肉鸽与 Meta 成长 | 玩家画像与首脑法令白名单 | Completed | v0.3.4 | Versions/v0.4.0.md |
+| v0.4.1 | 首脑法令、肉鸽与 Meta 成长 | 实现 12 条可执行法令 | In Progress | v0.4.0 | Versions/v0.4.1.md |
 | v0.4.2 | 首脑法令、肉鸽与 Meta 成长 | 房间系统、事件房和奖励插件 | Planned | v0.4.1 | 进入阶段前生成 |
 | v0.4.3 | 首脑法令、肉鸽与 Meta 成长 | 账号创建、死亡删号、通关删号和墓园 | Planned | v0.4.2 | 进入阶段前生成 |
 | v0.4.4 | 首脑法令、肉鸽与 Meta 成长 | Meta 成长：技能树、AI 树、羁绊树 | Planned | v0.4.3 | 进入阶段前生成 |

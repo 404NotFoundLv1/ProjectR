@@ -9,6 +9,7 @@
 
 class UPRBossHealthWidget;
 class UPRBossPrototypeResultWidget;
+class UPRDirectorRulePanelWidget;
 class UTextBlock;
 class UWidget;
 
@@ -30,6 +31,9 @@ protected:
 
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UPRBossPrototypeResultWidget> BossPrototypeResult;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UPRDirectorRulePanelWidget> DirectorRulePanel;
 
 private:
 	void HandleBossStateChanged(const FPRBossRuntimeState& InState);

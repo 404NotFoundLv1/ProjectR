@@ -28,6 +28,8 @@ public:
 		FGuid& OutSpawnId,
 		APREnemyCharacter*& OutEnemy);
 	bool GetEnemyRuntimeState(FGuid SpawnId, FPREnemyRuntimeState& OutState) const;
+	/** Resolves only an existing Registry-spawned Enemy by its stable spawn id. It never spawns or accepts a class/path. */
+	bool ResolveSpawnedEnemy(FGuid SpawnId, APREnemyCharacter*& OutEnemy) const;
 	bool DespawnEnemy(FGuid SpawnId);
 	bool IsRegistryReady() const;
 	FPREnemyStateChangedNative& OnEnemyStateChanged();

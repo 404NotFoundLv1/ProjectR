@@ -19,7 +19,8 @@ enum class EPRDebugCommandId : uint8
 	GenerateDirectorRule,
 	SpawnQTE,
 	CycleCompanionAI,
-	JumpToBoss
+	JumpToBoss,
+	RemoveDirectorRules
 };
 
 enum class EPRDebugArgumentType : uint8

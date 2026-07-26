@@ -61,6 +61,42 @@ float UPRCompanionRuntimeSubsystem::CalculateEffectiveSupportInterval(
 	return RuntimeData.BaseSupportInterval * (1.0f + static_cast<float>(FMath::Clamp(Overload, 0, 100)) / 100.0f);
 }
 
+bool UPRCompanionRuntimeSubsystem::SetSupportPolicy(const FName SourceId, const float IntervalMultiplier, const int32 SuppressionStride)
+{
+	if (SourceId.IsNone() || !FMath::IsFinite(IntervalMultiplier) || IntervalMultiplier < 1.0f || IntervalMultiplier > 2.0f
+		|| SuppressionStride < 1 || SuppressionStride > 3)
+	{
+		return false;
+	}
+	SupportIntervalMultipliers.Add(SourceId, IntervalMultiplier);
+	SupportSuppressionStrides.Add(SourceId, SuppressionStride);
+	return true;
+}
+
+bool UPRCompanionRuntimeSubsystem::ClearSupportPolicy(const FName SourceId)
+{
+	if (SourceId.IsNone()) return false;
+	const int32 Removed = SupportIntervalMultipliers.Remove(SourceId) + SupportSuppressionStrides.Remove(SourceId);
+	return Removed > 0;
+}
+
+bool UPRCompanionRuntimeSubsystem::GetSupportPolicy(float& OutIntervalMultiplier, int32& OutSuppressionStride) const
+{
+	OutIntervalMultiplier = 1.0f;
+	OutSuppressionStride = 1;
+	for (const TPair<FName, float>& Pair : SupportIntervalMultipliers)
+	{
+		OutIntervalMultiplier *= Pair.Value;
+	}
+	for (const TPair<FName, int32>& Pair : SupportSuppressionStrides)
+	{
+		OutSuppressionStride = FMath::Max(OutSuppressionStride, Pair.Value);
+	}
+	OutIntervalMultiplier = FMath::Clamp(OutIntervalMultiplier, 1.0f, 2.0f);
+	OutSuppressionStride = FMath::Clamp(OutSuppressionStride, 1, 3);
+	return true;
+}
+
 FPRCompanionSupportEventNative& UPRCompanionRuntimeSubsystem::OnSupportEvent()
 {
 	return SupportEvent;
@@ -83,7 +119,9 @@ void UPRCompanionRuntimeSubsystem::ReconcilePrimaryPawn()
 	if (!SyncState.PrimaryCompanionId.IsValid())
 	{
 		GetWorld()->GetTimerManager().ClearTimer(ReconcileRetryTimer);
-		DestroyActiveCompanionPawn();
+	DestroyActiveCompanionPawn();
+	SupportIntervalMultipliers.Empty();
+	SupportSuppressionStrides.Empty();
 		return;
 	}
 	if (APRCompanionPawn* Existing = ActiveCompanionPawn.Get())

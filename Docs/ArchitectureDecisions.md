@@ -375,6 +375,18 @@ date: "2026-07-10"
 
 **验证**：历史 TDD RED/补充 GREEN、BuildEditor、Director 6/6、各独立历史回归、五项资产的精确保存/重启回读/Dirty=0、固定 L_RealityHub PIE 与用户对四条 Mock 原因/反制说明的 PASS 均有实际记录于 `Saved/AutomationReports/v040-supplemental-final-report-20260727/v040-supplemental-None/result.json`。
 
+# ADR-029 - Director rule execution remains a validated, reversible session service
+
+**状态**：Accepted。
+
+**背景**：v0.4.1 必须使十二条固定 RuleId 产生可观察、可反制的效果，但 v0.4.2 才拥有 Room/Reward，v0.4.3 才拥有 Run/Account 持久化。将效果放到 Widget、直接信任 Provider Response、让 Combat/QTE 依赖 Director 或为每条法令创建独立的长期系统，都会破坏 v0.4.0 的单向、离线和验证边界。
+
+**决策**：`UPRDirectorSubsystem` 继续只从 Validator 接收 Applied Handle；`FPRDirectorRuleEffectExecutor` 成为唯一的可逆会话执行器，使用六个固定 GAS GE、窄 Companion SourceId 策略 seam 与 Enemy SpawnId 只读 seam。所有执行结果都投影为值型只读 RuntimeState；`UPRDirectorRulePanelWidget` 仅渲染原因、效果、反制和进度。Debug 入口非 Shipping 且仍构造标准 Request/Response、通过同一 Validator。十二项 RuleId 固定为 Registry 白名单；未知 ID、非法参数、迟到回调或伪造 Handle 永不执行。
+
+**后果**：Combat、Ability、QTE、Companion、Save、UI 和 Provider 的所有权边界保持不变。法令跨普通旅行幂等重绑，成功 Create/Load Profile、Replace/Remove、World cleanup、PIE Stop 与 Deinitialize 准确清理 GE、Timer、Delegate 和 modifier。DeleteEcho、OptimalPath、ResourceBalance、RiskReward、ObedienceTest 仅是明确标记的会话内降级，不能冒充 Room、Reward、经济、Account 或持久化语义。
+
+**验证**：Foundation/Runtime 的真实 TDD RED→GREEN、最终 BuildEditor、`ProjectR.Director` 10/10、所有历史回归、二十一项 Package 精确保存/重启回读/Dirty=0、三个固定 Director PIE 及用户 CombatGym 原因/效果/反制 `PASS` 汇总在 `Saved/AutomationReports/v041-final-report-20260727/v041final-None/result.json`（28/28 required PASS）。
+
 # ADR 模板
 
 ```text

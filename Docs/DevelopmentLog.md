@@ -461,3 +461,19 @@ Commit：
 - 新增最小 editor-only、无参数 `PRDirectorAutomationToolset::RunPIEDirectorSmoke()`；它在 `L_RealityHub` authoritative PIE 返回 profile samples、Mock、HTTP disabled、非法 RequestId 拒绝、准确 Handle 移除、新 Profile session reset、`saveTouched=false` 和 runtime clean 的结构化 PASS。它不接受路径、类、Tag、代码、JSON、网络或 Save 参数，也不保存 Package/地图。
 - 原实施期的五项 Director Package 精确保存事实保持不变；补验正常重启 Editor 后重新回读五项资产，全部 `Dirty=false`。最终结构化记录为 `Saved/AutomationReports/v040-supplemental-final-report-20260727/v040-supplemental-None/result.json`。用户已完成四项固定 Mock Rule 的原因/反制说明预览并于 2026-07-27 回复 `PASS`。
 - `PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` 如实保持 optional `NOT_RUN`；`ProjectRAuthoringToolExtension` 为 optional PASS。本轮不推进 `CURRENT_VERSION` 或创建提交，等待单独的版本转换授权。
+
+# 2026-07-27 - v0.4.0 收尾与 v0.4.1 十二条法令合同转换
+
+- v0.4.0 已按补验报告 `Saved/AutomationReports/v040-supplemental-final-report-20260727/v040-supplemental-None/result.json` 正式关闭：`3b93dbc50519119e12993f16412c57318f57566c`（`v0.4.0 Add player profile and director rule whitelist`）已位于 `main` 与 `origin/main`，35 项 required checks 和用户说明预览均为 PASS。
+- PhysicalGamepad、NetworkPIEReplication、Package、GC 保持 optional `NOT_RUN`；ProjectRAuthoringToolExtension 为 optional PASS。
+- v0.4.1 只使用一份合同、一个完成门及唯一功能提交；路线中的 a–e 只表示内部实施顺序。它仅在既有 Director Request/Response/Validator/Registry/Applied Handle 之上实现十二条可逆会话内法令，不进入 Room、Reward、RunState、Account、经济或网络业务。
+
+# 2026-07-27 - v0.4.1 十二条可执行首脑法令（实施完成，公共版本待收尾）
+
+- 完成单一 v0.4.1 实现：十二项 Registry RuleId 均经既有 Validator/Applied Handle 路径进入唯一 `FPRDirectorRuleEffectExecutor`；新增的 RuntimeState 和 Rule Panel 只读展示原因、效果、反制与进度。没有建立 a–e 子版本、子合同或中间功能提交。
+- 两组真实 TDD RED→GREEN 已保留：`v041-tdd-red-foundation-20260727`、`v041-tdd-red-runtime-20260727` 各自预期 Build exit 6，匹配 GREEN Build 均 exit 0；最终 BuildEditor `v041-final-build-20260727` PASS。
+- 创建八项 Rule DataAsset、六项固定 Director GE 与 `WBP_DirectorRulePanel`；修改既有四项 Rule DataAsset、Registry 和 `WBP_CombatHUD`。只精确保存这 21 项，未保存任何地图。Registry 重启后按十二项 RuleId 字典序回读；两项 HUD Blueprint warnings-as-errors 编译通过，Manifest 和两张 Gym 地图 PIE 后均为 `Dirty=false`。
+- 新鲜自动化均 PASS：Director 10/10、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、QTE 5/5、Dialogue 5/5、Divergence 3/3、CombatHUD 6/6。固定 Director、十二法令和独立 ResourceBalance CombatGym PIE 依次验证 Validator、延迟效果、Counter、精确移除和 runtime clean，且 `saveTouched=false`。
+- 用户在固定 `Rule.RepetitionPenalty` Level 2 CombatGym 预览中确认规则、原因、效果与反制清楚，并于 2026-07-27 回复 `PASS`。最终报告 `Saved/AutomationReports/v041-final-report-20260727/v041final-None/result.json` 为 28/28 required PASS。
+- `ProjectRAuthoringToolExtension` optional PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 均如实保持 optional `NOT_RUN`。Future Compatibility Review PASS：v0.4.2 只消费 validated Handle/RuntimeState；没有提前实现 Room、Reward、RunState、Account、经济、真实网络或凭据。
+- `CURRENT_VERSION` 继续为 v0.4.1 / In Progress；本轮未创建功能提交、未 push，等待单独的版本收尾授权。

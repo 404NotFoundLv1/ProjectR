@@ -57,7 +57,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRDebugCommandSchemaTest::RunTest(const FString& Parameters)
 {
 	const TArray<FPRDebugCommandDescriptor> Descriptors = UPRDebugSubsystem::BuildBuiltInDescriptorsForTests();
-	TestEqual(TEXT("Descriptor count"), Descriptors.Num(), 11);
+	TestEqual(TEXT("Descriptor count"), Descriptors.Num(), 12);
 	TSet<EPRDebugCommandId> Ids;
 	TSet<FName> Names;
 	for (int32 Index = 0; Index < Descriptors.Num(); ++Index)
@@ -300,11 +300,20 @@ bool FPRDebugFutureAvailabilityTest::RunTest(const FString& Parameters)
 	const TArray<FPRDebugCommandDescriptor> Descriptors = UPRDebugSubsystem::BuildBuiltInDescriptorsForTests();
 	for (int32 Index = static_cast<int32>(EPRDebugCommandId::GrantResource); Index <= static_cast<int32>(EPRDebugCommandId::JumpToBoss); ++Index)
 	{
+		if (Index == static_cast<int32>(EPRDebugCommandId::GenerateDirectorRule)) continue;
 		TestEqual(
 			TEXT("Future command remains unavailable"),
 			Descriptors[Index].Availability,
 			EPRDebugCommandAvailability::NotAvailable);
 	}
+	TestEqual(TEXT("Director generation is the only newly available future command"),
+		Descriptors[static_cast<int32>(EPRDebugCommandId::GenerateDirectorRule)].Availability,
+		EPRDebugCommandAvailability::Available);
+	TestEqual(TEXT("Director removal is a fixed, argument-free command"),
+		Descriptors[static_cast<int32>(EPRDebugCommandId::RemoveDirectorRules)].Arguments.Num(), 0);
+	TestEqual(TEXT("Director removal is available"),
+		Descriptors[static_cast<int32>(EPRDebugCommandId::RemoveDirectorRules)].Availability,
+		EPRDebugCommandAvailability::Available);
 	return true;
 }
 

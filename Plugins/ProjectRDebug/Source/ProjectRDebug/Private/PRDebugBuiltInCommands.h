@@ -28,4 +28,10 @@ private:
 	static FPRDebugCommandResult TravelToCombatGym(
 		const FPRDebugCommandRequest& Request,
 		UGameInstance* GameInstance);
+	static FPRDebugCommandResult GenerateDirectorRule(
+		const FPRDebugCommandRequest& Request,
+		UGameInstance* GameInstance);
+	static FPRDebugCommandResult RemoveDirectorRules(
+		const FPRDebugCommandRequest& Request,
+		UGameInstance* GameInstance);
 };

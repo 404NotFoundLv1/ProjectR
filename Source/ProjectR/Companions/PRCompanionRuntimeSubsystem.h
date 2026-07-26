@@ -20,6 +20,10 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	static float CalculateEffectiveSupportInterval(const UPRCompanionRuntimeDataAsset& RuntimeData, int32 Overload);
+	/** Narrow, source-keyed session policy seam. Director is intentionally not named here. */
+	bool SetSupportPolicy(FName SourceId, float IntervalMultiplier, int32 SuppressionStride);
+	bool ClearSupportPolicy(FName SourceId);
+	bool GetSupportPolicy(float& OutIntervalMultiplier, int32& OutSuppressionStride) const;
 	FPRCompanionSupportEventNative& OnSupportEvent();
 	APRCompanionPawn* GetActiveCompanionPawn() const;
 
@@ -36,4 +40,6 @@ private:
 	TWeakObjectPtr<class UPRCompanionSubsystem> CompanionSubsystem;
 	FDelegateHandle PrimarySyncChangedHandle;
 	FTimerHandle ReconcileRetryTimer;
+	TMap<FName, float> SupportIntervalMultipliers;
+	TMap<FName, int32> SupportSuppressionStrides;
 };

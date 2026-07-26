@@ -208,6 +208,15 @@ bool UPREnemySubsystem::GetEnemyRuntimeState(const FGuid SpawnId, FPREnemyRuntim
 	return true;
 }
 
+bool UPREnemySubsystem::ResolveSpawnedEnemy(const FGuid SpawnId, APREnemyCharacter*& OutEnemy) const
+{
+	OutEnemy = nullptr;
+	const TWeakObjectPtr<APREnemyCharacter>* Found = SpawnedEnemies.Find(SpawnId);
+	if (!Found || !Found->IsValid()) return false;
+	OutEnemy = Found->Get();
+	return OutEnemy != nullptr;
+}
+
 bool UPREnemySubsystem::DespawnEnemy(const FGuid SpawnId)
 {
 	TWeakObjectPtr<APREnemyCharacter>* Found = SpawnedEnemies.Find(SpawnId);

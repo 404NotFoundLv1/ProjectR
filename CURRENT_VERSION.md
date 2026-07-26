@@ -1,11 +1,11 @@
 # Current Development Version
 
-Version: v0.4.0
+Version: v0.4.1
 
-Task file: `Docs/Versions/v0.4.0.md`
+Task file: `Docs/Versions/v0.4.1.md`
 
 Status: In Progress
 
 Implement only the current version contract.
 
-Do not advance CURRENT_VERSION until v0.4.0 is complete and a separate version-transition task is explicitly authorized.
+Implement only the v0.4.1 single-version contract. Do not create v0.4.1-a–e child versions, child contracts, or intermediate feature commits.

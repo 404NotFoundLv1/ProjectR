@@ -154,8 +154,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRPlayerSkillDamageDefenseTest::RunTest(const FString& Parameters)
 {
 	using namespace PRPlayerSkillDefenseAutomation;
-	AddExpectedError(TEXT("No GameplayCueNotifyPaths were specified"),
-		EAutomationExpectedErrorFlags::Contains, 1);
 	AddExpectedError(TEXT("Combat clamped damage from 500000 to 200000"),
 		EAutomationExpectedErrorFlags::Contains, 1);
 	const FPRDamageRequest Defaults;
