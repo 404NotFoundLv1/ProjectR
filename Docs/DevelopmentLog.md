@@ -435,3 +435,10 @@ Commit：
 - BuildEditor、`ProjectR.Divergence` 3/3、固定 PIE smoke、重启回载、Widget warnings-as-errors 编译、精确保存与 Dirty=0 均 PASS；历史独立回归为 Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、QTE 5/5、Dialogue 5/5、CombatHUD 6/6。
 - 用户于 2026-07-25 完成 Axiom、Kindle、Null 的固定分歧预览，并明确回复 `PASS`。最终报告为 `Saved/AutomationReports/v034-final-report-20260725/v034-final-None/result.json`，所有 required check PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 如实保持 optional `NOT_RUN`。
 - Future Compatibility Review PASS：v0.4.0 仅消费 `FPRDivergenceResult` 值以建立画像；v0.4.2 只解释 FutureDisposition 的 Room/Reward 语义；v0.4.3 才投影至 RunSummary/Graveyard/Account；v0.4.4 只在既有资格边界追加解锁策略。未推进 CURRENT_VERSION 或创建功能提交，等待用户明确授权。
+
+# 2026-07-26 - v0.3.4 独立版本收尾（Completed）
+
+- v0.3.4 正式实施提交为 `5703aaf374a1b0461498bf0afe1013bf5cc815fa`（`v0.3.4 Complete near-death rescue divergence system`），已同时位于 `main` 与 `origin/main`。
+- 最终 AutomationReport `Saved/AutomationReports/v034-final-report-20260725/v034-final-None/result.json` 状态为 PASS，全部 required checks PASS；用户固定分歧卡清晰度验收为 PASS。
+- PhysicalGamepad、NetworkPIEReplication、Package、GC 保持 optional `NOT_RUN`。本次仅关闭 v0.3.4 文档状态，没有运行 Build、PIE、MCP、Package 或 GC。
+- VersionIndex 与任务页标记 v0.3.4 `Completed`；`CURRENT_VERSION.md` 仍指向 v0.3.4，但状态改为 `Completed`。未创建 v0.4.0 任务合同，未规划或实现下一版本。

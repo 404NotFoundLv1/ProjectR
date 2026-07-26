@@ -24,6 +24,16 @@ Before any implementation:
 
 Implement only the current version. Do not advance CURRENT_VERSION yourself.
 
+## Canonical external document sources
+
+- Codex may read files under `E:/MyWork/ProjectR_Design/CodexReady_v6/`.
+- The canonical roadmap source for generating future version task contracts is:
+  `E:/MyWork/ProjectR_Design/CodexReady_v6/02_Roadmap/ProjectR_Codex_Executable_Roadmap_v6.md`.
+- Its PDF counterpart is archival/read-only:
+  `E:/MyWork/ProjectR_Design/CodexReady_v6/02_Roadmap/ProjectR_Codex_Executable_Roadmap_v6.pdf`.
+- The former `ProjectR_Steam_Full_Codex_Executable_Roadmap_v5.md/.pdf` files are superseded for new task-contract generation and may be consulted only as historical source archives.
+- When the v6 external documents and synchronized repository contracts differ, do not silently choose one: preserve implemented/frozen repository contracts, report the difference, and resolve it through RoadmapErrata or an Architecture Decision before implementation.
+
 ## Naming
 
 - Actor: `APR*`

@@ -5,6 +5,10 @@ version: "v1.0"
 date: "2026-07-10"
 ---
 
+当前新任务合同的路线事实源为
+`E:/MyWork/ProjectR_Design/CodexReady_v6/02_Roadmap/ProjectR_Codex_Executable_Roadmap_v6.md`；
+同名 PDF 仅作归档核对。本文保留“v5 → v6”表述用于记录历史修正，不表示继续使用 v5 生成新合同。
+
 # 已修正问题
 
 | 编号 | v5 问题 | v6 决策 | 原因 |

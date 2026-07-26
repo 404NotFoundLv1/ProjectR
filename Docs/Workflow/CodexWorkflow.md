@@ -26,6 +26,15 @@ Git = 回滚边界
 - UE 资产创建或修改同时遵守 `AssetNaming.md` 与 `UnrealMCPAuthoring.md`。
 - `AGENTS.md`、版本任务合同和架构/接口合同优先于本手册；发生冲突时停止并报告，不自行扩大 Allowed paths。
 
+# 外部事实源
+
+- 后续版本任务合同的正式路线来源为
+  `E:/MyWork/ProjectR_Design/CodexReady_v6/02_Roadmap/ProjectR_Codex_Executable_Roadmap_v6.md`。
+- 同目录的 `ProjectR_Codex_Executable_Roadmap_v6.pdf` 仅用于阅读和归档核对；可执行内容以 Markdown 为准。
+- Codex 已获准只读访问 `E:/MyWork/ProjectR_Design/CodexReady_v6/` 中与当前任务直接相关的文件。
+- 原 `ProjectR_Steam_Full_Codex_Executable_Roadmap_v5.md/.pdf` 不再用于生成新任务合同，只保留为历史源档案。
+- 外部 v6 文档不能覆盖已经实施并冻结的工程合同；发现差异时必须通过 RoadmapErrata、Architecture Decision 和兼容性审计显式处理。
+
 # 每版本工作循环
 
 ## 1. 读取

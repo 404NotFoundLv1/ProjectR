@@ -4,8 +4,8 @@ Version: v0.3.4
 
 Task file: `Docs/Versions/v0.3.4.md`
 
-Status: In Progress
+Status: Completed
 
-Only this version may be implemented.
+This version is complete.
 
-Do not implement future-version functionality. Before editing, read the task's upstream/downstream contracts and produce the exact file/Package plan. CURRENT_VERSION may change only after all automatic checks, human judgment items, and Future Compatibility Review pass.
+Do not implement or plan the next version until a separate version-transition task is explicitly authorized.
