@@ -100,6 +100,12 @@ date: "2026-07-10"
 | E-028 | v6 将 v0.4.1 表述为 a–e 微任务，用户已授权此版本以单一公共合同、单一完成门和唯一功能实现提交交付 | a–e 仅可作为同一 v0.4.1 内部顺序，不创建子版本、子合同或中间功能提交。删除回声、最优路径、资源均衡、风险奖赏与服从测试在 v0.4.1 只能使用明确标注、可逆的会话内降级效果；Room、Reward、Account、经济和持久化仍由 v0.4.2/v0.4.3 所有 | 避免在未建立 Room/Reward/Account 所有者时伪造长期业务，同时保持 RuleId、Validator、Response 与 Applied Handle 对下游稳定 | Active for v0.4.1 |
 | E-029 | v6/E-009 将 v0.4.2 表述为 a–e 微任务，并把房间、事件、奖励插件、商店兼容语义与未来 Run/经济扩展并列；用户要求 v0.4.2 以单一公共合同和唯一功能提交交付 | a–e 仅作为同一 v0.4.2 的内部实施顺序，不创建子版本、子合同或中间功能提交。v0.4.2 只建立 `UGameInstanceSubsystem` 所有的会话房间流程，不建立正式 RunState 或修改 Save Schema；RunSummary、Account 与账号生命周期留给 v0.4.3。默认 Registry 只注册 Combat、Elite、Boss、Safe 与 Event 房；MemoryCorridor、CurseProtocol、Commission 以稳定 RoomId 复用 `Room.Type.Event`，`Room.Type.Shop` 只保留既有 Schema/Tag 兼容，不创建商店或经济。当前精确创建 30 个会话内 RewardData 作为“30+ 插件基础”，v0.8.0 再扩充正式经济与 60+ 插件池。事件关系变化只调用既有 `UPRCompanionSubsystem::ApplyRelationshipDelta`，PlayerProfile 通过既有 Relationship 事件自然采样，不新增画像写入口。唯一功能提交为 `v0.4.2 Implement rooms, events, and reward plugins` | 保持 v0.4.1 Director、v0.4.3 Account/Save 与 v0.8.0 经济所有权边界，避免重复持久化、假商店、任意内容生成和多合同漂移 | Active for v0.4.2 |
 
+# v0.4.3 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.4.3 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-030 | v6 将账号、运行结算、死亡/通关删号、墓园、反证碎片和未来复盘并列，并给出内部微任务建议；但 Profile/A-B 物理槽、长期关系、Meta、RealityHub UI 和长期记忆各有独立所有者版本 | v0.4.3 使用单一合同、单一完成门和唯一功能提交，不创建子版本、子合同或中间提交。“删号”只删除当前 Profile 内的临时账号记录，绝不删除 Profile、A/B 物理槽或长期关系。墓园、反证碎片和有界 `FPRRunSummary` 持久化；Meta 消费留给 v0.4.4，完整墓园/账号创建 UI 留给 v0.5.0，v0.5.2 只在既有 RunSummary 上增加安全记忆摘要。五种账号身份仅冻结稳定 ID 和展示元数据，不伪造商店价格、额外房间预览或 QTE 窗口效果。`ChallengeContinues` 保留账号和当前运行；`RescueEvacuationRequested` 与 `LeaveRunRequested` 结束临时账号并返回现实。成功加载时若发现无法恢复 Room 私有运行态的 ActiveAccount，则确定性归档为 `InterruptedRecovery`。只有完整 `FPRRoomSequenceCompleted` 结算增加 1 个反证碎片；死亡、撤离和中断不奖励 | 保持 Save 物理安全边界与上游稳定值合同，避免把未来 Meta/UI/Memory 业务提前塞入账号生命周期，同时使异常退出、保存失败和旅行失败均具有可重试、可验证语义 | Active for v0.4.3 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

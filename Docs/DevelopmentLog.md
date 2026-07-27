@@ -482,3 +482,12 @@ Commit：
 
 - 已创建单一 `Docs/Versions/v0.4.2.md` 任务合同，并将 `CURRENT_VERSION` 与 VersionIndex 推进到 `v0.4.2 / In Progress`。
 - 本次仅执行文档转换；没有实施 Room、Encounter、Event、Reward、UI 或正式 RunState，没有调用 Unreal MCP，也没有运行 Build、Automation、PIE、Package 或 GC。
+
+# 2026-07-27 - v0.4.2 房间系统、事件房和奖励插件（Completed）
+
+- 正式实施提交为 `76419cddf2e988a9b82393b40c790016035362e1`，提交信息为 `v0.4.2 Implement rooms, events, and reward plugins`；该提交已与 `origin/main` 同步。公共 v0.4.2 以一份合同、一个完成门和一个功能提交交付，没有建立 a–e 子版本、子合同或中间功能提交。
+- 实现并提交 Room/Encounter/Event/Reward、会话内 GAS Reward Application、只读 UI、固定 ProjectR Roguelike Toolset，以及 53 个新 Package、一个修改的 `WBP_CombatHUD` 和相应普通 Git精确例外。GameplayTag保持 137 explicit / 13 roots / 63 getters，Save保持 Schema 2，既有地图均未保存。
+- 完成门补验追溯到真实 TDD RED；新鲜 BuildEditor PASS。原生自动化为 `ProjectR.Roguelike` 4/4、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug（隔离 `-game`）12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、QTE 5/5、Dialogue 5/5、Divergence 3/3、CombatHUD 6/6、Director 10/10，均 PASS。
+- Unreal MCP 固定回读确认 1 Registry、8 Room、3 Encounter、4 Event、4 RewardPolicy、30 Reward；`WBP_CombatHUD`、`WBP_RoomFlow`、`WBP_RewardSelection`、`WBP_RoomEvent` warnings-as-errors 编译 PASS。53 Create + 1 Modify Package已精确持久化并在正常重启后回读；三组 Seed PIE（1101/2202/3303）和完整 Seed 1101路径均 PASS。用户完成固定路径预览并明确回复 `PASS`。
+- 最终 AutomationReport 为 `Saved/AutomationReports/v042-final-report-20260727/v042final-None/result.json`，47/47 required PASS；`ProjectRAuthoringToolExtension` optional PASS，PhysicalGamepad、NetworkPIEReplication、Package、GC为 optional `NOT_RUN`。最终 252/252 个可查询 `/Game/ProjectR` 资产 Dirty=0，未触碰用户 Save。
+- Future Compatibility Review PASS：v0.4.3 只消费 `FPRRoomSequenceCompleted` 和稳定 Room/Reward/Rule ID；v0.4.4、章节内容和 v0.8.0 只能增量消费 Registry与奖励接口，不得保存 Room内部 Handle或反向修改 Director。公共 v0.4.2 已完成。
