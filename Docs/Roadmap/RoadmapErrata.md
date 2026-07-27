@@ -106,6 +106,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-030 | v6 将账号、运行结算、死亡/通关删号、墓园、反证碎片和未来复盘并列，并给出内部微任务建议；但 Profile/A-B 物理槽、长期关系、Meta、RealityHub UI 和长期记忆各有独立所有者版本 | v0.4.3 使用单一合同、单一完成门和唯一功能提交，不创建子版本、子合同或中间提交。“删号”只删除当前 Profile 内的临时账号记录，绝不删除 Profile、A/B 物理槽或长期关系。墓园、反证碎片和有界 `FPRRunSummary` 持久化；Meta 消费留给 v0.4.4，完整墓园/账号创建 UI 留给 v0.5.0，v0.5.2 只在既有 RunSummary 上增加安全记忆摘要。五种账号身份仅冻结稳定 ID 和展示元数据，不伪造商店价格、额外房间预览或 QTE 窗口效果。`ChallengeContinues` 保留账号和当前运行；`RescueEvacuationRequested` 与 `LeaveRunRequested` 结束临时账号并返回现实。成功加载时若发现无法恢复 Room 私有运行态的 ActiveAccount，则确定性归档为 `InterruptedRecovery`。只有完整 `FPRRoomSequenceCompleted` 结算增加 1 个反证碎片；死亡、撤离和中断不奖励 | 保持 Save 物理安全边界与上游稳定值合同，避免把未来 Meta/UI/Memory 业务提前塞入账号生命周期，同时使异常退出、保存失败和旅行失败均具有可重试、可验证语义 | Active for v0.4.3 |
 
+# v0.4.4 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.4.4 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-031 | v6 将 Meta 成长的内部步骤与技能、AI、羁绊效果并列，但当前反证碎片归 v0.4.3 AccountPersistence，记忆碎片没有稳定来源；技能、QTE、濒死分歧、关系、RealityHub UI和长期记忆又各有冻结所有者 | v0.4.4 使用单一合同、单一完成门和唯一功能提交，不创建子版本、检查点或中间功能提交。`CounterproofFragments` 保留在 v0.4.3 的 AccountPersistence；RunState拥有奖励来源，ProgressionSubsystem只消费余额并拥有节点解锁，不迁移或重命名字段。Schema 4新增 `MemoryFragments`余额并安全默认0，但本版本不产出记忆碎片，正式节点的 MemoryFragment Cost均为0；未来来源必须通过独立合同和递增迁移。节点分为“下一轮实际效果”和“稳定资格”：Health、Energy与Companion支援只在下一轮生效；技能槽、技能强化、QTE、濒死保护、过载修复和羁绊节点只持久化资格，不修改当前六技能、既有QTE、濒死分歧或关系行为。v0.5.0负责RealityHub树界面，v0.5.1消费剧情/语音/连携资格，v0.5.2才建立记忆摘要及经批准的记忆碎片来源。活动运行期间的解锁不改变当前RunSnapshot | 保持货币、Save和上游玩法的单一所有权，避免凭空造币或以Meta版本重写已经发布的战斗、QTE、分歧和关系合同，同时为下游UI、剧情及记忆系统提供稳定资格面 | Active for v0.4.4 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

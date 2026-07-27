@@ -10,7 +10,11 @@ date: "2026-07-10"
 - Added Schema 3 account persistence: one logical ActiveAccount, bounded RunSummary and AccountRecord values, a canonical 32-record graveyard, monotonic deletion count, and completion-only counterproof award.
 - UPRRunStateSubsystem owns create/start/finalize sequencing and treats a loaded started account as InterruptedRecovery; it does not restore Room state.
 - The fixed registry and five identity DataAssets were authored through Unreal MCP, precisely saved, restart-read, and added as six ordinary-Git exceptions (13,832 bytes total).
-- Objective evidence: BuildEditor succeeded; ProjectR.Account and ProjectR.Save passed; Data Validation, asset restart readback, Dirty=0, and fixed completion/death/evacuation/leave/interrupted-recovery/finalization-failure PIE all passed using automation-only slots. Completion exercises the existing RoomSequenceCompleted delegate; death, evacuation, and leave exercise the existing CombatEvent-to-DivergenceResult delegate path. The human account-loop preview is WAIVED by explicit user authorization because this version intentionally provides no account UI or public write entry.
+- 正式功能实施提交为 `70dfad8151959f52fa1ee790a630d62fc0811e4f`（`v0.4.3 Add account deletion loop and graveyard`），已位于 `origin/main`。
+- 完成门补验发现 WorldSubsystem 尚未建立时缓存 `BoundWorld` 会阻止同 World 的后续绑定重试；clean Unity build 也暴露四个 Account 测试翻译单元共享内部符号。经用户授权，独立补充修复提交 `0ef5784b6f2f129e8d6f481221645f3a7c2ab06b`（`fix: restore account lifecycle world bindings`）改为同 World 幂等补齐缺失委托，并增加六项 editor-only Account PIE 永久回归；该补充提交当前仅在本地 `main`，未 push。
+- 最终结构化报告为 `Saved/AutomationReports/v043-final-report-20260727/v043final-None/result.json`，52/52 required PASS。BuildEditor、Account 4/4、Save 5/5、全部合同历史回归、六项固定 Account PIE、Data Validation、六项资产重启回读、Dirty=0、运行时清理及 Future Compatibility Review 均 PASS。
+- `ProjectRAuthoringToolExtension` optional PASS；`PhysicalGamepad`、`NetworkPIEReplication`、`Package`、`GC` optional `NOT_RUN`。`HumanAccountLoopClarity` 依据用户明确授权记为豁免 PASS；本版本没有账号 UI 或公共写入口，未把未执行的 UI 手工预览描述成实际运行。
+- 补验和修复未修改 Save Schema、公共 API、GameplayTag、Config、地图或 UE Package。公共 v0.4.3 已完成。
 
 # 记录规则
 
