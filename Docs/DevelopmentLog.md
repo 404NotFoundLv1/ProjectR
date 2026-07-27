@@ -468,7 +468,7 @@ Commit：
 - PhysicalGamepad、NetworkPIEReplication、Package、GC 保持 optional `NOT_RUN`；ProjectRAuthoringToolExtension 为 optional PASS。
 - v0.4.1 只使用一份合同、一个完成门及唯一功能提交；路线中的 a–e 只表示内部实施顺序。它仅在既有 Director Request/Response/Validator/Registry/Applied Handle 之上实现十二条可逆会话内法令，不进入 Room、Reward、RunState、Account、经济或网络业务。
 
-# 2026-07-27 - v0.4.1 十二条可执行首脑法令（实施完成，公共版本待收尾）
+# 2026-07-27 - v0.4.1 十二条可执行首脑法令（Completed）
 
 - 完成单一 v0.4.1 实现：十二项 Registry RuleId 均经既有 Validator/Applied Handle 路径进入唯一 `FPRDirectorRuleEffectExecutor`；新增的 RuntimeState 和 Rule Panel 只读展示原因、效果、反制与进度。没有建立 a–e 子版本、子合同或中间功能提交。
 - 两组真实 TDD RED→GREEN 已保留：`v041-tdd-red-foundation-20260727`、`v041-tdd-red-runtime-20260727` 各自预期 Build exit 6，匹配 GREEN Build 均 exit 0；最终 BuildEditor `v041-final-build-20260727` PASS。
@@ -476,4 +476,9 @@ Commit：
 - 新鲜自动化均 PASS：Director 10/10、Input 3/3、GAS 4/4、Combat 5/5、Ability 6/6、Save 5/5、Debug 12/12、PlayerSkill 5/5、Enemy 11/11、Boss 3/3、Companion 7/7、QTE 5/5、Dialogue 5/5、Divergence 3/3、CombatHUD 6/6。固定 Director、十二法令和独立 ResourceBalance CombatGym PIE 依次验证 Validator、延迟效果、Counter、精确移除和 runtime clean，且 `saveTouched=false`。
 - 用户在固定 `Rule.RepetitionPenalty` Level 2 CombatGym 预览中确认规则、原因、效果与反制清楚，并于 2026-07-27 回复 `PASS`。最终报告 `Saved/AutomationReports/v041-final-report-20260727/v041final-None/result.json` 为 28/28 required PASS。
 - `ProjectRAuthoringToolExtension` optional PASS；PhysicalGamepad、NetworkPIEReplication、Package、GC 均如实保持 optional `NOT_RUN`。Future Compatibility Review PASS：v0.4.2 只消费 validated Handle/RuntimeState；没有提前实现 Room、Reward、RunState、Account、经济、真实网络或凭据。
-- `CURRENT_VERSION` 继续为 v0.4.1 / In Progress；本轮未创建功能提交、未 push，等待单独的版本收尾授权。
+- 正式实施提交为 `a0a10d3fca3f9dcfe83cef4ca2444b0054953808`，提交信息为 `v0.4.1 Implement twelve executable director rules`；该提交已与 `origin/main` 同步，公共 v0.4.1 已完成。
+
+# 2026-07-27 - v0.4.2 房间系统、事件房和奖励插件（合同转换）
+
+- 已创建单一 `Docs/Versions/v0.4.2.md` 任务合同，并将 `CURRENT_VERSION` 与 VersionIndex 推进到 `v0.4.2 / In Progress`。
+- 本次仅执行文档转换；没有实施 Room、Encounter、Event、Reward、UI 或正式 RunState，没有调用 Unreal MCP，也没有运行 Build、Automation、PIE、Package 或 GC。
