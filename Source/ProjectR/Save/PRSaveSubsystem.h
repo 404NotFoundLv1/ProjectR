@@ -32,6 +32,10 @@ public:
 	bool StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records);
 	/** Stages a complete canonical account partition; installation occurs only after A/B verification. */
 	bool StageAccountPersistence(const FPRAccountPersistenceData& Persistence);
+	/** Stages the two value partitions changed by one progression unlock as one A/B save snapshot. */
+	bool StageProgressionTransaction(
+		const FPRAccountPersistenceData& AccountPersistence,
+		const FPRProgressionPersistenceData& ProgressionPersistence);
 
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Test-only fixed PIE seam. The caller supplies only an already-isolated automation storage instance. */
@@ -39,6 +43,8 @@ public:
 	static bool HasAutomationStorageOverride();
 	static void ClearAutomationStorageOverride();
 	static void CleanupAutomationStorageOverride();
+	/** Test-only, no-argument progression fixture. It never targets a user slot or accepts caller values. */
+	bool StageFixedProgressionAutomationFixture();
 #endif
 
 private:
@@ -115,6 +121,7 @@ private:
 	FPRSaveMigrationRegistry MigrationRegistry;
 	FPRSaveOperationEventNative SaveOperationEvent;
 	TOptional<FPRAccountPersistenceData> StagedAccountPersistence;
+	TOptional<FPRProgressionPersistenceData> StagedProgressionPersistence;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;

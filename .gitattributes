@@ -139,3 +139,21 @@
 /Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Exile.uasset -filter -diff -merge -text
 /Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Observer.uasset -filter -diff -merge -text
 /Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Blank.uasset -filter -diff -merge -text
+
+# v0.4.4 progression registry, fixed nodes, and session effects are 62,012 bytes total.
+# Keep only this exact fifteen-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Data/Progression/DA_ProgressionRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_AINearDeathProtection.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_AIOverloadRepair.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_AIQTE.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_AISupport.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_BondAdvancedCombo.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_BondStory.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_BondTripleResonance.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_BondVoice.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_PlayerMaxEnergy.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_PlayerMaxHealth.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_PlayerSkillEnhancement.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_PlayerSkillSlot.uasset -filter -diff -merge -text
+/Content/ProjectR/Effects/Progression/GE_Progression_PlayerMaxHealth.uasset -filter -diff -merge -text
+/Content/ProjectR/Effects/Progression/GE_Progression_PlayerMaxEnergy.uasset -filter -diff -merge -text

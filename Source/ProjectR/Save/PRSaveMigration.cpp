@@ -53,6 +53,18 @@ void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry)
 		Save.SchemaVersion = 3;
 		return true;
 	});
+	Registry.RegisterStep(3, 4, [](UPRSaveGame& Save)
+	{
+		if (Save.SchemaVersion != 3 || !Save.Profile.ProfileId.IsValid()
+			|| !FPRCompanionContract::AreCanonicalRelationshipRecords(Save.Profile.CompanionRelationships)
+			|| !FPRAccountPersistenceContract::IsCanonical(Save.Profile.AccountPersistence))
+		{
+			return false;
+		}
+		Save.Profile.ProgressionPersistence = FPRProgressionPersistenceContract::MakeDefault();
+		Save.SchemaVersion = 4;
+		return true;
+	});
 }
 
 EPRSaveResult FPRSaveMigrationRegistry::Migrate(

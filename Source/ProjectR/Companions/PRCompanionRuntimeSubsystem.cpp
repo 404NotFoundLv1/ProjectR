@@ -63,7 +63,7 @@ float UPRCompanionRuntimeSubsystem::CalculateEffectiveSupportInterval(
 
 bool UPRCompanionRuntimeSubsystem::SetSupportPolicy(const FName SourceId, const float IntervalMultiplier, const int32 SuppressionStride)
 {
-	if (SourceId.IsNone() || !FMath::IsFinite(IntervalMultiplier) || IntervalMultiplier < 1.0f || IntervalMultiplier > 2.0f
+	if (SourceId.IsNone() || !FMath::IsFinite(IntervalMultiplier) || IntervalMultiplier < 0.90f || IntervalMultiplier > 2.0f
 		|| SuppressionStride < 1 || SuppressionStride > 3)
 	{
 		return false;
@@ -92,7 +92,7 @@ bool UPRCompanionRuntimeSubsystem::GetSupportPolicy(float& OutIntervalMultiplier
 	{
 		OutSuppressionStride = FMath::Max(OutSuppressionStride, Pair.Value);
 	}
-	OutIntervalMultiplier = FMath::Clamp(OutIntervalMultiplier, 1.0f, 2.0f);
+	OutIntervalMultiplier = FMath::Clamp(OutIntervalMultiplier, 0.90f, 2.0f);
 	OutSuppressionStride = FMath::Clamp(OutSuppressionStride, 1, 3);
 	return true;
 }

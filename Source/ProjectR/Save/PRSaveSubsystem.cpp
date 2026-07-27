@@ -16,7 +16,8 @@ TSharedPtr<FPRSaveStorage> AutomationStorageOverride;
 bool IsSuccessfulRead(const FPRSaveGenerationRead& Read)
 {
 	return Read.Result == EPRSaveResult::Success && IsValid(Read.SaveGame)
-		&& FPRAccountPersistenceContract::IsCanonical(Read.SaveGame->Profile.AccountPersistence);
+		&& FPRAccountPersistenceContract::IsCanonical(Read.SaveGame->Profile.AccountPersistence)
+		&& FPRProgressionPersistenceContract::IsCanonical(Read.SaveGame->Profile.ProgressionPersistence);
 }
 
 int32 GetFailurePriority(const EPRSaveResult Result)
@@ -241,6 +242,7 @@ EPRSaveResult UPRSaveSubsystem::CreateNewDefaultProfile(FGuid& OutRequestId)
 		LoadedSave->Profile.ProfileId = FGuid::NewGuid();
 		LoadedSave->Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
 		LoadedSave->Profile.AccountPersistence = FPRAccountPersistenceContract::MakeDefault();
+		LoadedSave->Profile.ProgressionPersistence = FPRProgressionPersistenceContract::MakeDefault();
 		LoadedGeneration = EPRSaveGeneration::None;
 		bNeedsResave = true;
 	}
@@ -370,6 +372,37 @@ bool UPRSaveSubsystem::StageAccountPersistence(const FPRAccountPersistenceData& 
 	bNeedsResave = true;
 	return true;
 }
+
+bool UPRSaveSubsystem::StageProgressionTransaction(
+	const FPRAccountPersistenceData& AccountPersistence,
+	const FPRProgressionPersistenceData& ProgressionPersistence)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRAccountPersistenceContract::IsCanonical(AccountPersistence)
+		|| !FPRProgressionPersistenceContract::IsCanonical(ProgressionPersistence))
+	{
+		return false;
+	}
+	StagedAccountPersistence = AccountPersistence;
+	StagedProgressionPersistence = ProgressionPersistence;
+	bNeedsResave = true;
+	return true;
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool UPRSaveSubsystem::StageFixedProgressionAutomationFixture()
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !PRSaveSubsystemPrivate::AutomationStorageOverride.IsValid())
+	{
+		return false;
+	}
+	FPRAccountPersistenceData Account = LoadedSave->Profile.AccountPersistence;
+	Account.CounterproofFragments = 3;
+	FPRProgressionPersistenceData Progression = FPRProgressionPersistenceContract::MakeDefault();
+	return StageProgressionTransaction(Account, Progression);
+}
+#endif
 
 UPRSaveSubsystem::FObservedGeneration UPRSaveSubsystem::ObserveGeneration(
 	const FPRSaveGenerationRead& Read)
@@ -510,7 +543,8 @@ void UPRSaveSubsystem::StartActiveSave()
 	if (LoadedSave->SaveRevision == MAX_int64 ||
 		!LoadedSave->Profile.ProfileId.IsValid() ||
 		LoadedSave->SchemaVersion != UPRSaveGame::CurrentSchemaVersion ||
-		!FPRAccountPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.AccountPersistence))
+		!FPRAccountPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.AccountPersistence) ||
+		!FPRProgressionPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ProgressionPersistence))
 	{
 		CompleteActiveSave(EPRSaveResult::InvalidRequest);
 		return;
@@ -627,6 +661,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 
 	LoadedSave = ActiveSave->Snapshot.Get();
 	StagedAccountPersistence.Reset();
+	StagedProgressionPersistence.Reset();
 	LoadedGeneration = ActiveSave->TargetGeneration;
 	bNeedsResave = false;
 	if (LoadedGeneration == EPRSaveGeneration::A)
@@ -686,6 +721,7 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 	if (Result != EPRSaveResult::Success)
 	{
 		StagedAccountPersistence.Reset();
+		StagedProgressionPersistence.Reset();
 		if (TrailingSave)
 		{
 			PublishOperation(
@@ -718,6 +754,10 @@ UPRSaveGame* UPRSaveSubsystem::CaptureCurrentSnapshot() const
 	if (Snapshot && StagedAccountPersistence.IsSet())
 	{
 		Snapshot->Profile.AccountPersistence = StagedAccountPersistence.GetValue();
+	}
+	if (Snapshot && StagedProgressionPersistence.IsSet())
+	{
+		Snapshot->Profile.ProgressionPersistence = StagedProgressionPersistence.GetValue();
 	}
 	return Snapshot;
 }

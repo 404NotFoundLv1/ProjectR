@@ -75,6 +75,54 @@ enum class EPRSaveResult : uint8
 };
 
 USTRUCT()
+struct PROJECTR_API FPRProgressionPersistenceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(SaveGame) int32 MemoryFragments = 0;
+	UPROPERTY(SaveGame) TArray<FPrimaryAssetId> UnlockedNodeIds;
+	UPROPERTY(SaveGame) int64 UnlockSequence = 0;
+};
+
+/** Canonical, bounded progression values persisted by Save without depending on Roguelike runtime types. */
+struct PROJECTR_API FPRProgressionPersistenceContract
+{
+	static constexpr int32 MaxUnlockedNodeIds = 12;
+
+	static FPRProgressionPersistenceData MakeDefault() { return FPRProgressionPersistenceData(); }
+
+	static void Normalize(FPRProgressionPersistenceData& Value)
+	{
+		Value.MemoryFragments = FMath::Max(0, Value.MemoryFragments);
+		Value.UnlockSequence = FMath::Max<int64>(0, Value.UnlockSequence);
+		Value.UnlockedNodeIds.RemoveAll([](const FPrimaryAssetId& Id)
+		{
+			return !Id.IsValid() || Id.PrimaryAssetType != FPrimaryAssetType(TEXT("ProgressionNode"));
+		});
+		Value.UnlockedNodeIds.Sort([](const FPrimaryAssetId& A, const FPrimaryAssetId& B) { return A.ToString() < B.ToString(); });
+		for (int32 Index = Value.UnlockedNodeIds.Num() - 1; Index > 0; --Index)
+		{
+			if (Value.UnlockedNodeIds[Index] == Value.UnlockedNodeIds[Index - 1]) Value.UnlockedNodeIds.RemoveAt(Index);
+		}
+		Value.UnlockedNodeIds.SetNum(FMath::Min(Value.UnlockedNodeIds.Num(), MaxUnlockedNodeIds));
+	}
+
+	static bool IsCanonical(const FPRProgressionPersistenceData& Value)
+	{
+		if (Value.MemoryFragments < 0 || Value.UnlockSequence < 0 || Value.UnlockedNodeIds.Num() > MaxUnlockedNodeIds) return false;
+		FString Previous;
+		for (const FPrimaryAssetId& Id : Value.UnlockedNodeIds)
+		{
+			if (!Id.IsValid() || Id.PrimaryAssetType != FPrimaryAssetType(TEXT("ProgressionNode"))) return false;
+			const FString Current = Id.ToString();
+			if (!Previous.IsEmpty() && Previous >= Current) return false;
+			Previous = Current;
+		}
+		return true;
+	}
+};
+
+USTRUCT()
 struct PROJECTR_API FPRProfileSaveData
 {
 	GENERATED_BODY()
@@ -87,6 +135,9 @@ struct PROJECTR_API FPRProfileSaveData
 
 	UPROPERTY(SaveGame)
 	FPRAccountPersistenceData AccountPersistence;
+
+	UPROPERTY(SaveGame)
+	FPRProgressionPersistenceData ProgressionPersistence;
 };
 
 USTRUCT()

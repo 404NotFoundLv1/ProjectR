@@ -133,6 +133,13 @@ date: "2026-07-10"
 - KI-006 保持 Accepted Risk；本轮官方 ObjectTools 成功写入并重启回读正式两项 `FPRAbilitySetEntry[]`，因此没有复用会清空正式集合的旧验证工具，也没有触发资产配置 Toolset 扩展。
 - KI-019 保持 Open；BuildEditor 仍只有既有 `.uplugin` 依赖元数据警告。Network PIE、物理手柄、人工手感与 Package 未运行；它们均未被冒充 PASS。
 
+# KI-023 - v0.4.4 historical automation environment and upstream failures（Closed）
+
+- 复现/证据：2026-07-28 的 UE 5.8 原生 `ProjectR` 自动化完成 116 项；4 项 `ProjectR.Progression.*` 与 5 项 `ProjectR.Save.*` 均 PASS。5 项非本版本测试失败：4 项 `ProjectR.Debug.*` 在 `-NullRHI` Editor runner 中缺少其要求的 GameInstance；`ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression` 在冻结 Enemy checkpoint runner 中失败。
+- 根因：四项 Debug 测试的源码明确要求 `IsGameWorld()` 与 `UGameInstance`，因此不能以 Editor `-NullRHI` 入口作为其执行器；Enemy 失败来自全量队列的运行器上下文，而非独立 Checkpoint-D 逻辑。
+- 关闭证据：以既有 `-game -NullRHI` GameInstance 入口重跑 `ProjectR.Debug`，12/12 PASS；以单独可渲染 Editor PIE 入口重跑 `ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression`，1/1 PASS。未修改 Debug 或 Enemy 代码。
+- 影响：所有 116 项历史测试现均有其合同规定运行器上的 PASS 证据；该问题不再阻断 v0.4.4。
+
 # 记录规则
 
 问题必须包含复现/证据、影响版本、临时处理、负责人和可验证关闭条件。不能用删除日志或降低校验来关闭问题。

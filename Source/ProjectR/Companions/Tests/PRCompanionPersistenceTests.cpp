@@ -30,11 +30,11 @@ bool FPRCompanionPersistenceTest::RunTest(const FString& Parameters)
 	FPRSaveMigrationRegistry Registry;
 	RegisterProjectRSaveMigrations(Registry);
 	UPRSaveGame* Migrated = nullptr;
-	TestEqual(TEXT("Schema one migrates through schema two to schema three"), Registry.Migrate(*SchemaOne, UPRSaveGame::CurrentSchemaVersion, Migrated), EPRSaveResult::Success);
+	TestEqual(TEXT("Schema one migrates through every registered schema"), Registry.Migrate(*SchemaOne, UPRSaveGame::CurrentSchemaVersion, Migrated), EPRSaveResult::Success);
 	TestNotNull(TEXT("Migration produces a copy"), Migrated);
 	if (Migrated)
 	{
-		TestEqual(TEXT("Migration reaches schema three"), Migrated->SchemaVersion, 3);
+		TestEqual(TEXT("Migration reaches the current schema"), Migrated->SchemaVersion, UPRSaveGame::CurrentSchemaVersion);
 		TestEqual(TEXT("Migration preserves profile id"), Migrated->Profile.ProfileId, SchemaOne->Profile.ProfileId);
 		TestEqual(TEXT("Migration preserves revision"), Migrated->SaveRevision, SchemaOne->SaveRevision);
 		TestTrue(TEXT("Migration adds canonical default companion relationships"), FPRCompanionContract::AreCanonicalRelationshipRecords(Migrated->Profile.CompanionRelationships));

@@ -502,3 +502,12 @@ Commit：
 - Unreal MCP 固定回读确认 1 Registry、8 Room、3 Encounter、4 Event、4 RewardPolicy、30 Reward；`WBP_CombatHUD`、`WBP_RoomFlow`、`WBP_RewardSelection`、`WBP_RoomEvent` warnings-as-errors 编译 PASS。53 Create + 1 Modify Package已精确持久化并在正常重启后回读；三组 Seed PIE（1101/2202/3303）和完整 Seed 1101路径均 PASS。用户完成固定路径预览并明确回复 `PASS`。
 - 最终 AutomationReport 为 `Saved/AutomationReports/v042-final-report-20260727/v042final-None/result.json`，47/47 required PASS；`ProjectRAuthoringToolExtension` optional PASS，PhysicalGamepad、NetworkPIEReplication、Package、GC为 optional `NOT_RUN`。最终 252/252 个可查询 `/Game/ProjectR` 资产 Dirty=0，未触碰用户 Save。
 - Future Compatibility Review PASS：v0.4.3 只消费 `FPRRoomSequenceCompleted` 和稳定 Room/Reward/Rule ID；v0.4.4、章节内容和 v0.8.0 只能增量消费 Registry与奖励接口，不得保存 Room内部 Handle或反向修改 Director。公共 v0.4.2 已完成。
+
+# 2026-07-28 - v0.4.4 Meta Progression Trees（Completed）
+
+- 实现 `UPRProgressionSubsystem`、固定 12 节点 Registry、Schema 4 顺序迁移与原子持久化；解锁仅在成功落盘后发布，并冻结到下一次成功 StartRun。两项 Player 会话 GE、现有 Companion SourceId 支援策略和 entitlement-only 投影均只在运行期生效并清理。
+- Unreal MCP 串行创建、精确保存、回读及正常重启回载 15 个 Package；Data Validation PASS、Dirty=0、未保存地图且未触碰真实用户存档。15 项资产总计 62,012 bytes，均为普通 Git 精确例外，LFS 中无对应条目。
+- 新鲜 BuildEditor PASS；原生 `ProjectR` 自动化的 4 项 Progression 与 5 项 Save 均 PASS；固定 Seed 41044 Progression PIE PASS，并验证 Health +10、Energy +10、AISupport 0.90、活动运行拒绝解锁与清理。
+- 全量 116 项历史路径均已取得 PASS 证据：通用 Editor `-NullRHI` 运行通过其余 111 项；`ProjectR.Debug` 以合同规定的 `-game -NullRHI` 入口 12/12 PASS；`ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression` 以独立可渲染 Editor PIE入口 1/1 PASS。KI-023 已关闭。
+- Future Compatibility Review 完成：v0.5.0 仅消费查询/解锁 API，v0.5.1 仅消费稳定资格，v0.5.2 以冻结余额字段建立受控 MemoryFragments 来源；后续章节、难度、Steam Cloud、QA/Release 只消费 `FPRProgressionRunSnapshot`、稳定 NodeId 与既有 PRSV A/B 语义。
+- 所有客观完成门均 PASS；用户已对固定只读三树摘要回复 `PASS`，人工清晰度完成门关闭。未创建提交、未推进 `CURRENT_VERSION`。

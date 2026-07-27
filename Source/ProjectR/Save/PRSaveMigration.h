@@ -27,5 +27,5 @@ private:
 	TMap<int32, FRegisteredStep> Steps;
 };
 
-/** Registers every shipped ProjectR migration, currently Schema 1 -> 2 -> 3. */
+/** Registers every shipped ProjectR migration, currently Schema 1 -> 2 -> 3 -> 4. */
 PROJECTR_API void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry);
