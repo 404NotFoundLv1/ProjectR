@@ -6,7 +6,7 @@
 
 #include "Misc/AutomationTest.h"
 
-namespace PRAccountAutomation
+namespace PRAccountIntegrationAutomation
 {
 constexpr EAutomationTestFlags TestFlags =
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
@@ -15,7 +15,7 @@ constexpr EAutomationTestFlags TestFlags =
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRAccountIntegrationTravelProjectionAndCleanupTest,
 	"ProjectR.Account.Integration.TravelProjectionAndCleanup",
-	PRAccountAutomation::TestFlags)
+	PRAccountIntegrationAutomation::TestFlags)
 
 bool FPRAccountIntegrationTravelProjectionAndCleanupTest::RunTest(const FString& Parameters)
 {

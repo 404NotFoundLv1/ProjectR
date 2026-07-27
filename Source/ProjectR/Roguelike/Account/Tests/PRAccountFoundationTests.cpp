@@ -8,7 +8,7 @@
 
 #include "Misc/AutomationTest.h"
 
-namespace PRAccountAutomation
+namespace PRAccountFoundationAutomation
 {
 constexpr EAutomationTestFlags TestFlags =
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
@@ -17,7 +17,7 @@ constexpr EAutomationTestFlags TestFlags =
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRAccountFoundationIdentitySchemaAndRegistryTest,
 	"ProjectR.Account.Foundation.IdentitySchemaAndRegistry",
-	PRAccountAutomation::TestFlags)
+	PRAccountFoundationAutomation::TestFlags)
 
 bool FPRAccountFoundationIdentitySchemaAndRegistryTest::RunTest(const FString& Parameters)
 {

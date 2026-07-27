@@ -171,12 +171,49 @@ void UPRRunStateSubsystem::HandleWorldCleanup(UWorld* World, bool bSessionEnded,
 
 void UPRRunStateSubsystem::BindWorld(UWorld* World)
 {
-	if (!World || BoundWorld.Get() == World) return;
-	UnbindWorld(BoundWorld.Get());
-	BoundWorld = World;
-	if (UPRCombatSubsystem* Combat = World->GetSubsystem<UPRCombatSubsystem>()) { BoundCombat = Combat; CombatEventHandle = Combat->OnCombatEvent().AddUObject(this, &UPRRunStateSubsystem::HandleCombatEvent); }
-	if (UPRQTESubsystem* QTE = World->GetSubsystem<UPRQTESubsystem>()) { BoundQTE = QTE; QTEResultHandle = QTE->OnQTEResult().AddUObject(this, &UPRRunStateSubsystem::HandleQTEResult); }
-	if (UPRBossSubsystem* Boss = World->GetSubsystem<UPRBossSubsystem>()) { BoundBoss = Boss; BossCompletedHandle = Boss->OnPrototypeRunCompleted().AddUObject(this, &UPRRunStateSubsystem::HandleBossCompleted); }
+	if (!World)
+	{
+		return;
+	}
+	if (BoundWorld.Get() != World)
+	{
+		UnbindWorld(BoundWorld.Get());
+		BoundWorld = World;
+	}
+
+	// GameInstance subsystems can observe the PIE world before its WorldSubsystems
+	// finish initializing. Re-entering for the same world must fill missing
+	// bindings without duplicating delegates that are already active.
+	if (!BoundCombat.IsValid())
+	{
+		if (UPRCombatSubsystem* Combat = World->GetSubsystem<UPRCombatSubsystem>())
+		{
+			BoundCombat = Combat;
+			CombatEventHandle = Combat->OnCombatEvent().AddUObject(
+				this,
+				&UPRRunStateSubsystem::HandleCombatEvent);
+		}
+	}
+	if (!BoundQTE.IsValid())
+	{
+		if (UPRQTESubsystem* QTE = World->GetSubsystem<UPRQTESubsystem>())
+		{
+			BoundQTE = QTE;
+			QTEResultHandle = QTE->OnQTEResult().AddUObject(
+				this,
+				&UPRRunStateSubsystem::HandleQTEResult);
+		}
+	}
+	if (!BoundBoss.IsValid())
+	{
+		if (UPRBossSubsystem* Boss = World->GetSubsystem<UPRBossSubsystem>())
+		{
+			BoundBoss = Boss;
+			BossCompletedHandle = Boss->OnPrototypeRunCompleted().AddUObject(
+				this,
+				&UPRRunStateSubsystem::HandleBossCompleted);
+		}
+	}
 }
 
 void UPRRunStateSubsystem::UnbindWorld(UWorld* World)

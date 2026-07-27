@@ -6,7 +6,7 @@
 
 #include "Misc/AutomationTest.h"
 
-namespace PRAccountAutomation
+namespace PRAccountLifecycleAutomation
 {
 constexpr EAutomationTestFlags TestFlags =
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
@@ -15,7 +15,7 @@ constexpr EAutomationTestFlags TestFlags =
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRAccountLifecycleDeathDivergenceAndCompletionTest,
 	"ProjectR.Account.Lifecycle.DeathDivergenceAndCompletion",
-	PRAccountAutomation::TestFlags)
+	PRAccountLifecycleAutomation::TestFlags)
 
 bool FPRAccountLifecycleDeathDivergenceAndCompletionTest::RunTest(const FString& Parameters)
 {

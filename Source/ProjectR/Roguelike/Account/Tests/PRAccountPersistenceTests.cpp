@@ -6,7 +6,7 @@
 
 #include "Misc/AutomationTest.h"
 
-namespace PRAccountAutomation
+namespace PRAccountPersistenceAutomation
 {
 constexpr EAutomationTestFlags TestFlags =
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
@@ -15,7 +15,7 @@ constexpr EAutomationTestFlags TestFlags =
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRAccountPersistenceSchemaMigrationAndDeletionTransactionTest,
 	"ProjectR.Account.Persistence.SchemaMigrationAndDeletionTransaction",
-	PRAccountAutomation::TestFlags)
+	PRAccountPersistenceAutomation::TestFlags)
 
 bool FPRAccountPersistenceSchemaMigrationAndDeletionTransactionTest::RunTest(const FString& Parameters)
 {
