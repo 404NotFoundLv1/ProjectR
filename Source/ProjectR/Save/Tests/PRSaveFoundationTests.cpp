@@ -227,7 +227,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 {
 	const UPRSaveGame* SaveGame = GetDefault<UPRSaveGame>();
-	TestEqual(TEXT("Current schema is two"), UPRSaveGame::CurrentSchemaVersion, 2);
+	TestEqual(TEXT("Current schema is three"), UPRSaveGame::CurrentSchemaVersion, 3);
 	TestEqual(TEXT("Minimum migratable schema is one"), UPRSaveGame::MinimumMigratableVersion, 1);
 	TestEqual(TEXT("Schema defaults missing"), SaveGame->SchemaVersion, 0);
 	TestEqual(TEXT("Revision defaults zero"), SaveGame->SaveRevision, int64{0});
@@ -238,6 +238,12 @@ bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 	if (CompanionRelationshipsProperty)
 	{
 		TestTrue(TEXT("Companion relationships express SaveGame intent"), CompanionRelationshipsProperty->HasAnyPropertyFlags(CPF_SaveGame));
+	}
+	const FProperty* AccountPersistenceProperty = FindFProperty<FProperty>(FPRProfileSaveData::StaticStruct(), GET_MEMBER_NAME_CHECKED(FPRProfileSaveData, AccountPersistence));
+	TestNotNull(TEXT("Profile declares explicit account persistence partition"), AccountPersistenceProperty);
+	if (AccountPersistenceProperty)
+	{
+		TestTrue(TEXT("Account persistence expresses SaveGame intent"), AccountPersistenceProperty->HasAnyPropertyFlags(CPF_SaveGame));
 	}
 
 	TArray<FName> DeclaredProperties;

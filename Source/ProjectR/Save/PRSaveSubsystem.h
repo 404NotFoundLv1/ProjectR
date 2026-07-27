@@ -30,6 +30,16 @@ public:
 	FPRSaveOperationEventNative& OnSaveOperation();
 	bool GetLoadedProfileSnapshot(FPRProfileSaveData& OutProfile) const;
 	bool StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records);
+	/** Stages a complete canonical account partition; installation occurs only after A/B verification. */
+	bool StageAccountPersistence(const FPRAccountPersistenceData& Persistence);
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Test-only fixed PIE seam. The caller supplies only an already-isolated automation storage instance. */
+	static void SetAutomationStorageOverride(TSharedPtr<FPRSaveStorage> InStorage);
+	static bool HasAutomationStorageOverride();
+	static void ClearAutomationStorageOverride();
+	static void CleanupAutomationStorageOverride();
+#endif
 
 private:
 	struct FObservedGeneration
@@ -104,6 +114,7 @@ private:
 	TUniquePtr<FSaveRequest> TrailingSave;
 	FPRSaveMigrationRegistry MigrationRegistry;
 	FPRSaveOperationEventNative SaveOperationEvent;
+	TOptional<FPRAccountPersistenceData> StagedAccountPersistence;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;

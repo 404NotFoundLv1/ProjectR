@@ -5,6 +5,13 @@ version: "v1.0"
 date: "2026-07-10"
 ---
 
+## v0.4.3 account deletion loop and graveyard (2026-07-27)
+
+- Added Schema 3 account persistence: one logical ActiveAccount, bounded RunSummary and AccountRecord values, a canonical 32-record graveyard, monotonic deletion count, and completion-only counterproof award.
+- UPRRunStateSubsystem owns create/start/finalize sequencing and treats a loaded started account as InterruptedRecovery; it does not restore Room state.
+- The fixed registry and five identity DataAssets were authored through Unreal MCP, precisely saved, restart-read, and added as six ordinary-Git exceptions (13,832 bytes total).
+- Objective evidence: BuildEditor succeeded; ProjectR.Account and ProjectR.Save passed; Data Validation, asset restart readback, Dirty=0, and fixed completion/death/evacuation/leave/interrupted-recovery/finalization-failure PIE all passed using automation-only slots. Completion exercises the existing RoomSequenceCompleted delegate; death, evacuation, and leave exercise the existing CombatEvent-to-DivergenceResult delegate path. The human account-loop preview is WAIVED by explicit user authorization because this version intentionally provides no account UI or public write entry.
+
 # 记录规则
 
 每个公共版本追加一条记录，不重写历史。自动结果、人工判断、未运行项和已知风险分开记录。

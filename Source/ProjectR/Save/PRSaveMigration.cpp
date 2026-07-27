@@ -42,6 +42,17 @@ void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry)
 		Save.SchemaVersion = 2;
 		return true;
 	});
+	Registry.RegisterStep(2, 3, [](UPRSaveGame& Save)
+	{
+		if (Save.SchemaVersion != 2 || !Save.Profile.ProfileId.IsValid()
+			|| !FPRCompanionContract::AreCanonicalRelationshipRecords(Save.Profile.CompanionRelationships))
+		{
+			return false;
+		}
+		Save.Profile.AccountPersistence = FPRAccountPersistenceContract::MakeDefault();
+		Save.SchemaVersion = 3;
+		return true;
+	});
 }
 
 EPRSaveResult FPRSaveMigrationRegistry::Migrate(

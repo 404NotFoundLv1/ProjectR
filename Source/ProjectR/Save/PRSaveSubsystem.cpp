@@ -10,9 +10,13 @@
 
 namespace PRSaveSubsystemPrivate
 {
+#if WITH_DEV_AUTOMATION_TESTS
+TSharedPtr<FPRSaveStorage> AutomationStorageOverride;
+#endif
 bool IsSuccessfulRead(const FPRSaveGenerationRead& Read)
 {
-	return Read.Result == EPRSaveResult::Success && IsValid(Read.SaveGame);
+	return Read.Result == EPRSaveResult::Success && IsValid(Read.SaveGame)
+		&& FPRAccountPersistenceContract::IsCanonical(Read.SaveGame->Profile.AccountPersistence);
 }
 
 int32 GetFailurePriority(const EPRSaveResult Result)
@@ -48,11 +52,44 @@ void UPRSaveSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	RegisterProjectRSaveMigrations(MigrationRegistry);
+#if WITH_DEV_AUTOMATION_TESTS
+	Storage = PRSaveSubsystemPrivate::AutomationStorageOverride.IsValid()
+		? PRSaveSubsystemPrivate::AutomationStorageOverride
+		: FPRSaveStorage::CreateProduction();
+#else
 	Storage = FPRSaveStorage::CreateProduction();
+#endif
 	State = EPRSaveSubsystemState::Ready;
 	LastResult = EPRSaveResult::InvalidRequest;
 	UE_LOG(LogProjectR, Log, TEXT("ProjectR Save subsystem initialized without storage access."));
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+void UPRSaveSubsystem::SetAutomationStorageOverride(TSharedPtr<FPRSaveStorage> InStorage)
+{
+	PRSaveSubsystemPrivate::AutomationStorageOverride = MoveTemp(InStorage);
+}
+
+bool UPRSaveSubsystem::HasAutomationStorageOverride()
+{
+	return PRSaveSubsystemPrivate::AutomationStorageOverride.IsValid();
+}
+
+void UPRSaveSubsystem::ClearAutomationStorageOverride()
+{
+	PRSaveSubsystemPrivate::AutomationStorageOverride.Reset();
+}
+
+void UPRSaveSubsystem::CleanupAutomationStorageOverride()
+{
+	if (PRSaveSubsystemPrivate::AutomationStorageOverride.IsValid())
+	{
+		PRSaveSubsystemPrivate::AutomationStorageOverride->DeleteGeneration(EPRSaveGeneration::A);
+		PRSaveSubsystemPrivate::AutomationStorageOverride->DeleteGeneration(EPRSaveGeneration::B);
+	}
+	PRSaveSubsystemPrivate::AutomationStorageOverride.Reset();
+}
+#endif
 
 void UPRSaveSubsystem::Deinitialize()
 {
@@ -203,6 +240,7 @@ EPRSaveResult UPRSaveSubsystem::CreateNewDefaultProfile(FGuid& OutRequestId)
 		LoadedSave->SaveRevision = 0;
 		LoadedSave->Profile.ProfileId = FGuid::NewGuid();
 		LoadedSave->Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
+		LoadedSave->Profile.AccountPersistence = FPRAccountPersistenceContract::MakeDefault();
 		LoadedGeneration = EPRSaveGeneration::None;
 		bNeedsResave = true;
 	}
@@ -321,6 +359,18 @@ bool UPRSaveSubsystem::StageCompanionRelationships(const TArray<FPRCompanionRela
 	return true;
 }
 
+bool UPRSaveSubsystem::StageAccountPersistence(const FPRAccountPersistenceData& Persistence)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRAccountPersistenceContract::IsCanonical(Persistence))
+	{
+		return false;
+	}
+	StagedAccountPersistence = Persistence;
+	bNeedsResave = true;
+	return true;
+}
+
 UPRSaveSubsystem::FObservedGeneration UPRSaveSubsystem::ObserveGeneration(
 	const FPRSaveGenerationRead& Read)
 {
@@ -405,10 +455,12 @@ UPRSaveSubsystem::FLoadSelection UPRSaveSubsystem::SelectLoadedGeneration(
 		return Selection;
 	}
 
-	Selection.Result = PRSaveSubsystemPrivate::GetFailurePriority(ReadA.Result) >=
-		PRSaveSubsystemPrivate::GetFailurePriority(ReadB.Result)
-		? ReadA.Result
-		: ReadB.Result;
+	const EPRSaveResult EffectiveA = ReadA.Result == EPRSaveResult::Success ? EPRSaveResult::CorruptData : ReadA.Result;
+	const EPRSaveResult EffectiveB = ReadB.Result == EPRSaveResult::Success ? EPRSaveResult::CorruptData : ReadB.Result;
+	Selection.Result = PRSaveSubsystemPrivate::GetFailurePriority(EffectiveA) >=
+		PRSaveSubsystemPrivate::GetFailurePriority(EffectiveB)
+		? EffectiveA
+		: EffectiveB;
 	return Selection;
 }
 
@@ -457,7 +509,8 @@ void UPRSaveSubsystem::StartActiveSave()
 
 	if (LoadedSave->SaveRevision == MAX_int64 ||
 		!LoadedSave->Profile.ProfileId.IsValid() ||
-		LoadedSave->SchemaVersion != UPRSaveGame::CurrentSchemaVersion)
+		LoadedSave->SchemaVersion != UPRSaveGame::CurrentSchemaVersion ||
+		!FPRAccountPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.AccountPersistence))
 	{
 		CompleteActiveSave(EPRSaveResult::InvalidRequest);
 		return;
@@ -573,6 +626,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 	}
 
 	LoadedSave = ActiveSave->Snapshot.Get();
+	StagedAccountPersistence.Reset();
 	LoadedGeneration = ActiveSave->TargetGeneration;
 	bNeedsResave = false;
 	if (LoadedGeneration == EPRSaveGeneration::A)
@@ -631,6 +685,7 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 
 	if (Result != EPRSaveResult::Success)
 	{
+		StagedAccountPersistence.Reset();
 		if (TrailingSave)
 		{
 			PublishOperation(
@@ -659,7 +714,12 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 UPRSaveGame* UPRSaveSubsystem::CaptureCurrentSnapshot() const
 {
 	check(IsInGameThread());
-	return LoadedSave ? DuplicateObject<UPRSaveGame>(LoadedSave, GetTransientPackage()) : nullptr;
+	UPRSaveGame* Snapshot = LoadedSave ? DuplicateObject<UPRSaveGame>(LoadedSave, GetTransientPackage()) : nullptr;
+	if (Snapshot && StagedAccountPersistence.IsSet())
+	{
+		Snapshot->Profile.AccountPersistence = StagedAccountPersistence.GetValue();
+	}
+	return Snapshot;
 }
 
 bool UPRSaveSubsystem::IsCallableOnGameThread(FGuid& OutRequestId) const

@@ -387,6 +387,20 @@ date: "2026-07-10"
 
 **验证**：Foundation/Runtime 的真实 TDD RED→GREEN、最终 BuildEditor、`ProjectR.Director` 10/10、所有历史回归、二十一项 Package 精确保存/重启回读/Dirty=0、三个固定 Director PIE 及用户 CombatGym 原因/效果/反制 `PASS` 汇总在 `Saved/AutomationReports/v041-final-report-20260727/v041final-None/result.json`（28/28 required PASS）。
 
+# ADR-030 - Account deletion is a durable Profile-local finalization transaction
+
+**状态**：Accepted。
+
+**背景**：v0.4.3 需要结束临时账号并保留有界墓园，但不得删除 Profile、A/B 物理槽或长期关系，也不得恢复 Room 私有运行时。若在保存成功前发布 RunSummary/AccountDeleted 或旅行，失败写会造成账号、墓园与事件可见状态不一致。
+
+**决策**：`UPRRunStateSubsystem` 是 Account/Run 生命周期唯一所有者。Create、Start 和 Finalize 均先 stage Profile-local 值型 AccountPersistence，等待既有 A/B Save 写后验证成功，再发布状态或启动 Room/发布删除并调用既有 RealityHub 旅行。已加载的 Started ActiveAccount 一律归档为 `InterruptedRecovery`；只保存有界 Summary/Record，墓园最多 32 条。
+
+**后果**：Room、Reward、Combat、Director、QTE、Companion 与 UI 只提供稳定值，不拥有账号删除。失败写保留 ActiveAccount、未发布删除且不旅行；没有公开任意删除/槽/导入导出 Blueprint 写入口。Schema 1→2→3 保持顺序迁移，未来 Schema 拒绝。
+
+**迁移/回滚**：回滚仅撤销 v0.4.3 Account/Save/测试/工具/六个 Account Package 与对应普通 Git 例外；不得物理删除用户 Profile 或 A/B 槽，不修改冻结上游业务、地图、GameplayTag 或 Config。
+
+**验证**：BuildEditor、`ProjectR.Account`、`ProjectR.Save`、Schema/A-B 原生测试、六个 Package 的 MCP 精确保存/重启回读/Dirty=0 与固定完成、死亡、撤离、离开、中断恢复、最终写失败 PIE 均已自动验证；因本版本明确不提供账号 UI 或公开写入口，人工账号循环预览已由用户明确豁免。
+
 # ADR 模板
 
 ```text

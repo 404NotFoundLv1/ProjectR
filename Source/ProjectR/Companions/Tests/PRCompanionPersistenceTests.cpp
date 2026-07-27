@@ -17,7 +17,7 @@ constexpr EAutomationTestFlags TestFlags =
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FPRCompanionPersistenceTest,
-	"ProjectR.Companion.Persistence.SchemaTwoMigrationAndRoundTrip",
+	"ProjectR.Companion.Persistence.SchemaThreeMigrationAndRoundTrip",
 	PRCompanionPersistenceAutomation::TestFlags)
 
 bool FPRCompanionPersistenceTest::RunTest(const FString& Parameters)
@@ -30,14 +30,15 @@ bool FPRCompanionPersistenceTest::RunTest(const FString& Parameters)
 	FPRSaveMigrationRegistry Registry;
 	RegisterProjectRSaveMigrations(Registry);
 	UPRSaveGame* Migrated = nullptr;
-	TestEqual(TEXT("Schema one migrates to schema two"), Registry.Migrate(*SchemaOne, UPRSaveGame::CurrentSchemaVersion, Migrated), EPRSaveResult::Success);
+	TestEqual(TEXT("Schema one migrates through schema two to schema three"), Registry.Migrate(*SchemaOne, UPRSaveGame::CurrentSchemaVersion, Migrated), EPRSaveResult::Success);
 	TestNotNull(TEXT("Migration produces a copy"), Migrated);
 	if (Migrated)
 	{
-		TestEqual(TEXT("Migration reaches schema two"), Migrated->SchemaVersion, 2);
+		TestEqual(TEXT("Migration reaches schema three"), Migrated->SchemaVersion, 3);
 		TestEqual(TEXT("Migration preserves profile id"), Migrated->Profile.ProfileId, SchemaOne->Profile.ProfileId);
 		TestEqual(TEXT("Migration preserves revision"), Migrated->SaveRevision, SchemaOne->SaveRevision);
 		TestTrue(TEXT("Migration adds canonical default companion relationships"), FPRCompanionContract::AreCanonicalRelationshipRecords(Migrated->Profile.CompanionRelationships));
+		TestTrue(TEXT("Migration adds default account persistence"), FPRAccountPersistenceContract::IsCanonical(Migrated->Profile.AccountPersistence));
 	}
 	TestEqual(TEXT("Source remains schema one"), SchemaOne->SchemaVersion, 1);
 	TestTrue(TEXT("Source does not receive migration records"), SchemaOne->Profile.CompanionRelationships.IsEmpty());
@@ -47,10 +48,12 @@ bool FPRCompanionPersistenceTest::RunTest(const FString& Parameters)
 	NewSave->SaveRevision = 1;
 	NewSave->Profile.ProfileId = FGuid::NewGuid();
 	NewSave->Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
-	TestTrue(TEXT("Schema two defaults are canonical"), FPRCompanionContract::AreCanonicalRelationshipRecords(NewSave->Profile.CompanionRelationships));
+	NewSave->Profile.AccountPersistence = FPRAccountPersistenceContract::MakeDefault();
+	TestTrue(TEXT("Schema three companion defaults are canonical"), FPRCompanionContract::AreCanonicalRelationshipRecords(NewSave->Profile.CompanionRelationships));
+	TestTrue(TEXT("Schema three account defaults are canonical"), FPRAccountPersistenceContract::IsCanonical(NewSave->Profile.AccountPersistence));
 
 	TArray<uint8> Envelope;
-	TestEqual(TEXT("Schema two serializes into the PRSV envelope"), FPRSaveEnvelope::Serialize(*NewSave, Envelope), EPRSaveResult::Success);
+	TestEqual(TEXT("Schema three serializes into the PRSV envelope"), FPRSaveEnvelope::Serialize(*NewSave, Envelope), EPRSaveResult::Success);
 	FPRSaveDecodedEnvelope Decoded;
 	TestEqual(TEXT("Schema two deserializes without a migration step"), FPRSaveEnvelope::Deserialize(Envelope, Decoded), EPRSaveResult::Success);
 	TestNotNull(TEXT("Round trip returns a save object"), Decoded.SaveGame);
@@ -59,6 +62,7 @@ bool FPRCompanionPersistenceTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Round trip preserves profile id"), Decoded.SaveGame->Profile.ProfileId, NewSave->Profile.ProfileId);
 		TestEqual(TEXT("Round trip preserves revision"), Decoded.SaveGame->SaveRevision, NewSave->SaveRevision);
 		TestTrue(TEXT("Round trip preserves canonical companion relationships"), FPRCompanionContract::AreCanonicalRelationshipRecords(Decoded.SaveGame->Profile.CompanionRelationships));
+		TestTrue(TEXT("Round trip preserves canonical account persistence"), FPRAccountPersistenceContract::IsCanonical(Decoded.SaveGame->Profile.AccountPersistence));
 	}
 	return true;
 }

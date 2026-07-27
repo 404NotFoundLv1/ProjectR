@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/PRRelationshipTypes.h"
+#include "Save/PRAccountSaveTypes.h"
 
 #include "PRSaveTypes.generated.h"
 
@@ -83,6 +84,9 @@ struct PROJECTR_API FPRProfileSaveData
 
 	UPROPERTY(SaveGame)
 	TArray<FPRCompanionRelationshipRecord> CompanionRelationships;
+
+	UPROPERTY(SaveGame)
+	FPRAccountPersistenceData AccountPersistence;
 };
 
 USTRUCT()

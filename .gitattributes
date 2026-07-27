@@ -130,3 +130,12 @@
 /Content/ProjectR/UI/Roguelike/WBP_RoomFlow.uasset -filter -diff -merge -text
 /Content/ProjectR/UI/Roguelike/WBP_RewardSelection.uasset -filter -diff -merge -text
 /Content/ProjectR/UI/Roguelike/WBP_RoomEvent.uasset -filter -diff -merge -text
+
+# v0.4.3 account identity packages are 13,832 bytes total after exact MCP save.
+# Keep only this six-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Roguelike/Accounts/DA_AccountIdentityRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Technician.uasset -filter -diff -merge -text
+/Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Security.uasset -filter -diff -merge -text
+/Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Exile.uasset -filter -diff -merge -text
+/Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Observer.uasset -filter -diff -merge -text
+/Content/ProjectR/Roguelike/Accounts/Identities/DA_AccountIdentity_Blank.uasset -filter -diff -merge -text
