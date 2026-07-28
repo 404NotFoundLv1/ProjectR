@@ -29,6 +29,12 @@ public:
 	FPRProgressionRunSnapshotChangedNative& OnRunSnapshotChanged();
 
 private:
+	friend class UPRMemorySubsystem;
+	bool BeginSingleMemoryFragmentAward(
+		const FGuid& SummaryId,
+		FPRProgressionPersistenceData& OutExpected,
+		FPRProgressionPersistenceData& OutTarget);
+	void EndSingleMemoryFragmentAward(const FGuid& SummaryId, bool bCommitted);
 	struct FPendingUnlock
 	{
 		FGuid RequestId;
@@ -72,6 +78,7 @@ private:
 	FDelegateHandle WorldCleanupHandle;
 	FDelegateHandle PostLoadMapHandle;
 	TOptional<FPendingUnlock> PendingUnlock;
+	TOptional<FGuid> PendingMemoryAwardSummaryId;
 	bool bHasLoadedProfile = false;
 	FPRProgressionSnapshot Snapshot;
 	FPRProgressionRunSnapshot RunSnapshot;

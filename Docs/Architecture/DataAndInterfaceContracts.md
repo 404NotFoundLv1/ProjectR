@@ -345,6 +345,17 @@ Response 只允许 RuleId、Level、ReasonTags、VisibleReason、有限参数和
 
 AccountRecord 保存账号 ID、身份、开始/结束时间、结束原因、章节、Boss、主要法令、构筑摘要、主同步 AI、关键 QTE、死因和反证奖励。RunSummary 是适合对话/画像消费的有界摘要，不保存无限战斗日志。
 
+# v0.5.2 MemorySummary 与安全局后 Provider 合同
+
+**所有者：** `UPRMemorySubsystem`；**建立版本：** v0.5.2；**直接消费者：** RealityHub Memory 页面、v0.6.0 内容注册、Steam Cloud 与 QA。
+
+- Memory 只消费成功发布的 `FPRAccountDeletedEvent.Record.Summary`、公开 Room/Dialogue/Divergence 值结果、Quest Completed/entitlement/LineId 及受控 Save/Progression API；它不读取 Quest Evidence、墓园原始数组、Dialogue 队列、Director 私有状态、原始 Provider Response、Profile/Account/Slot 私有数据。
+- `FPRMemorySummary` 以 `FPRAccountRecord.RecordId` 为 `SummaryId`；最多 32 条，按 `GraveyardOrdinal + SummaryId` 排序。每条只含受限终止语义、已验证 Rule/QTE/Choice/Quest/KeyEvent ID、固定 Companion/Scene/Emotion、最多 240 Unicode code point 摘要、三个固定 Option ID、fallback、序列、墓园序号和奖励值。它绝不保存账号/槽身份、原始事件流、Prompt、原始响应、UObject、Actor、Timer、Delegate、Provider 或 Handle。
+- Schema 6 仅追加 `FPRMemoryPersistenceData`。Schema 5→6 以既有 Graveyard 最大序号初始化水位，禁止回溯生成旧摘要或补发碎片；迁移严格保持 `1→2→3→4→5→6` 与 PRSV A/B 写后回读、损坏恢复和未来版本拒绝。
+- Summary 与 Progression 的单枚碎片奖励同处一个 A/B 事务：仅首次、非 `InterruptedRecovery`、含合法 KeyEvent 的 Summary 在成功回读后奖励 1。Progression 始终是余额唯一所有者；没有任意余额修改 API，也不改变活动 RunSnapshot 或 UnlockSequence。
+- `IPRPostRunDialogueProvider` 默认为确定性离线 Mock；五字段输出严格限于 `scene`、`companion_id`、`emotion`、`summary`、`player_options`。Completion 的 `RequestId` 是不进入 JSON、Save、快照或 Widget 的传输元数据，只有与冻结请求精确相同的 ID 可被接收。Validator 拒绝未知字段、非法 Persona/情绪/选项、控制字符、URL/HTML/JSON/Prompt/身份标识和超长文本；unavailable、timeout、非法、重复或迟到响应使用或保持确定性 fallback，实时战斗从不等待 Provider。
+- `FPRMemorySnapshot` 可以投影 Persona DataAsset 的三个固定显示文本，但该投影为 `Transient`，不保存、不提交也不携带关系 Delta、Tag、效果、数值或自由指令。Widget 只渲染快照并转发固定枚举选择。
+
 # v0.2.1-A Enemy 公共基础合同
 
 **所有者**：Enemy；**直接消费者**：v0.2.1-B–E、v0.2.2 Boss、v0.2.3 HUD、v0.3.2 QTE。

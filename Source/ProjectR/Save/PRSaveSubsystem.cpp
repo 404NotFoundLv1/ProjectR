@@ -363,6 +363,51 @@ bool UPRSaveSubsystem::StageCompanionQuestPersistence(const FPRCompanionQuestPer
 	return true;
 }
 
+bool UPRSaveSubsystem::GetMemoryPersistenceSnapshot(FPRMemoryPersistenceData& OutPersistence) const
+{
+	if (!IsInGameThread() || !LoadedSave || !FPRMemoryPersistenceContract::IsCanonical(LoadedSave->Profile.MemoryPersistence)) return false;
+	OutPersistence = LoadedSave->Profile.MemoryPersistence;
+	return true;
+}
+
+bool UPRSaveSubsystem::StageMemoryProgressionTransaction(
+	const FPRMemoryPersistenceData& ExpectedMemory,
+	const FPRMemoryPersistenceData& TargetMemory,
+	const FPRProgressionPersistenceData& ExpectedProgression,
+	const FPRProgressionPersistenceData& TargetProgression)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRMemoryPersistenceContract::IsCanonical(ExpectedMemory)
+		|| !FPRMemoryPersistenceContract::IsCanonical(TargetMemory)
+		|| !FPRProgressionPersistenceContract::IsCanonical(ExpectedProgression)
+		|| !FPRProgressionPersistenceContract::IsCanonical(TargetProgression)
+		|| !FPRMemoryPersistenceData::StaticStruct()->CompareScriptStruct(&ExpectedMemory, &LoadedSave->Profile.MemoryPersistence, 0)
+		|| !FPRProgressionPersistenceData::StaticStruct()->CompareScriptStruct(&ExpectedProgression, &LoadedSave->Profile.ProgressionPersistence, 0))
+	{
+		return false;
+	}
+	StagedMemoryPersistence = TargetMemory;
+	StagedProgressionPersistence = TargetProgression;
+	bNeedsResave = true;
+	return true;
+}
+
+bool UPRSaveSubsystem::StageMemoryPersistenceTransaction(
+	const FPRMemoryPersistenceData& ExpectedMemory,
+	const FPRMemoryPersistenceData& TargetMemory)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRMemoryPersistenceContract::IsCanonical(ExpectedMemory)
+		|| !FPRMemoryPersistenceContract::IsCanonical(TargetMemory)
+		|| !FPRMemoryPersistenceData::StaticStruct()->CompareScriptStruct(&ExpectedMemory, &LoadedSave->Profile.MemoryPersistence, 0))
+	{
+		return false;
+	}
+	StagedMemoryPersistence = TargetMemory;
+	bNeedsResave = true;
+	return true;
+}
+
 bool UPRSaveSubsystem::StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records)
 {
 	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
@@ -378,10 +423,7 @@ bool UPRSaveSubsystem::StageCompanionRelationships(const TArray<FPRCompanionRela
 bool UPRSaveSubsystem::StageAccountPersistence(const FPRAccountPersistenceData& Persistence)
 {
 	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
-		|| !FPRAccountPersistenceContract::IsCanonical(Persistence))
-	{
-		return false;
-	}
+		|| !FPRAccountPersistenceContract::IsCanonical(Persistence)) return false;
 	StagedAccountPersistence = Persistence;
 	bNeedsResave = true;
 	return true;
@@ -559,7 +601,8 @@ void UPRSaveSubsystem::StartActiveSave()
 		LoadedSave->SchemaVersion != UPRSaveGame::CurrentSchemaVersion ||
 		!FPRAccountPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.AccountPersistence) ||
 		!FPRProgressionPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ProgressionPersistence) ||
-		!FPRCompanionQuestPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.CompanionQuestPersistence))
+		!FPRCompanionQuestPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.CompanionQuestPersistence) ||
+		!FPRMemoryPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.MemoryPersistence))
 	{
 		CompleteActiveSave(EPRSaveResult::InvalidRequest);
 		return;
@@ -678,6 +721,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 	StagedAccountPersistence.Reset();
 	StagedProgressionPersistence.Reset();
 	StagedCompanionQuestPersistence.Reset();
+	StagedMemoryPersistence.Reset();
 	LoadedGeneration = ActiveSave->TargetGeneration;
 	bNeedsResave = false;
 	if (LoadedGeneration == EPRSaveGeneration::A)
@@ -739,6 +783,7 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 		StagedAccountPersistence.Reset();
 		StagedProgressionPersistence.Reset();
 		StagedCompanionQuestPersistence.Reset();
+		StagedMemoryPersistence.Reset();
 		if (TrailingSave)
 		{
 			PublishOperation(
@@ -779,6 +824,10 @@ UPRSaveGame* UPRSaveSubsystem::CaptureCurrentSnapshot() const
 	if (Snapshot && StagedCompanionQuestPersistence.IsSet())
 	{
 		Snapshot->Profile.CompanionQuestPersistence = StagedCompanionQuestPersistence.GetValue();
+	}
+	if (Snapshot && StagedMemoryPersistence.IsSet())
+	{
+		Snapshot->Profile.MemoryPersistence = StagedMemoryPersistence.GetValue();
 	}
 	return Snapshot;
 }

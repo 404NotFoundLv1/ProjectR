@@ -442,6 +442,20 @@ date: "2026-07-10"
 
 **Verification:** BuildEditor, Quest 4/4, Save 5/5, historical ProjectR regression with contractual Debug runner, exact package re-read/save/Dirty=0, 0-error Data Validation, fixed runtime fixtures and user manual `PASS` are recorded in `Saved/AutomationReports/v051-final-report-20260729/v051final-None/result.json`.
 
+# ADR-034 - Memory uses bounded summaries, atomic fragment publication, and local-only dialogue
+
+**Status:** Accepted and implemented (v0.5.2 required gates completed; version-close conversion remains a separate, authorized operation)
+
+**Context:** Post-run memory needs a durable but privacy-bounded projection of verified run facts, exactly-once MemoryFragments, and companion-facing text without taking ownership from RunState, Quest, Progression, RealityHub, Dialogue queue or any network service.
+
+**Decision:** `UPRMemorySubsystem` is the sole owner of bounded aggregation, Registry/Persona lookup, immutable post-run transaction, deterministic local Mock/fallback, Schema-6 persistence/retry, fragment eligibility and lifecycle cleanup. It derives one `FPRMemorySummary` only after an `AccountDeleted` value event, validates the fixed five-field candidate schema, and stages the complete canonical Memory and Progression partitions in the same PRSV A/B write-back transaction. Persona display labels are transient snapshot projections from the local DataAssets; Widget Blueprints remain display-and-fixed-request only.
+
+**Consequences:** No second RunSummary, no raw Evidence/graveyard/dialogue/provider persistence, no direct Save or balance mutation, no real HTTP/endpoint/API key, no free prompt or text input, and no runtime wait in combat/QTE/rule execution. Provider completion carries the frozen request ID as envelope metadata, so `InterruptedRecovery`, duplicates, wrong/late callbacks and failed writes cannot duplicate a summary or fragment. v0.6.0 may consume only the bounded snapshot/latest summary and fixed IDs/fallback state.
+
+**Migration/rollback:** Schema remains strictly `1→2→3→4→5→6`; 5→6 initializes the old-graveyard watermark without synthesizing history. Rollback is confined to v0.5.2 Memory/UI source, Schema-6 addition, narrow Save/Progression changes, tests, exact five packages, Root parent/page, editor-only toolset, `.gitattributes` exceptions and documents. Saved Package deletion remains individually approval-gated.
+
+**Verification:** Final BuildEditor, `ProjectR.Memory` 6/6, Save 5/5, Progression 4/4, contractual `-game` Debug 12/12, exact MCP compile/save/restart/Dirty=0, 0-error Data Validation, isolated PIE and the user-approved RealityHub Memory-page review are recorded in `Saved/AutomationReports/v052-final-report-20260729/v052final-None/result.json`. The user explicitly returned `PASS` on 2026-07-29. The broad non-`-game` runner remains a documented runner-context diagnostic only; the contractual per-suite runners passed.
+
 # ADR 模板
 
 ```text

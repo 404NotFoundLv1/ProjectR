@@ -50,6 +50,16 @@ public:
 #endif
 
 private:
+	friend class UPRMemorySubsystem;
+	bool GetMemoryPersistenceSnapshot(FPRMemoryPersistenceData& OutPersistence) const;
+	bool StageMemoryProgressionTransaction(
+		const FPRMemoryPersistenceData& ExpectedMemory,
+		const FPRMemoryPersistenceData& TargetMemory,
+		const FPRProgressionPersistenceData& ExpectedProgression,
+		const FPRProgressionPersistenceData& TargetProgression);
+	bool StageMemoryPersistenceTransaction(
+		const FPRMemoryPersistenceData& ExpectedMemory,
+		const FPRMemoryPersistenceData& TargetMemory);
 	struct FObservedGeneration
 	{
 		EPRSaveResult Result = EPRSaveResult::ReadFailed;
@@ -125,6 +135,7 @@ private:
 	TOptional<FPRAccountPersistenceData> StagedAccountPersistence;
 	TOptional<FPRProgressionPersistenceData> StagedProgressionPersistence;
 	TOptional<FPRCompanionQuestPersistenceData> StagedCompanionQuestPersistence;
+	TOptional<FPRMemoryPersistenceData> StagedMemoryPersistence;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;

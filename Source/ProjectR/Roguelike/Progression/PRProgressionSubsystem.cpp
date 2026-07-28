@@ -65,6 +65,7 @@ void UPRProgressionSubsystem::Deinitialize()
 {
 	ClearRuntimeEffects();
 	ClearRunSnapshot();
+	PendingMemoryAwardSummaryId.Reset();
 	if (UPRSaveSubsystem* Save = SaveSubsystem.Get()) Save->OnSaveOperation().Remove(SaveOperationHandle);
 	if (UPRRunStateSubsystem* RunState = RunStateSubsystem.Get())
 	{
@@ -87,7 +88,7 @@ void UPRProgressionSubsystem::Deinitialize()
 EPRProgressionOperationResult UPRProgressionSubsystem::RequestUnlockNode(const FPrimaryAssetId NodeId, FGuid& OutRequestId)
 {
 	OutRequestId.Invalidate();
-	if (PendingUnlock.IsSet()) return EPRProgressionOperationResult::Pending;
+	if (PendingUnlock.IsSet() || PendingMemoryAwardSummaryId.IsSet()) return EPRProgressionOperationResult::Pending;
 	UPRSaveSubsystem* Save = SaveSubsystem.Get();
 	UPRRunStateSubsystem* RunState = RunStateSubsystem.Get();
 	if (!Save || !RunState || !bHasLoadedProfile || !LoadRegistry()) return EPRProgressionOperationResult::NotReady;
@@ -134,6 +135,7 @@ EPRProgressionOperationResult UPRProgressionSubsystem::RetryPendingUnlock(FGuid&
 {
 	OutRequestId.Invalidate();
 	if (!PendingUnlock.IsSet()) return EPRProgressionOperationResult::RetryNotAvailable;
+	if (PendingMemoryAwardSummaryId.IsSet()) return EPRProgressionOperationResult::Pending;
 	UPRSaveSubsystem* Save = SaveSubsystem.Get();
 	if (!Save) return EPRProgressionOperationResult::NotReady;
 	FPendingUnlock& Pending = PendingUnlock.GetValue();
@@ -170,6 +172,32 @@ FPRProgressionChangedNative& UPRProgressionSubsystem::OnProgressionChanged() { r
 FPRProgressionUnlockCompletedNative& UPRProgressionSubsystem::OnUnlockCompleted() { return UnlockCompleted; }
 FPRProgressionRunSnapshotChangedNative& UPRProgressionSubsystem::OnRunSnapshotChanged() { return RunSnapshotChanged; }
 
+bool UPRProgressionSubsystem::BeginSingleMemoryFragmentAward(
+	const FGuid& SummaryId,
+	FPRProgressionPersistenceData& OutExpected,
+	FPRProgressionPersistenceData& OutTarget)
+{
+	OutExpected = FPRProgressionPersistenceData();
+	OutTarget = FPRProgressionPersistenceData();
+	if (!SummaryId.IsValid() || PendingUnlock.IsSet() || PendingMemoryAwardSummaryId.IsSet()) return false;
+	UPRSaveSubsystem* Save = SaveSubsystem.Get();
+	FPRProfileSaveData Profile;
+	if (!Save || !Save->GetLoadedProfileSnapshot(Profile) || !FPRProgressionPersistenceContract::IsCanonical(Profile.ProgressionPersistence)
+		|| Profile.ProgressionPersistence.MemoryFragments == MAX_int32) return false;
+	OutExpected = Profile.ProgressionPersistence;
+	OutTarget = OutExpected;
+	++OutTarget.MemoryFragments;
+	PendingMemoryAwardSummaryId = SummaryId;
+	return true;
+}
+
+void UPRProgressionSubsystem::EndSingleMemoryFragmentAward(const FGuid& SummaryId, const bool bCommitted)
+{
+	if (!PendingMemoryAwardSummaryId.IsSet() || PendingMemoryAwardSummaryId.GetValue() != SummaryId) return;
+	PendingMemoryAwardSummaryId.Reset();
+	if (bCommitted) RefreshSnapshotFromProfile();
+}
+
 void UPRProgressionSubsystem::HandleSaveOperation(const FPRSaveOperationEvent& Event)
 {
 	if (Event.Operation == EPRSaveOperationType::Load || Event.Operation == EPRSaveOperationType::Create)
@@ -179,6 +207,7 @@ void UPRProgressionSubsystem::HandleSaveOperation(const FPRSaveOperationEvent& E
 			ClearRuntimeEffects();
 			ClearRunSnapshot();
 			PendingUnlock.Reset();
+			PendingMemoryAwardSummaryId.Reset();
 			RefreshSnapshotFromProfile();
 			PublishChanged(FGuid());
 		}

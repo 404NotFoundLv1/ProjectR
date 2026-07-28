@@ -186,3 +186,11 @@
 /Content/ProjectR/Data/Quests/Kindle/DA_CompanionQuest_Kindle_LearnToRetreat.uasset -filter -diff -merge -text
 /Content/ProjectR/Data/Quests/Null/DA_CompanionQuest_Null_GarbageCollection.uasset -filter -diff -merge -text
 /Content/ProjectR/Data/Quests/Null/DA_CompanionQuest_Null_RememberMe.uasset -filter -diff -merge -text
+
+# v0.5.2 Memory registry, fixed personas, and summary presentation are 45,378 bytes total.
+# Keep only this exact five-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Data/Memory/DA_MemoryRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Memory/Companions/DA_MemoryPersona_Axiom.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Memory/Companions/DA_MemoryPersona_Kindle.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/Memory/Companions/DA_MemoryPersona_Null.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubMemorySummary.uasset -filter -diff -merge -text

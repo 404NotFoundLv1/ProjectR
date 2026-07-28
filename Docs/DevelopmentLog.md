@@ -549,3 +549,19 @@ Commit：
 - ADR-033 与 Companion Quest 数据合同和最终报告一致；v0.5.1 未新增阻断 KnownIssue，既有问题状态保持不变。
 - 新建单一 `Docs/Versions/v0.5.2.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.5.2 / In Progress`。E-034 固定复用 RunState-owned `FPRRunSummary`、五字段 Provider 输出、固定 PlayerOptionId、单枚幂等 MemoryFragments 来源和无真实网络/凭据边界。
 - 本次仅执行六份文档的版本转换，没有开始 v0.5.2 C++、Save Schema 6、测试、配置、插件或 UE Package 开发，没有访问存档，也没有创建 v0.5.2 功能提交。v0.5.2 保持一个公共版本、一个完成门和唯一未来功能提交。
+
+# 2026-07-29 - v0.5.2 MemorySummary 与安全局后 Provider（实施进行中）
+
+- 已实现 `UPRMemorySubsystem`、有界 Summary/Schema 6、离线确定性 Mock/Validator、Memory+Progression 原子事务、固定五 Package 和 RealityHub Memory 页面；未修改冻结的 RunState、Quest、RealityHubSubsystem、Dialogue 队列、Combat、QTE、Room/Reward、Director、地图、Input、Tag 或 Config。
+- 新鲜 BuildEditor、`ProjectR.Memory` 6 项、`ProjectR.Save` 5 项、`ProjectR.Progression` 4 项和 `ProjectR.Debug -game` 12 项均有 PASS 日志。全量历史扫描中四项 Debug 与一项 Enemy PIE 仅在错误的同进程 runner 失败；按各自合同 runner 重跑 Debug 12/12 与 Enemy Checkpoint-D 1/1 均 PASS。
+- MCP 已创建并回读 Registry、三 Persona、MemorySummary Widget；Root 原生父类为 `UPRMemoryHubWidget`。两 Widget warnings-as-errors 编译、精确保存、正常重启回读和 Dirty=0 已完成，Data Validation 为 533 assets / 0 errors。
+- 固定隔离 PIE 完成五次连续 PlayerDeath（5 Summary / 5 Fragment）及十轮混合 PlayerDeath、Evacuation、RoomSequenceCompleted、InterruptedRecovery（10 Summary / 8 Fragment）；所有周期使用 automation GUID storage 且结束后显式清理。
+- 当前未关闭版本：用户尚未完成 RealityHub MemorySummary 的主观人工预览。实现进度报告明确标为 `ManualAcceptance=NOT_RUN`；未提交、未推进 `CURRENT_VERSION`。
+
+# 2026-07-29 - v0.5.2 MemorySummary 与安全局后 Provider（实施完成，待独立版本收尾）
+
+- 该条目取代上方的实施中人工验收状态：用户已在隔离 RealityHub MemorySummary fixture 中完成预览并明确回复 `PASS`。未访问真实用户存档，未提交，且未推进 `CURRENT_VERSION`。
+- 最终 BuildEditor、`ProjectR.Memory` 6/6、Save 5/5、Progression 4/4、合同 `-game` Debug 12/12、0-error Data Validation、MCP 精确保存/重启回读/Dirty=0、五次连续死亡 PIE 与十轮混合终止 PIE 均有实际 PASS 证据。最终汇总：`Saved/AutomationReports/v052-final-report-20260729/v052final-None/result.json`。
+- Provider 回调现携带冻结 RequestId 的传输信封元数据；RED 后的 GREEN 验证确认错误、重复或迟到的回调不能终结较新的请求。该元数据不是 Provider JSON 的第六字段，不持久化也不暴露给 Widget。
+- Future Compatibility Review PASS：v0.6.0+ 只能消费有界 Memory 快照、最新摘要、固定 Companion/Emotion/PlayerOption ID 与 fallback 状态；不得读取 Provider 候选、Prompt、原始事件、私有 Quest/Save 数据或 MemoryFragments 事务。真实 Transport/凭据、章节与经济仍不属于本版本。
+- 非 `-game` 全量 runner 的 Debug/Enemy 上下文误报继续只作为 KI-023 runner 诊断，不替代各自合同 runner 的 PASS；没有新增阻断 KnownIssue。

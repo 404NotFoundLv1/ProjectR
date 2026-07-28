@@ -75,6 +75,22 @@ void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry)
 		Save.SchemaVersion = 5;
 		return true;
 	});
+	Registry.RegisterStep(5, 6, [](UPRSaveGame& Save)
+	{
+		if (Save.SchemaVersion != 5 || !Save.Profile.ProfileId.IsValid()
+			|| !FPRCompanionContract::AreCanonicalRelationshipRecords(Save.Profile.CompanionRelationships)
+			|| !FPRAccountPersistenceContract::IsCanonical(Save.Profile.AccountPersistence)
+			|| !FPRProgressionPersistenceContract::IsCanonical(Save.Profile.ProgressionPersistence)
+			|| !FPRCompanionQuestPersistenceContract::IsCanonical(Save.Profile.CompanionQuestPersistence)) return false;
+		Save.Profile.MemoryPersistence = FPRMemoryPersistenceContract::MakeDefault();
+		for (const FPRAccountRecord& Record : Save.Profile.AccountPersistence.Graveyard)
+		{
+			Save.Profile.MemoryPersistence.LastProcessedGraveyardOrdinal = FMath::Max(
+				Save.Profile.MemoryPersistence.LastProcessedGraveyardOrdinal, Record.GraveyardOrdinal);
+		}
+		Save.SchemaVersion = 6;
+		return true;
+	});
 }
 
 EPRSaveResult FPRSaveMigrationRegistry::Migrate(
