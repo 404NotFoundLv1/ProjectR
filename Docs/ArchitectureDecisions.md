@@ -415,6 +415,19 @@ date: "2026-07-10"
 
 **验证**：实现提交 `4390afa`；既有 v0.4.4 Build、Progression/Save 自动化、固定 Seed 41044 PIE、15 Package MCP 回读/重启/Dirty=0、KI-023 关闭以及用户三树摘要 `PASS` 汇总于 `Saved/AutomationReports/v044-final-report-20260728/v044final-None/result.json`。
 
+# ADR-032 - Reality Hub is a fixed, value-only terminal orchestrator
+
+**Status:** Accepted (v0.5.0)
+**Context:** The RealityHub needs usable terminals without re-owning Account, Save, RunState, Progression, Dialogue, Director, Combat, or map contracts. Arbitrary UI inputs, direct Save access, or Provider-backed forecast would expand authority and make future content unsafe.
+
+**Decision:** `UPRRealityHubSubsystem` owns only transient terminal requests, value snapshots, deterministic offline forecast, and the fixed CombatGym return-widget lifecycle. It delegates Account/Profile/Run work to existing public APIs and travels only through existing `EPRMapId` entries. The five terminal DataAssets are a closed Registry; Widget Blueprints configure presentation only. The local forecast reads a bounded profile snapshot plus known registry rule IDs and cannot apply a rule.
+
+**Consequences:** No Save schema, GameplayTag, Input, Config, map, Director executor, Combat, QTE, Companion AI, Dialogue queue, or Progression contract is changed. The training return control is session-local and cleared on every relevant lifecycle edge. Future Quest, DialogueProvider, and MemorySummary implementations add typed content behind this boundary rather than altering its ownership.
+
+**Rollback:** Reverse only v0.5.0 RealityHub source, tests, editor-only authoring toolset, exact package references, GameMode HUDClass, documented `.gitattributes` exceptions, and v0.5.0 evidence. Saved package deletion remains individually approval-gated.
+
+**Verification:** final BuildEditor, `ProjectR.RealityHub` 3/3, historical runner plus contractual `-game` Debug 12/12, Data Validation, exact MCP re-read/save/Dirty=0, fixed PIE, and user manual PASS are recorded in `Saved/AutomationReports/v050finalreport20260728b/v050final-None/result.json`.
+
 # ADR 模板
 
 ```text

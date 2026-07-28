@@ -136,6 +136,19 @@ date: "2026-07-10"
 - v0.1.0 的输入、空中反向、0.12 秒 Mesh 转向、Y 平面和固定侧视相机继续作为强制回归合同。
 - v0.2.0-A 只为 `State.Stunned` 增加 PlayerSkill 活动 Ability 的释放/取消门；Dead、Revive、Passive、Avatar 替换、Mixed replication、11 项复制属性和 transient `IncomingDamage` 合同不变。
 
+# 11. Reality Hub terminal contract
+
+**Owner:** `UPRRealityHubSubsystem` (`UGameInstanceSubsystem`).
+**Established:** v0.5.0.
+**Direct consumers:** RealityHub HUD/widgets; future v0.5.1 Quest/Dialogue Provider, v0.5.2 MemorySummary, v0.6.x chapter content, v0.8.4 Steam Cloud, and v0.9.3 QA.
+
+- The public surface is value-only: `FPRRealityHubSnapshot`, `FPRRealityHubOperationEvent`, `FPRRealityHubForecast`, `FPRRealityHubQuestEntry`, fixed terminal and identity enums, read-only delegates, and fixed C++ requests. It exposes no arbitrary Slot, Profile, Seed, Identity, Node, class, object, JSON, or map-path input and no Blueprint write API.
+- Cassette operations delegate only to existing Save and RunState public APIs. The fixed AccountId hash is the only Hub run-seed source. A terminal result is published from the existing lifecycle result; Hub never writes Save data directly.
+- Graveyard is a sorted bounded `FPRAccountRecord` projection only. Forecast is a local deterministic policy over `FPRPlayerProfileSnapshot` and the fixed Director Rule Registry. It never calls a Provider, reads a raw response/private Director state, or applies a rule. Missing Profile or Registry is unavailable, never a guessed rule.
+- Training travel is limited to `EPRMapId::CombatGym` and `EPRMapId::RealityHub`. The return widget exists only during a Hub-originated training session and is removed on return, failed travel, subsequent map load, PIE/world cleanup, and subsystem deinitialization. It persists no training, QTE, Ability, Progression, or Save state.
+- UI only renders snapshots and dispatches fixed C++ button delegates. Widget graphs and DataAssets do not own terminal routing, account mutation, forecast evaluation, progression application, event settlement, completion, or persistence.
+- Quest, MemorySummary, and DialogueProvider are empty typed extension seams in v0.5.0. v0.5.1 may add Quest/Dialogue content; v0.5.2 may add memory sources/summaries. Neither may take ownership of Hub, Account, Save, Progression, or Director contracts.
+
 # 1. 统一伤害与 CombatEvent 合同
 
 **所有者**：Combat。  

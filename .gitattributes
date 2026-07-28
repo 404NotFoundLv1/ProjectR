@@ -157,3 +157,22 @@
 /Content/ProjectR/Data/Progression/Nodes/DA_ProgressionNode_PlayerSkillSlot.uasset -filter -diff -merge -text
 /Content/ProjectR/Effects/Progression/GE_Progression_PlayerMaxHealth.uasset -filter -diff -merge -text
 /Content/ProjectR/Effects/Progression/GE_Progression_PlayerMaxEnergy.uasset -filter -diff -merge -text
+
+# v0.5.0 Reality Hub terminal and presentation packages are 292,114 bytes total.
+# Keep this exact sixteen-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Data/RealityHub/DA_RealityHubTerminalRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/RealityHub/Terminals/DA_RealityHubTerminal_CassetteSlot.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/RealityHub/Terminals/DA_RealityHubTerminal_Companion.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/RealityHub/Terminals/DA_RealityHubTerminal_DirectorForecaster.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/RealityHub/Terminals/DA_RealityHubTerminal_Graveyard.uasset -filter -diff -merge -text
+/Content/ProjectR/Data/RealityHub/Terminals/DA_RealityHubTerminal_TrainingSimulator.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/BP_RealityHubHUD.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubCassetteSlot.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubCompanionTerminal.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubDirectorForecaster.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubGraveyard.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubProgressionPanel.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubRoot.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubTrainingReturn.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/RealityHub/WBP_RealityHubTrainingSimulator.uasset -filter -diff -merge -text
+/Content/ProjectR/Blueprints/GameModes/BP_RealityGameMode.uasset -filter -diff -merge -text

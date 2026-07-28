@@ -517,3 +517,11 @@ Commit：
 - 纠正实施期的暂存表述：v0.4.4 已由 `4390afa`（`v0.4.4 Add meta progression trees`）正式提交，`main` 与 `origin/main` 同步。
 - 补齐 Progression 数据合同与 ADR-031；从既有实施期证据生成 `Saved/AutomationReports/v044-final-report-20260728/v044final-None/result.json`，未重跑 Build、Automation、PIE 或 MCP。
 - v0.5.0 以单一合同、单一完成门和唯一功能提交交付。RealityHub 只能通过既有 Account/RunState/Save/Progression/Companion/Dialogue/Director 的公开值型 API 集成；剧情、任务内容、MemoryFragments、网络和真实 Provider 保留给后续所有者版本。
+
+# 2026-07-28 - v0.5.0 Reality Hub terminals（implementation accepted）
+
+- 新增 GameInstance 所有的值型 `UPRRealityHubSubsystem`、固定终端/身份合同、本地确定性预报、只读 Hub HUD/Widget，以及仅限 Hub 发起 CombatGym 训练会话的瞬态返回控件。既有 Save、Account、RunState、Progression、Director、Dialogue、Combat、QTE、Companion、地图、Input、Tag、Config 与 Save Schema 均未修改。
+- Unreal MCP 创建五个封闭终端 DataAsset、Registry、Hub HUD 与七个展示 Widget；唯一既有 Package 修改为 `BP_RealityGameMode.HUDClass`。精确保存、warnings-as-errors Widget 编译、重启回读和 16 个范围内 Package 的 Dirty=0 均 PASS。因为官方工具没有 WidgetTree 构建能力，新增 no-argument、editor-only 的固定 Manifest Toolset。
+- 最终 BuildEditor `v050trainingreturnbuild1` PASS；`ProjectR.RealityHub` 3/3 PASS。全量 `ProjectR` runner 完成 119 项；其中三项需要 GameInstance 的 Debug 用例已按合同 `-game` runner 重跑，`ProjectR.Debug` 12/12 PASS。最终 Data Validation 检查 521 assets，0 errors；唯一 warning 是引擎 MCP 许可提示。
+- 固定 RealityHub PIE 显示全部终端和状态文本；用户完成终端状态、训练往返与返回路径的人工 runbook，并回复 `PASS`。最终汇总证据：`Saved/AutomationReports/v050finalreport20260728b/v050final-None/result.json`。
+- Future Compatibility Review PASS：v0.5.1 仅提供 Quest/Dialogue Provider 内容；v0.5.2 仅提供 MemorySummary/MemoryFragments 来源；v0.6.x 仅注册章节内容；v0.8.4 保持 PRSV A/B 同步；v0.9.3 回归 Hub 旅行、离线 fallback、Save 兼容、清理与可访问性。
