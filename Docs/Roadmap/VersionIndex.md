@@ -10,7 +10,7 @@ date: "2026-07-10"
 `E:/MyWork/ProjectR_Design/CodexReady_v6/02_Roadmap/ProjectR_Codex_Executable_Roadmap_v6.md`
 与版本依赖矩阵生成并复核。同名 PDF 仅作归档核对，旧 v5 路线不再作为新合同来源。
 
-已生成合同范围：v0.0.0–v0.4.4。
+已生成合同范围：v0.0.0–v0.5.1。
 
 | 版本 | 阶段 | 名称 | 状态 | 前置 | 独立任务合同 |
 |---|---|---|---|---|---|
@@ -41,8 +41,8 @@ date: "2026-07-10"
 | v0.4.2 | 首脑法令、肉鸽与 Meta 成长 | 房间系统、事件房和奖励插件 | Completed | v0.4.1 | Versions/v0.4.2.md |
 | v0.4.3 | 首脑法令、肉鸽与 Meta 成长 | 账号创建、死亡删号、通关删号和墓园 | Completed | v0.4.2 | Versions/v0.4.3.md |
 | v0.4.4 | 首脑法令、肉鸽与 Meta 成长 | Meta 成长：技能树、AI 树、羁绊树 | Completed | v0.4.3 | Versions/v0.4.4.md |
-| v0.5.0 | 现实据点、任务和记忆 | 现实据点完整 UI 和交互终端 | In Progress | v0.4.4 | Versions/v0.5.0.md |
-| v0.5.1 | 现实据点、任务和记忆 | 三名 AI 个人任务第一章 | Planned | v0.5.0 | 进入阶段前生成 |
+| v0.5.0 | 现实据点、任务和记忆 | 现实据点完整 UI 和交互终端 | Completed | v0.4.4 | Versions/v0.5.0.md |
+| v0.5.1 | 现实据点、任务和记忆 | 三名 AI 个人任务第一章 | In Progress | v0.5.0 | Versions/v0.5.1.md |
 | v0.5.2 | 现实据点、任务和记忆 | 记忆摘要与 LLM 对话安全层 | Planned | v0.5.1 | 进入阶段前生成 |
 | v0.6.0 | 章节内容第一轮 | 第一章：配给官内容包 | Planned | v0.5.2 | 进入阶段前生成 |
 | v0.6.1 | 章节内容第一轮 | 第二章：守夜者内容包 | Planned | v0.6.0 | 进入阶段前生成 |

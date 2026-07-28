@@ -525,3 +525,11 @@ Commit：
 - 最终 BuildEditor `v050trainingreturnbuild1` PASS；`ProjectR.RealityHub` 3/3 PASS。全量 `ProjectR` runner 完成 119 项；其中三项需要 GameInstance 的 Debug 用例已按合同 `-game` runner 重跑，`ProjectR.Debug` 12/12 PASS。最终 Data Validation 检查 521 assets，0 errors；唯一 warning 是引擎 MCP 许可提示。
 - 固定 RealityHub PIE 显示全部终端和状态文本；用户完成终端状态、训练往返与返回路径的人工 runbook，并回复 `PASS`。最终汇总证据：`Saved/AutomationReports/v050finalreport20260728b/v050final-None/result.json`。
 - Future Compatibility Review PASS：v0.5.1 仅提供 Quest/Dialogue Provider 内容；v0.5.2 仅提供 MemorySummary/MemoryFragments 来源；v0.6.x 仅注册章节内容；v0.8.4 保持 PRSV A/B 同步；v0.9.3 回归 Hub 旅行、离线 fallback、Save 兼容、清理与可访问性。
+
+# 2026-07-28 - v0.5.0 正式收尾与 v0.5.1 合同转换
+
+- v0.5.0 已由 `6546e78`（`v0.5.0 Build complete reality hub terminals`）正式提交；收尾审计确认 `main` 与 `origin/main` 同步、工作区干净。
+- 依据 `Saved/AutomationReports/v050finalreport20260728b/v050final-None/result.json` 的既有 PASS 证据关闭 v0.5.0：BuildEditor、RealityHub 3/3、历史 runner 119 项、合同 `-game` Debug 12/12、Data Validation、MCP 精确保存/重启/Dirty=0、固定 PIE、人工验收和 FCR 均已完成。本次没有重跑产品验证，也没有补造结果。
+- ADR-032 与 Reality Hub terminal contract 与最终报告一致；v0.5.0 未新增阻断 KnownIssue，既有 Open/Accepted Risk 项保持原状态。
+- 新建单一 `Docs/Versions/v0.5.1.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.5.1 / In Progress`。本次仅完成合同转换，没有实施 v0.5.1 C++、Save Schema、测试或 UE Package，没有调用 Unreal MCP，也没有运行 Build、Automation、Data Validation 或 PIE。
+- v0.5.1 保持一个公共版本、一个完成门和一个未来功能提交；外部路线中缺少现有稳定事实或 QTE ID 的内容按 E-033 使用稳定事实代理、entitlement-only 投影和窄 Hub UI 接缝，不改写冻结上游。
