@@ -114,6 +114,12 @@ date: "2026-07-10"
 | E-032 | v6 的 v0.5.0 只列出现实据点五终端，当前仓库则没有 Hub UI、手动 Dialogue/Repair、QTE 训练启动或 Director 预报 dry-run API；用户要求一次完整交付且禁止改写冻结上游 | v0.5.0 使用单一合同、单一完成门和唯一功能提交。`UPRRealityHubSubsystem` 只编排既有公开 API：卡带槽经 Save/RunState 创建账号并进入网络；墓园只读；训练只往返固定 CombatGym；预报器使用本地值型画像与固定 Registry、绝不调用 Provider/读取 Response/Apply Rule；成长面板只经 Progression 查询/解锁 API。Dialogue、Repair、Quest、MemorySummary 与 DialogueProvider 仅提供明确不可执行的 typed extension point，个人任务/剧情留给 v0.5.1，记忆/Provider 内容留给 v0.5.2。Hub 不新增地图、Tag、Save Schema、网络或任意输入入口 | 在没有扩大上游所有权的前提下让五个终端均可操作、失败可见、可返回且可验证，并为后续 Quest、MemorySummary 和 Provider 留下稳定边界 | Active for v0.5.0 |
 | E-033 | v6/产品设计要求六项个人任务及 QTE/台词奖励，但当前没有“低概率事件概率”“非最优救人路线”“撤离关键资源”“删除回声房取回碎片”等完整权威事实；产品文案中的“不退火线”“删除回声”也不属于现有十二项 P0 QTE。v0.5.0 只留空 Quest/DialogueProvider seam，Hub Root 尚未承载可执行的 Companion Quest 内容 | v0.5.1 使用单一合同、单一完成门和唯一功能提交。六项目标以既有公开值事实作最小稳定代理：Commission/Fulfill、DivergenceEvacuation、EliteAudit+低血+Boss、撤离+RewardId、Rule.DeleteEcho+反证碎片、Hub 实际展示五条墓园记录。QTE 奖励只投影到现有 `Axiom_CooperativeRefutation`、`Kindle_ReverseBurnRescue`、`Null_GarbageCollection` entitlement，不门控或修改 QTE。UI 只原位修改 `WBP_RealityHubRoot` 与 `WBP_RealityHubCompanionTerminal`，不改 `UPRRealityHubSubsystem` 所有权或公共输入。任务以 Schema 5 最小追加持久化，Memory/LLM/新 QTE/路线/删除回声房继续留给所属未来版本 | 在不伪造缺失玩法、不重写冻结上游的前提下完整交付第一章任务，并将产品语义映射为可测试、可迁移、可回滚的稳定事实 | Active for v0.5.1 |
 
+# v0.5.2 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.5.2 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-034 | v6 将“每轮生成 RunSummary”、长期记忆、`memory_refs`/带关系 Delta 的对话选项、LLM 安全层和 MemoryFragments 来源并列；但 `FPRRunSummary` 已由 v0.4.3 RunState 所有，v0.5.1 只允许公开 Completed/entitlement/LineId 消费，Progression 是 MemoryFragments 余额所有者，仓库也没有正式网络端点、凭据或远程模型合同。用户要求 v0.5.2 一次完整交付，不拆分子版本或中间功能提交 | v0.5.2 使用单一合同、单一完成门和唯一功能提交。`UPRMemorySubsystem` 只从 `FPRAccountDeletedEvent.Record.Summary` 与公开值事件派生有界 `FPRMemorySummary`，不创建第二套 RunSummary、不修改 RunState。Provider 输出严格只允许 `scene`、`companion_id`、`emotion`、`summary`、`player_options` 五字段；`memory_refs` 留在本地请求上下文，Player options 只能是 Persona Registry 的固定 ID，不携带关系 Delta、Tag、效果或自由指令。每个首次成功持久化、非 `InterruptedRecovery` 且含合法 KeyEventId 的 SummaryId 原子奖励 1 个 MemoryFragment；Progression 继续拥有余额，只增加 MemorySubsystem friend 可调用的私有单枚入账投影，重复/失败/迁移旧档不补发。Schema 6 以同一 A/B 快照原子暂存 Memory 与 Progression，落盘成功前不发布摘要或余额。默认仅实现 typed Provider boundary、Validator、确定性本地 Mock 与离线 fallback，不创建 HTTP Provider、Transport、端点、API Key、远程模型或客户端凭据 | 保持 RunState、Quest、Progression、Save 和 Dialogue 的冻结所有权，避免重复摘要权威、任意经济入口与生成式选项越权，同时满足长期有界、离线可用、可验证和未来 Provider 可替换边界 | Active for v0.5.2 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

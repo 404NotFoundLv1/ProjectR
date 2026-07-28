@@ -541,3 +541,11 @@ Commit：
 - MCP 创建七个闭合 Quest DataAsset，并仅原位修改 Root/CompanionTerminal 两个 Widget。官方 WidgetTree 操作无法建立稳定变量 GUID 后，以 ADR-033 的最小无参数 editor-only Toolset 配置这两个准确 Package；没有扩展任何运行时或任意资产写入口。九个 Package 都通过普通 Git 体积门（总 118,228 bytes、每项不超过 256 KiB）。
 - BuildEditor、Quest 4/4、Save 5/5、历史 119 项（Debug 按 `-game` 12/12）、Data Validation 0 error、精确保存/重启回读/Dirty=0 与固定运行 fixture 均 PASS。用户在隔离 fixture 的六任务和五墓园记录预览后回复 `PASS`。最终报告为 `Saved/AutomationReports/v051-final-report-20260729/v051final-None/result.json`。
 - FCR PASS：v0.5.2 只能消费 Completed 快照、固定 entitlement 与 LineId；MemorySummary、MemoryFragments、Provider/Validator、网络与 LLM 仍为 v0.5.2 范围。未新增阻断 KnownIssue。
+
+# 2026-07-29 - v0.5.1 正式收尾与 v0.5.2 合同转换
+
+- v0.5.1 已由 `b0e1c93`（`v0.5.1 Add companion personal quests chapter one`）正式提交；收尾审计确认 `main` 与 `origin/main` 同步、工作区干净。
+- 依据 `Saved/AutomationReports/v051-final-report-20260729/v051final-None/result.json` 的既有 PASS 证据关闭 v0.5.1：BuildEditor、Quest 4/4、Save 5/5、历史回归 119 项、合同 `-game` Debug 12/12、Data Validation、MCP 精确保存/重启回读/Dirty=0、固定运行 fixture、普通 Git 资产体积门、人工验收和 FCR 均已完成。本次未补造或重跑 Build、Automation、Data Validation、MCP 或 PIE。
+- ADR-033 与 Companion Quest 数据合同和最终报告一致；v0.5.1 未新增阻断 KnownIssue，既有问题状态保持不变。
+- 新建单一 `Docs/Versions/v0.5.2.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.5.2 / In Progress`。E-034 固定复用 RunState-owned `FPRRunSummary`、五字段 Provider 输出、固定 PlayerOptionId、单枚幂等 MemoryFragments 来源和无真实网络/凭据边界。
+- 本次仅执行六份文档的版本转换，没有开始 v0.5.2 C++、Save Schema 6、测试、配置、插件或 UE Package 开发，没有访问存档，也没有创建 v0.5.2 功能提交。v0.5.2 保持一个公共版本、一个完成门和唯一未来功能提交。
