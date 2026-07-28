@@ -511,3 +511,9 @@ Commit：
 - 全量 116 项历史路径均已取得 PASS 证据：通用 Editor `-NullRHI` 运行通过其余 111 项；`ProjectR.Debug` 以合同规定的 `-game -NullRHI` 入口 12/12 PASS；`ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression` 以独立可渲染 Editor PIE入口 1/1 PASS。KI-023 已关闭。
 - Future Compatibility Review 完成：v0.5.0 仅消费查询/解锁 API，v0.5.1 仅消费稳定资格，v0.5.2 以冻结余额字段建立受控 MemoryFragments 来源；后续章节、难度、Steam Cloud、QA/Release 只消费 `FPRProgressionRunSnapshot`、稳定 NodeId 与既有 PRSV A/B 语义。
 - 所有客观完成门均 PASS；用户已对固定只读三树摘要回复 `PASS`，人工清晰度完成门关闭。未创建提交、未推进 `CURRENT_VERSION`。
+
+# 2026-07-28 - v0.4.4 正式收尾与 v0.5.0 合同转换
+
+- 纠正实施期的暂存表述：v0.4.4 已由 `4390afa`（`v0.4.4 Add meta progression trees`）正式提交，`main` 与 `origin/main` 同步。
+- 补齐 Progression 数据合同与 ADR-031；从既有实施期证据生成 `Saved/AutomationReports/v044-final-report-20260728/v044final-None/result.json`，未重跑 Build、Automation、PIE 或 MCP。
+- v0.5.0 以单一合同、单一完成门和唯一功能提交交付。RealityHub 只能通过既有 Account/RunState/Save/Progression/Companion/Dialogue/Director 的公开值型 API 集成；剧情、任务内容、MemoryFragments、网络和真实 Provider 保留给后续所有者版本。

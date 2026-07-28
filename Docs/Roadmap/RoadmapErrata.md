@@ -111,6 +111,7 @@ date: "2026-07-10"
 | 编号 | 路线/接口缺口 | v0.4.4 决策 | 原因 | 当前状态 |
 |---|---|---|---|---|
 | E-031 | v6 将 Meta 成长的内部步骤与技能、AI、羁绊效果并列，但当前反证碎片归 v0.4.3 AccountPersistence，记忆碎片没有稳定来源；技能、QTE、濒死分歧、关系、RealityHub UI和长期记忆又各有冻结所有者 | v0.4.4 使用单一合同、单一完成门和唯一功能提交，不创建子版本、检查点或中间功能提交。`CounterproofFragments` 保留在 v0.4.3 的 AccountPersistence；RunState拥有奖励来源，ProgressionSubsystem只消费余额并拥有节点解锁，不迁移或重命名字段。Schema 4新增 `MemoryFragments`余额并安全默认0，但本版本不产出记忆碎片，正式节点的 MemoryFragment Cost均为0；未来来源必须通过独立合同和递增迁移。节点分为“下一轮实际效果”和“稳定资格”：Health、Energy与Companion支援只在下一轮生效；技能槽、技能强化、QTE、濒死保护、过载修复和羁绊节点只持久化资格，不修改当前六技能、既有QTE、濒死分歧或关系行为。v0.5.0负责RealityHub树界面，v0.5.1消费剧情/语音/连携资格，v0.5.2才建立记忆摘要及经批准的记忆碎片来源。活动运行期间的解锁不改变当前RunSnapshot | 保持货币、Save和上游玩法的单一所有权，避免凭空造币或以Meta版本重写已经发布的战斗、QTE、分歧和关系合同，同时为下游UI、剧情及记忆系统提供稳定资格面 | Active for v0.4.4 |
+| E-032 | v6 的 v0.5.0 只列出现实据点五终端，当前仓库则没有 Hub UI、手动 Dialogue/Repair、QTE 训练启动或 Director 预报 dry-run API；用户要求一次完整交付且禁止改写冻结上游 | v0.5.0 使用单一合同、单一完成门和唯一功能提交。`UPRRealityHubSubsystem` 只编排既有公开 API：卡带槽经 Save/RunState 创建账号并进入网络；墓园只读；训练只往返固定 CombatGym；预报器使用本地值型画像与固定 Registry、绝不调用 Provider/读取 Response/Apply Rule；成长面板只经 Progression 查询/解锁 API。Dialogue、Repair、Quest、MemorySummary 与 DialogueProvider 仅提供明确不可执行的 typed extension point，个人任务/剧情留给 v0.5.1，记忆/Provider 内容留给 v0.5.2。Hub 不新增地图、Tag、Save Schema、网络或任意输入入口 | 在没有扩大上游所有权的前提下让五个终端均可操作、失败可见、可返回且可验证，并为后续 Quest、MemorySummary 和 Provider 留下稳定边界 | Active for v0.5.0 |
 
 # 已接受的架构决策
 

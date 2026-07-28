@@ -118,6 +118,21 @@ date: "2026-07-10"
 - `/Game/ProjectR/Effects/GE_DefaultAttributes` 是默认值的正式 GameplayEffect。它为 Instant、11 个 Override Modifier；C++ 安全默认值必须与 GE 保持一致，并由自动化防止漂移。
 - 默认 GE 只在 Authority 上成功应用一次，成功状态归 PlayerState。缺失 Class、无效 Spec 或应用失败不消费重试；UE5.8 Instant GE 必须用 `FActiveGameplayEffectHandle::WasSuccessfullyApplied()` 判定成功，不能使用 `IsValid()`。
 - `APRPlayerCharacter` 在 PossessedBy/OnRep_PlayerState 重新初始化 ActorInfo，幂等绑定 MoveSpeed 并立即同步 CharacterMovement；旧 Pawn 只有仍是 ASC 当前 Avatar 时才可清除 ActorInfo。
+
+# Progression、Meta 快照与下一轮效果合同
+
+**所有者**：`UPRProgressionSubsystem`（GameInstance）；持久化由 `UPRSaveSubsystem` 的既有 A/B 写后验证事务完成；反证碎片来源和账号结算仍属于 `UPRRunStateSubsystem`。
+
+**建立版本**：v0.4.4。
+
+**消费者**：v0.5.0 RealityHub、v0.5.1 entitlement 消费者、v0.5.2 MemoryFragments 来源、后续章节/难度/平台/QA。
+
+- Save Schema 4 只追加 `FPRProgressionPersistenceData`：`MemoryFragments`、按 `FPrimaryAssetId` 字典序的 `UnlockedNodeIds`、`UnlockSequence`。`MemoryFragments` 默认 0，v0.4.4 不产出它；`CounterproofFragments` 永远保留在 `FPRAccountPersistenceData`。
+- `FPRProgressionSnapshot` 是只读持久化投影，包含 Counterproof/Memory 余额、已解锁 NodeId 和序列；`FPRProgressionRunSnapshot` 是 StartRun 时冻结的只读投影，包含 Health/Energy 加成、Support 间隔倍率、稳定 entitlement ID 与序列。
+- 唯一公开解锁入口是 `RequestUnlockNode` 与 `RetryPendingUnlock`；查询只能使用 `GetProgressionSnapshot`、`GetRunSnapshot`、`IsNodeUnlocked` 和三个原生 delegate。不得公开任意余额、节点、效果、Save Slot 或 Blueprint 写入口。
+- 解锁必须先以完整 Account/Progression 值分区暂存，并在 A/B 写入及回读验证成功后才扣减余额、更新快照或发布事件。失败、重复请求、重复回调和已解锁 Node 均不得重复扣费。
+- Health、Energy 与 AISupport 只影响下一次成功 StartRun 的会话投影；其余节点仅产生稳定 entitlement。活动 Run 不得因解锁而改变；旅行、Run 结束、Profile 切换、失败回滚和 Deinitialize 必须清理会话 GE、Support 策略、请求与 delegate。
+- 运行时/Save 不得保存 UObject、ASC、Spec/Effect Handle、Actor、Timer、Delegate、弱引用或原始事件。Schema 1→2→3→4 必须逐步迁移；A/B 恢复、损坏恢复、未来版本拒绝及旧客户端不覆盖未来数据的 Save 合同保持不变。
 - v0.1.0 的输入、空中反向、0.12 秒 Mesh 转向、Y 平面和固定侧视相机继续作为强制回归合同。
 - v0.2.0-A 只为 `State.Stunned` 增加 PlayerSkill 活动 Ability 的释放/取消门；Dead、Revive、Passive、Avatar 替换、Mixed replication、11 项复制属性和 transient `IncomingDamage` 合同不变。
 

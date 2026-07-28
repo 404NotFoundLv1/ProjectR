@@ -40,8 +40,8 @@ date: "2026-07-10"
 | v0.4.1 | 首脑法令、肉鸽与 Meta 成长 | 实现 12 条可执行法令 | Completed | v0.4.0 | Versions/v0.4.1.md |
 | v0.4.2 | 首脑法令、肉鸽与 Meta 成长 | 房间系统、事件房和奖励插件 | Completed | v0.4.1 | Versions/v0.4.2.md |
 | v0.4.3 | 首脑法令、肉鸽与 Meta 成长 | 账号创建、死亡删号、通关删号和墓园 | Completed | v0.4.2 | Versions/v0.4.3.md |
-| v0.4.4 | 首脑法令、肉鸽与 Meta 成长 | Meta 成长：技能树、AI 树、羁绊树 | In Progress | v0.4.3 | Versions/v0.4.4.md |
-| v0.5.0 | 现实据点、任务和记忆 | 现实据点完整 UI 和交互终端 | Planned | v0.4.4 | 进入阶段前生成 |
+| v0.4.4 | 首脑法令、肉鸽与 Meta 成长 | Meta 成长：技能树、AI 树、羁绊树 | Completed | v0.4.3 | Versions/v0.4.4.md |
+| v0.5.0 | 现实据点、任务和记忆 | 现实据点完整 UI 和交互终端 | In Progress | v0.4.4 | Versions/v0.5.0.md |
 | v0.5.1 | 现实据点、任务和记忆 | 三名 AI 个人任务第一章 | Planned | v0.5.0 | 进入阶段前生成 |
 | v0.5.2 | 现实据点、任务和记忆 | 记忆摘要与 LLM 对话安全层 | Planned | v0.5.1 | 进入阶段前生成 |
 | v0.6.0 | 章节内容第一轮 | 第一章：配给官内容包 | Planned | v0.5.2 | 进入阶段前生成 |

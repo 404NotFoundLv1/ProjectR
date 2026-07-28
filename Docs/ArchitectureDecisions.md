@@ -401,6 +401,20 @@ date: "2026-07-10"
 
 **验证**：BuildEditor、`ProjectR.Account`、`ProjectR.Save`、Schema/A-B 原生测试、六个 Package 的 MCP 精确保存/重启回读/Dirty=0 与固定完成、死亡、撤离、离开、中断恢复、最终写失败 PIE 均已自动验证；因本版本明确不提供账号 UI 或公开写入口，人工账号循环预览已由用户明确豁免。
 
+# ADR-031 - Progression is a verified next-run projection
+
+**状态**：Accepted（v0.4.4 closeout）。
+
+**背景**：Meta 成长需要消费 v0.4.3 的 CounterproofFragments，但 RunState 已拥有奖励来源和账号持久化，六项 Ability、QTE、Divergence、Companion Relationship 及 Save A/B 均已冻结。直接写 AttributeSet、在 Widget 中购买、复制余额或在活动 Run 即时生效都会破坏已发布合同。
+
+**决策**：`UPRProgressionSubsystem` 是节点 Registry、验证、余额消费、原子解锁、只读快照和下一轮 Modifier 的唯一所有者。它只通过既有 `UPRSaveSubsystem::StageProgressionTransaction` 持久化完整值分区，并且只在 A/B 写后验证成功后发布。Schema 4 追加安全默认的 MemoryFragments 与解锁集合；CounterproofFragments 保持 AccountPersistence 唯一所有权。Health、Energy 与 AISupport 从冻结的 `FPRProgressionRunSnapshot` 产生可清理会话效果；其余节点只形成 entitlement。
+
+**后果**：v0.5.0 只能经查询/解锁 API 显示 Hub 成长面板，不能读取 Save 内部或直接应用节点；v0.5.1 只能消费 Story/Voice/AdvancedCombo entitlement；v0.5.2 才能建立 MemoryFragments 来源。活动 Run、上游 Combat/QTE/Dialogue/Relationship、GameplayTag、Config、地图和 A/B 存储语义不变。
+
+**迁移/回滚**：Schema 必须严格 1→2→3→4；未来版本拒绝继续阻止旧客户端覆盖。回滚只反向撤销 v0.4.4 Progression 源码、Schema 4 迁移、十五个 Package、精确普通 Git 例外、Toolset 与文档；删除已保存 Package 仍需逐项批准。
+
+**验证**：实现提交 `4390afa`；既有 v0.4.4 Build、Progression/Save 自动化、固定 Seed 41044 PIE、15 Package MCP 回读/重启/Dirty=0、KI-023 关闭以及用户三树摘要 `PASS` 汇总于 `Saved/AutomationReports/v044-final-report-20260728/v044final-None/result.json`。
+
 # ADR 模板
 
 ```text
