@@ -149,6 +149,17 @@ date: "2026-07-10"
 - UI only renders snapshots and dispatches fixed C++ button delegates. Widget graphs and DataAssets do not own terminal routing, account mutation, forecast evaluation, progression application, event settlement, completion, or persistence.
 - Quest, MemorySummary, and DialogueProvider are empty typed extension seams in v0.5.0. v0.5.1 may add Quest/Dialogue content; v0.5.2 may add memory sources/summaries. Neither may take ownership of Hub, Account, Save, Progression, or Director contracts.
 
+# 12. Companion Quest contract
+
+**Owner:** `UPRCompanionQuestSubsystem` (`UGameInstanceSubsystem`). **Established:** v0.5.1. **Direct consumers:** the two fixed RealityHub quest widgets, the fixed local dialogue projection, v0.5.2 memory consumers, later chapter content, Steam Cloud and QA.
+
+- The closed Registry accepts exactly six sorted QuestIds. `FPRCompanionQuestRecord`, snapshot, operation event and entitlement snapshot are bounded value types: at most six records sorted by QuestId and at most five sorted, unique EvidenceIds per record. Unknown IDs, invalid states and duplicate records are rejected rather than interpreted.
+- The only lifecycle is `Locked -> Available -> Active -> PersistencePending -> Completed`; persistence failure exposes `ReadyToRetry`. The subsystem alone binds public Room, Divergence, Account/RunState, Companion and Progression value events, stages the Profile-local transaction, and publishes completion, sequence and entitlement only after A/B write-back verification. Repeated events, callbacks, confirmations and retries are idempotent.
+- Schema 5 adds only `FPRCompanionQuestPersistenceData`. Schema migration remains ordered `1->2->3->4->5`; Schema 4 loads a safe empty quest partition. A/B selection, corruption recovery, future-version rejection and old-client non-overwrite semantics are unchanged. Runtime delegates, requests, widgets, timers, actors, UObject references and raw event logs are never saved.
+- Eligibility reads only public values: loaded Profile, matching Companion Trust >= 60, `BondStory`, and for QTE/Line projections respectively `BondAdvancedCombo`/`BondVoice`. Fixed evidence maps to the six contractual task facts; it never writes Relationship, Progression balances, Graveyard, Account lifecycle or upstream runtime state.
+- `QTE:*` is a read-only entitlement projection only and does not add, gate or alter the twelve P0 QTEs. `Line:*` returns only one of the six fixed local lines and never queues dialogue, generates text or reads a dialogue log. The RememberMe confirmation remains no-argument and is enabled only after the existing read-only graveyard projection shows five unique records.
+- The Hub root may attach only the native quest panel and the Companion terminal may render snapshots plus fixed requests. Neither Widget Blueprint, DataAsset nor RealityHub subsystem owns quest routing, settlement, persistence or authority. v0.5.2 may consume only completed snapshots, entitlement IDs and LineIds; it may not consume raw Evidence or use them as a MemoryFragments source.
+
 # 1. 统一伤害与 CombatEvent 合同
 
 **所有者**：Combat。  

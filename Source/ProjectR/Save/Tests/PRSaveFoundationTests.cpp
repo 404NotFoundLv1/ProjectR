@@ -227,7 +227,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 {
 	const UPRSaveGame* SaveGame = GetDefault<UPRSaveGame>();
-	TestEqual(TEXT("Current schema is four"), UPRSaveGame::CurrentSchemaVersion, 4);
+	TestEqual(TEXT("Current schema advances to five for companion quests"), UPRSaveGame::CurrentSchemaVersion, 5);
 	TestEqual(TEXT("Minimum migratable schema is one"), UPRSaveGame::MinimumMigratableVersion, 1);
 	TestEqual(TEXT("Schema defaults missing"), SaveGame->SchemaVersion, 0);
 	TestEqual(TEXT("Revision defaults zero"), SaveGame->SaveRevision, int64{0});
@@ -312,15 +312,16 @@ bool FPRSaveMigrationTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Duplicate source migration is rejected"), Registry.RegisterStep(1, 2, [](UPRSaveGame&) { return true; }));
 	TestTrue(TEXT("Migration 2 to 3 is accepted"), Registry.RegisterStep(2, 3, [](UPRSaveGame& Save) { Save.SchemaVersion = 3; return true; }));
 	TestTrue(TEXT("Migration 3 to 4 is accepted"), Registry.RegisterStep(3, 4, [](UPRSaveGame& Save) { Save.SchemaVersion = 4; return true; }));
+	TestTrue(TEXT("Migration 4 to 5 is accepted"), Registry.RegisterStep(4, 5, [](UPRSaveGame& Save) { Save.SchemaVersion = 5; return true; }));
 
 	UPRSaveGame* Source = PRSaveAutomation::MakeSave(7);
 	Source->SchemaVersion = 1;
 	UPRSaveGame* Migrated = nullptr;
-	TestEqual(TEXT("Strict migration succeeds"), Registry.Migrate(*Source, 4, Migrated), EPRSaveResult::Success);
+	TestEqual(TEXT("Strict migration succeeds"), Registry.Migrate(*Source, 5, Migrated), EPRSaveResult::Success);
 	TestNotNull(TEXT("Migration returns a copy"), Migrated);
 	if (Migrated)
 	{
-		TestEqual(TEXT("Migrated schema reached target"), Migrated->SchemaVersion, 4);
+		TestEqual(TEXT("Migrated schema reached target"), Migrated->SchemaVersion, 5);
 		TestEqual(TEXT("Migrated revision preserved"), Migrated->SaveRevision, Source->SaveRevision);
 		TestEqual(TEXT("Migrated profile preserved"), Migrated->Profile.ProfileId, Source->Profile.ProfileId);
 	}

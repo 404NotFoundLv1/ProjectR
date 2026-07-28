@@ -349,6 +349,20 @@ bool UPRSaveSubsystem::GetLoadedProfileSnapshot(FPRProfileSaveData& OutProfile) 
 	return true;
 }
 
+bool UPRSaveSubsystem::GetCompanionQuestPersistenceSnapshot(FPRCompanionQuestPersistenceData& OutPersistence) const
+{
+	if (!IsInGameThread() || !LoadedSave || !FPRCompanionQuestPersistenceContract::IsCanonical(LoadedSave->Profile.CompanionQuestPersistence)) return false;
+	OutPersistence = LoadedSave->Profile.CompanionQuestPersistence;
+	return true;
+}
+
+bool UPRSaveSubsystem::StageCompanionQuestPersistence(const FPRCompanionQuestPersistenceData& Persistence)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready || !FPRCompanionQuestPersistenceContract::IsCanonical(Persistence)) return false;
+	StagedCompanionQuestPersistence = Persistence;
+	return true;
+}
+
 bool UPRSaveSubsystem::StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records)
 {
 	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
@@ -544,7 +558,8 @@ void UPRSaveSubsystem::StartActiveSave()
 		!LoadedSave->Profile.ProfileId.IsValid() ||
 		LoadedSave->SchemaVersion != UPRSaveGame::CurrentSchemaVersion ||
 		!FPRAccountPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.AccountPersistence) ||
-		!FPRProgressionPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ProgressionPersistence))
+		!FPRProgressionPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ProgressionPersistence) ||
+		!FPRCompanionQuestPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.CompanionQuestPersistence))
 	{
 		CompleteActiveSave(EPRSaveResult::InvalidRequest);
 		return;
@@ -662,6 +677,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 	LoadedSave = ActiveSave->Snapshot.Get();
 	StagedAccountPersistence.Reset();
 	StagedProgressionPersistence.Reset();
+	StagedCompanionQuestPersistence.Reset();
 	LoadedGeneration = ActiveSave->TargetGeneration;
 	bNeedsResave = false;
 	if (LoadedGeneration == EPRSaveGeneration::A)
@@ -722,6 +738,7 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 	{
 		StagedAccountPersistence.Reset();
 		StagedProgressionPersistence.Reset();
+		StagedCompanionQuestPersistence.Reset();
 		if (TrailingSave)
 		{
 			PublishOperation(
@@ -758,6 +775,10 @@ UPRSaveGame* UPRSaveSubsystem::CaptureCurrentSnapshot() const
 	if (Snapshot && StagedProgressionPersistence.IsSet())
 	{
 		Snapshot->Profile.ProgressionPersistence = StagedProgressionPersistence.GetValue();
+	}
+	if (Snapshot && StagedCompanionQuestPersistence.IsSet())
+	{
+		Snapshot->Profile.CompanionQuestPersistence = StagedCompanionQuestPersistence.GetValue();
 	}
 	return Snapshot;
 }

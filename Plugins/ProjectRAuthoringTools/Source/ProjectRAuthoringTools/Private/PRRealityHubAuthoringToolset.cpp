@@ -3,9 +3,11 @@
 #include "PRRealityHubAuthoringToolset.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/Widget.h"
 #include "ToolsetRegistry/ToolCallAsyncResultString.h"
 #include "UI/PRRealityHubHUD.h"
 #include "UI/PRRealityHubTrainingReturnWidget.h"
@@ -19,6 +21,20 @@ struct FRoot { explicit FRoot(UToolCallAsyncResultString* In) : Value(In) { Valu
 UWidgetBlueprint* LoadWidget(const TCHAR* Path)
 {
 	return LoadObject<UWidgetBlueprint>(nullptr, Path);
+}
+
+void EnsureWidgetVariableGuids(UWidgetBlueprint* Blueprint)
+{
+#if WITH_EDITORONLY_DATA
+	if (!Blueprint) return;
+	Blueprint->ForEachSourceWidget([Blueprint](UWidget* Widget)
+	{
+		if (Widget && !Blueprint->WidgetVariableNameToGuidMap.Contains(Widget->GetFName()))
+		{
+			Blueprint->OnVariableAdded(Widget->GetFName());
+		}
+	});
+#endif
 }
 
 FText GetFixedButtonText(const FString& Name)
@@ -114,4 +130,48 @@ UToolCallAsyncResultString* UPRRealityHubAuthoringToolset::ConfigureFixedReality
 	if (!bConfigured) { Result->SetError(TEXT("Reality Hub widget configuration failed.")); return Result; }
 	Result->SetValue(TEXT("{\"status\":\"PASS\",\"configured\":8,\"saved\":false}"));
 	return Result;
+}
+
+UToolCallAsyncResultString* UPRRealityHubAuthoringToolset::ConfigureV051CompanionQuestWidget()
+{
+	UToolCallAsyncResultString* Result = NewObject<UToolCallAsyncResultString>(); PRRealityHubAuthoring::FRoot Root(Result);
+	UWidgetBlueprint* Companion = PRRealityHubAuthoring::LoadWidget(TEXT("/Game/ProjectR/UI/RealityHub/WBP_RealityHubCompanionTerminal.WBP_RealityHubCompanionTerminal"));
+	UWidgetBlueprint* HubRoot = PRRealityHubAuthoring::LoadWidget(TEXT("/Game/ProjectR/UI/RealityHub/WBP_RealityHubRoot.WBP_RealityHubRoot"));
+	if (!Companion || !Companion->WidgetTree || !HubRoot || !HubRoot->WidgetTree) { Result->SetError(TEXT("v0.5.1 Companion Terminal or Hub Root is unavailable; no package was changed.")); return Result; }
+	Companion->Modify(); UVerticalBox* Panel = Cast<UVerticalBox>(Companion->WidgetTree->RootWidget);
+	if (!Panel) { Result->SetError(TEXT("v0.5.1 Companion Terminal root is not a VerticalBox; no package was changed.")); return Result; }
+	auto AddText = [Companion, Panel](const TCHAR* Name, const TCHAR* Label)
+	{
+		if (UTextBlock* Existing = Cast<UTextBlock>(Companion->WidgetTree->FindWidget(FName(Name)))) { Existing->SetText(FText::FromString(Label)); return; }
+		UTextBlock* Text = Companion->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName(Name)); Text->SetText(FText::FromString(Label)); Panel->AddChildToVerticalBox(Text);
+	};
+	auto AddButton = [Companion, Panel](const TCHAR* Name, const TCHAR* Label)
+	{
+		UButton* Button = Cast<UButton>(Companion->WidgetTree->FindWidget(FName(Name)));
+		if (!Button) { Button = Companion->WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), FName(Name)); Panel->AddChildToVerticalBox(Button); }
+		const FString TextName = FString(Name) + TEXT("_Text"); UTextBlock* Text = Cast<UTextBlock>(Companion->WidgetTree->FindWidget(FName(*TextName)));
+		if (!Text) { Text = Companion->WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName(*TextName)); Button->AddChild(Text); }
+		Text->SetText(FText::FromString(Label));
+	};
+	AddText(TEXT("QuestStatus"), TEXT("Companion quests: select a fixed available objective."));
+	AddText(TEXT("GraveyardProjection"), TEXT("Read-only graveyard projection is unavailable until five unique records exist."));
+	AddButton(TEXT("Button_Quest_Axiom_LowProbabilitySample"), TEXT("Axiom — Low Probability Sample"));
+	AddButton(TEXT("Button_Quest_Axiom_ImperfectOptimum"), TEXT("Axiom — Imperfect Optimum"));
+	AddButton(TEXT("Button_Quest_Kindle_NoRetreatLine"), TEXT("Kindle — No Retreat Line"));
+	AddButton(TEXT("Button_Quest_Kindle_LearnToRetreat"), TEXT("Kindle — Learn To Retreat"));
+	AddButton(TEXT("Button_Quest_Null_GarbageCollection"), TEXT("Null — Garbage Collection"));
+	AddButton(TEXT("Button_Quest_Null_RememberMe"), TEXT("Null — Remember Me"));
+	AddButton(TEXT("Button_Quest_RetrySave"), TEXT("Retry quest save"));
+	AddButton(TEXT("Button_ConfirmRememberMe"), TEXT("Confirm five graveyard records viewed"));
+	HubRoot->Modify(); UVerticalBox* RootPanel = Cast<UVerticalBox>(HubRoot->WidgetTree->RootWidget);
+	if (!RootPanel || !Companion->GeneratedClass || !Companion->GeneratedClass->IsChildOf(UUserWidget::StaticClass())) { Result->SetError(TEXT("v0.5.1 Hub Root is not a VerticalBox or terminal class is unavailable; no package was changed.")); return Result; }
+	if (!HubRoot->WidgetTree->FindWidget(TEXT("CompanionQuestTerminal")))
+	{
+		const TSubclassOf<UUserWidget> TerminalClass(Companion->GeneratedClass);
+		UUserWidget* Terminal = HubRoot->WidgetTree->ConstructWidget<UUserWidget>(TerminalClass, TEXT("CompanionQuestTerminal"));
+		if (!Terminal) { Result->SetError(TEXT("v0.5.1 companion terminal could not be embedded; no package was changed.")); return Result; }
+		RootPanel->AddChildToVerticalBox(Terminal);
+	}
+	PRRealityHubAuthoring::EnsureWidgetVariableGuids(Companion); PRRealityHubAuthoring::EnsureWidgetVariableGuids(HubRoot);
+	Companion->MarkPackageDirty(); HubRoot->MarkPackageDirty(); Result->SetValue(TEXT("{\"status\":\"PASS\",\"packages\":[\"/Game/ProjectR/UI/RealityHub/WBP_RealityHubCompanionTerminal\",\"/Game/ProjectR/UI/RealityHub/WBP_RealityHubRoot\"],\"saved\":false}")); return Result;
 }

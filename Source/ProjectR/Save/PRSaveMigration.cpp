@@ -65,6 +65,16 @@ void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry)
 		Save.SchemaVersion = 4;
 		return true;
 	});
+	Registry.RegisterStep(4, 5, [](UPRSaveGame& Save)
+	{
+		if (Save.SchemaVersion != 4 || !Save.Profile.ProfileId.IsValid()
+			|| !FPRCompanionContract::AreCanonicalRelationshipRecords(Save.Profile.CompanionRelationships)
+			|| !FPRAccountPersistenceContract::IsCanonical(Save.Profile.AccountPersistence)
+			|| !FPRProgressionPersistenceContract::IsCanonical(Save.Profile.ProgressionPersistence)) return false;
+		Save.Profile.CompanionQuestPersistence = FPRCompanionQuestPersistenceContract::MakeDefault();
+		Save.SchemaVersion = 5;
+		return true;
+	});
 }
 
 EPRSaveResult FPRSaveMigrationRegistry::Migrate(

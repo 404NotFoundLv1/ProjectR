@@ -36,6 +36,8 @@ public:
 	bool StageProgressionTransaction(
 		const FPRAccountPersistenceData& AccountPersistence,
 		const FPRProgressionPersistenceData& ProgressionPersistence);
+	bool GetCompanionQuestPersistenceSnapshot(FPRCompanionQuestPersistenceData& OutPersistence) const;
+	bool StageCompanionQuestPersistence(const FPRCompanionQuestPersistenceData& Persistence);
 
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Test-only fixed PIE seam. The caller supplies only an already-isolated automation storage instance. */
@@ -122,10 +124,12 @@ private:
 	FPRSaveOperationEventNative SaveOperationEvent;
 	TOptional<FPRAccountPersistenceData> StagedAccountPersistence;
 	TOptional<FPRProgressionPersistenceData> StagedProgressionPersistence;
+	TOptional<FPRCompanionQuestPersistenceData> StagedCompanionQuestPersistence;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;
 	friend class FPRSaveFilesystemIsolationTest;
 	friend class FPRDialogueRuntimeChoiceTest;
+	friend class FPRCompanionQuestLifecycleTest;
 #endif
 };

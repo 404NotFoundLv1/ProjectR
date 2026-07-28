@@ -533,3 +533,11 @@ Commit：
 - ADR-032 与 Reality Hub terminal contract 与最终报告一致；v0.5.0 未新增阻断 KnownIssue，既有 Open/Accepted Risk 项保持原状态。
 - 新建单一 `Docs/Versions/v0.5.1.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.5.1 / In Progress`。本次仅完成合同转换，没有实施 v0.5.1 C++、Save Schema、测试或 UE Package，没有调用 Unreal MCP，也没有运行 Build、Automation、Data Validation 或 PIE。
 - v0.5.1 保持一个公共版本、一个完成门和一个未来功能提交；外部路线中缺少现有稳定事实或 QTE ID 的内容按 E-033 使用稳定事实代理、entitlement-only 投影和窄 Hub UI 接缝，不改写冻结上游。
+
+# 2026-07-29 - v0.5.1 Companion personal quests chapter one（Completed）
+
+- 新增 `UPRCompanionQuestSubsystem` 作为六项固定任务、公开值事实归并、资格、幂等完成事务、固定本地 Line/QTE entitlement 投影和生命周期的唯一所有者。任务状态和 Evidence 为有界值型；Quest 不取得 Hub、Save、Relationship、Progression、Room、RunState 或 Dialogue queue 的所有权。
+- Save Schema 5 仅追加 Profile-local `FPRCompanionQuestPersistenceData`，迁移严格保持 1→2→3→4→5 与既有 PRSV A/B 写后验证、失败不发布、重试、损坏恢复及未来版本拒绝。为适配已提升的当前 Schema，Progression 历史测试仅将“当前版本等于 4”更正为“至少 4”，仍覆盖其 Schema-4 分区，不改变 Progression 业务或迁移。
+- MCP 创建七个闭合 Quest DataAsset，并仅原位修改 Root/CompanionTerminal 两个 Widget。官方 WidgetTree 操作无法建立稳定变量 GUID 后，以 ADR-033 的最小无参数 editor-only Toolset 配置这两个准确 Package；没有扩展任何运行时或任意资产写入口。九个 Package 都通过普通 Git 体积门（总 118,228 bytes、每项不超过 256 KiB）。
+- BuildEditor、Quest 4/4、Save 5/5、历史 119 项（Debug 按 `-game` 12/12）、Data Validation 0 error、精确保存/重启回读/Dirty=0 与固定运行 fixture 均 PASS。用户在隔离 fixture 的六任务和五墓园记录预览后回复 `PASS`。最终报告为 `Saved/AutomationReports/v051-final-report-20260729/v051final-None/result.json`。
+- FCR PASS：v0.5.2 只能消费 Completed 快照、固定 entitlement 与 LineId；MemorySummary、MemoryFragments、Provider/Validator、网络与 LLM 仍为 v0.5.2 范围。未新增阻断 KnownIssue。

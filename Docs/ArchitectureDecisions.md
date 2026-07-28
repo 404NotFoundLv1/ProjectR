@@ -428,6 +428,20 @@ date: "2026-07-10"
 
 **Verification:** final BuildEditor, `ProjectR.RealityHub` 3/3, historical runner plus contractual `-game` Debug 12/12, Data Validation, exact MCP re-read/save/Dirty=0, fixed PIE, and user manual PASS are recorded in `Saved/AutomationReports/v050finalreport20260728b/v050final-None/result.json`.
 
+# ADR-033 - Companion quests use verified facts and a closed presentation seam
+
+**Status:** Accepted (v0.5.1)
+
+**Context:** The first companion chapters need six persistent, idempotent quests without changing Hub, Relationship, QTE, Dialogue queue, Progression, Room, RunState or Save A/B ownership. The official authoring surface could not construct the two exact WidgetTrees with stable Blueprint variable GUIDs; direct construction left validation-invalid variable metadata.
+
+**Decision:** `UPRCompanionQuestSubsystem` is the sole authority for the closed six-quest Registry, eligibility, evidence normalization, transaction state and fixed local dialogue/entitlement projection. It consumes only public value facts, persists a bounded Schema-5 profile partition, and publishes only after A/B write-back verification. Root and Companion-terminal presentation use the pre-approved narrow native seam. A minimal, editor-only, no-argument authoring Toolset performs only the fixed WidgetTree configuration and native bindings for those two exact packages; it exposes no gameplay or arbitrary asset operation.
+
+**Consequences:** QTE entitlement is read-only and Line entitlement returns a fixed local line only. No new QTE, dialogue queue call, free text, Save entry point, relationship reward, account mutation, map, network, LLM or MemoryFragments source exists. Future v0.5.2 consumes completed snapshots/entitlements only; it cannot read raw Evidence or private upstream state.
+
+**Migration/rollback:** Schema remains ordered `1->2->3->4->5`; Schema 4 receives an empty bounded quest partition and future-version refusal remains unchanged. Rollback reverses only the v0.5.1 Quest/UI source, Schema-5 addition/migration, tests, exact seven new packages, two sanctioned Widget modifications, precise `.gitattributes` exceptions, authoring Toolset and documents. Saved package deletion remains individually approval-gated.
+
+**Verification:** BuildEditor, Quest 4/4, Save 5/5, historical ProjectR regression with contractual Debug runner, exact package re-read/save/Dirty=0, 0-error Data Validation, fixed runtime fixtures and user manual `PASS` are recorded in `Saved/AutomationReports/v051-final-report-20260729/v051final-None/result.json`.
+
 # ADR 模板
 
 ```text

@@ -16,4 +16,6 @@ class PROJECTRAUTHORINGTOOLS_API UPRRealityHubAuthoringToolset : public UToolset
 
 public:
 	UFUNCTION(meta=(AICallable)) static UToolCallAsyncResultString* ConfigureFixedRealityHubWidgetManifest();
+	/** v0.5.1-only narrow edit: Companion terminal quest display and fixed confirmation control. */
+	UFUNCTION(meta=(AICallable)) static UToolCallAsyncResultString* ConfigureV051CompanionQuestWidget();
 };
