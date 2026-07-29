@@ -456,6 +456,20 @@ date: "2026-07-10"
 
 **Verification:** Final BuildEditor, `ProjectR.Memory` 6/6, Save 5/5, Progression 4/4, contractual `-game` Debug 12/12, exact MCP compile/save/restart/Dirty=0, 0-error Data Validation, isolated PIE and the user-approved RealityHub Memory-page review are recorded in `Saved/AutomationReports/v052-final-report-20260729/v052final-None/result.json`. The user explicitly returned `PASS` on 2026-07-29. The broad non-`-game` runner remains a documented runner-context diagnostic only; the contractual per-suite runners passed.
 
+# ADR-035 - Allocator chapter uses closed content registries and post-account proof settlement
+
+**Status:** Accepted and implemented (v0.6.0)
+
+**Context:** Chapter one needs a deterministic 6–10 Room run, three new Enemy variants, an Allocator Boss and a durable Human Anomaly Proof without changing frozen RunState, Account, Director, Combat, BossSubsystem, map, GameplayTags, global economy or existing Save partitions. The pre-existing Room flow was based on a fixed base Registry and the Enemy world subsystem was based on fixed GameplayTag prototypes; neither can safely accept free paths/classes or own chapter settlement.
+
+**Decision:** `UPRChapterSubsystem` owns only a closed Allocator projection: Chapter/Room/Enemy Registry configuration, frozen value facts, local directive/pressure, proof transaction/retry, snapshot and lifecycle. Derived Chapter Room and Enemy Registry assets enforce sorted PrimaryAssetId-only closure. On each world rebind, the Chapter subsystem configures the fixed Allocator Enemy Registry before Room encounters request its PrimaryAssetIds. The Shop remains the existing non-reroll Reward Offer; five Allocator directives remain chapter-local and never join Director. `APRAllocatorBoss` owns three bounded, reversible mechanisms and emits exactly one prototype completion. Schema 7 records bounded chapter/proof ownership only after the existing successful account termination facts have been received and the independent A/B proof transaction has written back.
+
+**Consequences:** There is no second RunSummary, no global currency/price/stock/transaction system, no new GameplayTag, no arbitrary Spawn, no map write, no direct Save or Blueprint write API, and no access to private Save/Quest/Memory/Provider state. Human Anomaly Proof is a non-consumable Profile qualification and stays distinct from CounterproofFragments and MemoryFragments. Future chapter content must use the same closed Registry seams rather than rewriting Allocator or expanding upstream ownership.
+
+**Migration/rollback:** Schema stays strictly `1->2->3->4->5->6->7`; Schema 6 receives an empty bounded Chapter partition and never receives a retroactive proof. Rollback is confined to v0.6.0 Chapter/Allocator/UI source, tests, Schema-7 and narrow Room/Enemy/Save seams, exact 37 packages, exact `.gitattributes` exceptions and v0.6.0 documentation. Any deletion of a saved package remains individually approval-gated.
+
+**Verification:** BuildEditor, fresh `ProjectR.Chapter` 5/5, Save Schema-7 5/5, contractual `-game` Debug 12/12, broad historical runner evidence, exact MCP re-read/save/restart/Dirty=0, 0-error Data Validation, fixed PIE and user manual `PASS` are recorded in `Saved/AutomationReports/v060-final-report-20260729/v060final-None/result.json`.
+
 # ADR 模板
 
 ```text

@@ -39,7 +39,9 @@ class PROJECTR_API UPRRoguelikeContentRegistryDataAsset : public UPrimaryDataAss
 
 public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
-	bool IsRegistryReady() const;
+	/** Validates the base v0.4.2 closure. Derived content registries may add a
+	 * separately validated closed content pack without changing this default. */
+	virtual bool IsRegistryReady() const;
 	const UPRRoomDataAsset* FindRoom(FPrimaryAssetId RoomId) const;
 	const UPREncounterDataAsset* FindEncounter(FPrimaryAssetId EncounterId) const;
 	const UPRRoomEventDataAsset* FindEvent(FPrimaryAssetId EventId) const;

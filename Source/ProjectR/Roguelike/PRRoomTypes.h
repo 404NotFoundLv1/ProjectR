@@ -36,6 +36,17 @@ enum class EPRRoomOperationResult : uint8
 	CompletionAlreadyPublished
 };
 
+/** Result of configuring the closed content registry/context seam. */
+UENUM(BlueprintType)
+enum class EPRRoomContentResult : uint8
+{
+	Succeeded,
+	Busy,
+	NotFound,
+	InvalidRegistry,
+	RejectedContext
+};
+
 UENUM(BlueprintType)
 enum class EPRRoomConditionKind : uint8
 {
@@ -77,6 +88,8 @@ struct PROJECTR_API FPREncounterSpawnDefinition
 	GENERATED_BODY()
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Roguelike") FGameplayTag PrototypeTag;
+	/** Chapter content uses this stable identity; exactly one prototype selector is valid. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Roguelike") FPrimaryAssetId PrototypeId;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Roguelike") FVector RelativeLocation = FVector::ZeroVector;
 };
 
@@ -104,6 +117,8 @@ struct PROJECTR_API FPRRoomRuntimeState
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") FPrimaryAssetId ActiveRoomId;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") FGuid ActiveRewardOfferId;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") bool bEncounterComplete = false;
+	/** Chapter-local, non-persistent explanation when a constrained offer used its deterministic fallback. */
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") FName ChapterOfferFallbackReason;
 };
 
 USTRUCT(BlueprintType)

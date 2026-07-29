@@ -88,6 +88,18 @@ struct PROJECTR_API FPRRewardApplicationHandle
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") bool bPersistent = false;
 };
 
+/** Read-only, value-only projection of a chosen reward for chapter mechanics. */
+USTRUCT(BlueprintType)
+struct PROJECTR_API FPRAppliedRewardSnapshot
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") FPrimaryAssetId RewardId;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") FName FamilyId;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") int32 Tier = 0;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Roguelike") FPRRewardEffectSpec EffectSpec;
+};
+
 /** Pure value rules shared by offer generation and native automation. */
 class PROJECTR_API FPRRewardContract
 {

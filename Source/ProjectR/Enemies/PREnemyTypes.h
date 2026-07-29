@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/AssetManagerTypes.h"
 #include "GameplayTagContainer.h"
 #include "Abilities/Player/PRAbilityTargetInterface.h"
 
@@ -50,6 +51,15 @@ enum class EPREnemySpawnStatus : uint8
 	InvalidTransform = 4,
 	SpawnFailed = 5,
 	Invalid = 6
+};
+
+UENUM(BlueprintType)
+enum class EPREnemyContentResult : uint8
+{
+	Succeeded,
+	Busy,
+	NotFound,
+	InvalidRegistry
 };
 
 USTRUCT(BlueprintType)
@@ -113,6 +123,9 @@ struct PROJECTR_API FPREnemyRuntimeState
 	FName CombatantId;
 	UPROPERTY(BlueprintReadOnly, Category="ProjectR|Enemy")
 	FGameplayTag PrototypeTag;
+	/** Optional Chapter-content identity; never persisted. */
+	UPROPERTY(BlueprintReadOnly, Category="ProjectR|Enemy")
+	FPrimaryAssetId PrototypeId;
 	UPROPERTY(BlueprintReadOnly, Category="ProjectR|Enemy")
 	EPRAbilityTargetMobility Mobility = EPRAbilityTargetMobility::Light;
 	UPROPERTY(BlueprintReadOnly, Category="ProjectR|Enemy")

@@ -13,6 +13,7 @@ class APREnemyProjectile;
 class UPREnemyAttackDataAsset;
 class UPREnemyPrototypeDataAsset;
 class UPREnemyPrototypeRegistryDataAsset;
+class UPREnemyContentRegistryDataAsset;
 class UNiagaraSystem;
 class USoundBase;
 
@@ -24,6 +25,13 @@ class PROJECTR_API UPREnemySubsystem : public UWorldSubsystem
 public:
 	EPREnemySpawnStatus SpawnEnemyPrototype(
 		FGameplayTag PrototypeTag,
+		const FTransform& SpawnTransform,
+		FGuid& OutSpawnId,
+		APREnemyCharacter*& OutEnemy);
+	EPREnemyContentResult ConfigureContentRegistry(FPrimaryAssetId RegistryId);
+	FPrimaryAssetId GetConfiguredContentRegistryId() const;
+	EPREnemySpawnStatus SpawnEnemyPrototype(
+		FPrimaryAssetId PrototypeId,
 		const FTransform& SpawnTransform,
 		FGuid& OutSpawnId,
 		APREnemyCharacter*& OutEnemy);
@@ -59,6 +67,9 @@ private:
 
 	TSoftObjectPtr<UPREnemyPrototypeRegistryDataAsset> RegistryAsset;
 	TMap<FGameplayTag, FLoadedPrototype> LoadedPrototypes;
+	TMap<FPrimaryAssetId, FLoadedPrototype> LoadedContentPrototypes;
+	TObjectPtr<UPREnemyContentRegistryDataAsset> ContentRegistry = nullptr;
+	FPrimaryAssetId ConfiguredContentRegistryId;
 	TMap<FGuid, TWeakObjectPtr<APREnemyCharacter>> SpawnedEnemies;
 	bool bRegistryReady = false;
 	FPREnemyStateChangedNative EnemyStateChanged;

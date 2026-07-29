@@ -227,7 +227,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 {
 	const UPRSaveGame* SaveGame = GetDefault<UPRSaveGame>();
-	TestEqual(TEXT("Current schema advances to six for bounded Memory summaries"), UPRSaveGame::CurrentSchemaVersion, 6);
+	TestEqual(TEXT("Current schema advances to seven for bounded Chapter proofs"), UPRSaveGame::CurrentSchemaVersion, 7);
 	TestEqual(TEXT("Minimum migratable schema is one"), UPRSaveGame::MinimumMigratableVersion, 1);
 	TestEqual(TEXT("Schema defaults missing"), SaveGame->SchemaVersion, 0);
 	TestEqual(TEXT("Revision defaults zero"), SaveGame->SaveRevision, int64{0});
@@ -244,6 +244,12 @@ bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 	if (AccountPersistenceProperty)
 	{
 		TestTrue(TEXT("Account persistence expresses SaveGame intent"), AccountPersistenceProperty->HasAnyPropertyFlags(CPF_SaveGame));
+	}
+	const FProperty* ChapterPersistenceProperty = FindFProperty<FProperty>(FPRProfileSaveData::StaticStruct(), GET_MEMBER_NAME_CHECKED(FPRProfileSaveData, ChapterPersistence));
+	TestNotNull(TEXT("Profile declares explicit Chapter persistence partition"), ChapterPersistenceProperty);
+	if (ChapterPersistenceProperty)
+	{
+		TestTrue(TEXT("Chapter persistence expresses SaveGame intent"), ChapterPersistenceProperty->HasAnyPropertyFlags(CPF_SaveGame));
 	}
 
 	TArray<FName> DeclaredProperties;

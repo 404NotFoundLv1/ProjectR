@@ -28,10 +28,16 @@ public:
 	EPRRoomOperationResult SelectEventChoice(FName ChoiceId);
 	EPRRoomOperationResult ConfirmSafeRoomExit();
 	EPRRoomOperationResult SelectReward(FPrimaryAssetId RewardId, FGuid& OutHandleId);
+	/** Accepts only a closed, validated Chapter registry while no session is active. */
+	EPRRoomContentResult ConfigureContentRegistry(FPrimaryAssetId RegistryId);
+	FPrimaryAssetId GetConfiguredContentRegistryId() const;
+	/** Installs the single active Chapter directive and bounded event pressure. */
+	EPRRoomContentResult ConfigureContentContext(FName ContentId, FName ChapterDirectiveId, int32 AllocationPressure);
 	bool GetRoomRuntimeState(FPRRoomRuntimeState& OutState) const;
 	/** Returns only the active encounter's registered runtime spawn handles; callers cannot mutate session ownership. */
 	void GetActiveEncounterSpawnIds(TArray<FGuid>& OutSpawnIds) const;
 	void GetAppliedRewards(TArray<FPRRewardApplicationHandle>& OutHandles) const;
+	void GetAppliedRewardSnapshots(TArray<FPRAppliedRewardSnapshot>& OutRewards) const;
 	FPRRoomStateChangedNative& OnRoomStateChanged();
 	FPRRewardOfferChangedNative& OnRewardOfferChanged();
 	FPRRoomEventResolvedNative& OnRoomEventResolved();
@@ -62,6 +68,10 @@ private:
 	void ResetSession();
 	TSoftObjectPtr<UPRRoguelikeContentRegistryDataAsset> RegistryAsset;
 	TObjectPtr<UPRRoguelikeContentRegistryDataAsset> Registry = nullptr;
+	FPrimaryAssetId ConfiguredRegistryId;
+	FName ConfiguredContentId;
+	FName ActiveChapterDirectiveId;
+	int32 ActiveAllocationPressure = 0;
 	FPRRoomRuntimeState RuntimeState;
 	FPRRewardOffer ActiveOffer;
 	TArray<FPRRewardApplicationHandle> AppliedRewards;
@@ -78,6 +88,8 @@ private:
 	FGameplayTag LastCombatEventTag;
 	FGameplayTag LastQTEResultTag;
 	bool bCurrentOfferEpicWeightBoosted = false;
+	bool bExpectedBossCompletionReceived = false;
+	FGuid ExpectedBossSpawnId;
 	FPRRoomStateChangedNative StateChanged;
 	FPRRewardOfferChangedNative RewardOfferChanged;
 	FPRRoomEventResolvedNative EventResolved;

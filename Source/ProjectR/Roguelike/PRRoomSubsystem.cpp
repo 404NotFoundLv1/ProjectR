@@ -3,10 +3,15 @@
 #include "Roguelike/PRRoomSubsystem.h"
 
 #include "AbilitySystemInterface.h"
+#include "Chapters/PRChapterContentRegistryDataAsset.h"
+#include "Chapters/Allocator/PRAllocatorBoss.h"
+#include "Chapters/Allocator/PRAllocatorBossComponent.h"
 #include "Abilities/PRAbilitySystemComponent.h"
+#include "Abilities/PRAttributeSet.h"
 #include "Companions/PRCompanionSubsystem.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Core/PRTagLibrary.h"
+#include "Core/PRPlayerState.h"
 #include "Director/PRDirectorSubsystem.h"
 #include "Enemies/PREnemySubsystem.h"
 #include "Enemies/Bosses/PRBossSubsystem.h"
@@ -19,6 +24,7 @@
 #include "Roguelike/PRRewardDataAsset.h"
 #include "Roguelike/PRRewardPolicyDataAsset.h"
 #include "Roguelike/PRRoguelikeContentRegistryDataAsset.h"
+#include "Roguelike/PRChapterRoguelikeContentRegistryDataAsset.h"
 #include "Roguelike/PRRoomDataAsset.h"
 #include "Roguelike/PRRoomEventDataAsset.h"
 #include "QTE/PRQTESubsystem.h"
@@ -45,6 +51,32 @@ bool HasType(const UPRRoomDataAsset& Room, const TCHAR* Type)
 {
 	return Room.TypeTag == FixedTag(Type);
 }
+
+int32 GetRewardResourceIndex(const UPRRewardDataAsset& Reward)
+{
+	switch (Reward.EffectSpec.Attribute)
+	{
+	case EPRRewardAttribute::Health:
+	case EPRRewardAttribute::MaxHealth: return 0;
+	case EPRRewardAttribute::Shield:
+	case EPRRewardAttribute::MaxShield: return 1;
+	case EPRRewardAttribute::Energy:
+	case EPRRewardAttribute::MaxEnergy: return 2;
+	default: return INDEX_NONE;
+	}
+}
+
+void GetPlayerResourceRatios(const UObject* Context, float (&OutRatios)[3])
+{
+	OutRatios[0] = OutRatios[1] = OutRatios[2] = 1.0f;
+	const APawn* Pawn = UGameplayStatics::GetPlayerPawn(Context, 0);
+	const APRPlayerState* PlayerState = Pawn ? Pawn->GetPlayerState<APRPlayerState>() : nullptr;
+	const UPRAttributeSet* Attributes = PlayerState ? PlayerState->GetAttributeSet() : nullptr;
+	if (!Attributes) return;
+	OutRatios[0] = Attributes->GetMaxHealth() > UE_SMALL_NUMBER ? FMath::Clamp(Attributes->GetHealth() / Attributes->GetMaxHealth(), 0.0f, 1.0f) : 1.0f;
+	OutRatios[1] = Attributes->GetMaxShield() > UE_SMALL_NUMBER ? FMath::Clamp(Attributes->GetShield() / Attributes->GetMaxShield(), 0.0f, 1.0f) : 1.0f;
+	OutRatios[2] = Attributes->GetMaxEnergy() > UE_SMALL_NUMBER ? FMath::Clamp(Attributes->GetEnergy() / Attributes->GetMaxEnergy(), 0.0f, 1.0f) : 1.0f;
+}
 }
 
 int32 UPRRoomSubsystem::GetRoomPathLengthForSeed(const int32 Seed)
@@ -67,6 +99,10 @@ void UPRRoomSubsystem::Deinitialize()
 	ClearWorldBindings();
 	ResetSession();
 	Registry = nullptr;
+	ConfiguredRegistryId = FPrimaryAssetId();
+	ConfiguredContentId = FName();
+	ActiveChapterDirectiveId = FName();
+	ActiveAllocationPressure = 0;
 	Super::Deinitialize();
 }
 
@@ -82,6 +118,12 @@ EPRRoomOperationResult UPRRoomSubsystem::StartRoomSequence(const int32 Seed, FGu
 	ResetSession();
 	RuntimeState.SessionId = FGuid::NewGuid();
 	RuntimeState.Seed = Seed;
+	if (const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry))
+	{
+		ActiveChapterDirectiveId = UPRChapterContentRegistryDataAsset::GetDirectiveForSeed(Seed);
+		if (!ChapterRegistry->IsKnownDirective(ActiveChapterDirectiveId)) { ResetSession(); return EPRRoomOperationResult::NotReady; }
+		ActiveAllocationPressure = 0;
+	}
 	RuntimeState.PathLength = GetRoomPathLengthForSeed(Seed);
 	if (!BuildPath()) { ResetSession(); return EPRRoomOperationResult::NoEligibleContent; }
 	RuntimeState.FlowStatus = EPRRoomFlowStatus::SelectingRoom;
@@ -121,6 +163,12 @@ EPRRoomOperationResult UPRRoomSubsystem::SelectEventChoice(const FName ChoiceId)
 	if (!IsRelationshipDeltaEmpty(Choice->RelationshipDelta) && (!Save || !Save->GetSaveRuntimeState().bHasLoadedProfile)) return EPRRoomOperationResult::Rejected;
 	FPRRoomEventResult Result;
 	Result.ResolutionId = FGuid::NewGuid(); Result.RoomId = RuntimeState.ActiveRoomId; Result.EventId = EventId; Result.ChoiceId = ChoiceId; Result.bEpicWeightBoosted = Choice->bBoostEpicWeight;
+	if (const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry))
+	{
+		int32 PressureDelta = 0;
+		if (!ChapterRegistry->FindPressureDelta(EventId, ChoiceId, PressureDelta)) return EPRRoomOperationResult::Rejected;
+		ActiveAllocationPressure = FMath::Clamp(ActiveAllocationPressure + PressureDelta, 0, 4);
+	}
 	UPRCompanionSubsystem* Companions = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRCompanionSubsystem>() : nullptr;
 	if (Save && Save->GetSaveRuntimeState().bHasLoadedProfile && Companions)
 	{
@@ -176,9 +224,58 @@ EPRRoomOperationResult UPRRoomSubsystem::SelectReward(const FPrimaryAssetId Rewa
 	return EPRRoomOperationResult::Succeeded;
 }
 
+EPRRoomContentResult UPRRoomSubsystem::ConfigureContentRegistry(const FPrimaryAssetId RegistryId)
+{
+	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::Idle && RuntimeState.FlowStatus != EPRRoomFlowStatus::Completed && RuntimeState.FlowStatus != EPRRoomFlowStatus::Cancelled) return EPRRoomContentResult::Busy;
+	if (!RegistryId.IsValid() || RegistryId.PrimaryAssetType != FPrimaryAssetType(TEXT("ProjectRChapterRoguelikeRegistry"))) return EPRRoomContentResult::InvalidRegistry;
+	const FSoftObjectPath Path = UAssetManager::Get().GetPrimaryAssetPath(RegistryId);
+	UPRChapterRoguelikeContentRegistryDataAsset* Candidate = Path.IsValid() ? Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Path.TryLoad()) : nullptr;
+	if (!Candidate) return EPRRoomContentResult::NotFound;
+	if (!Candidate->IsRegistryReady()) return EPRRoomContentResult::InvalidRegistry;
+	RegistryAsset = Candidate;
+	Registry = Candidate;
+	ConfiguredRegistryId = RegistryId;
+	ConfiguredContentId = Candidate->ContentId;
+	ActiveChapterDirectiveId = FName();
+	ActiveAllocationPressure = 0;
+	return EPRRoomContentResult::Succeeded;
+}
+
+FPrimaryAssetId UPRRoomSubsystem::GetConfiguredContentRegistryId() const
+{
+	return ConfiguredRegistryId;
+}
+
+EPRRoomContentResult UPRRoomSubsystem::ConfigureContentContext(const FName ContentId, const FName ChapterDirectiveId, const int32 AllocationPressure)
+{
+	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::Idle && RuntimeState.FlowStatus != EPRRoomFlowStatus::Completed && RuntimeState.FlowStatus != EPRRoomFlowStatus::Cancelled) return EPRRoomContentResult::Busy;
+	const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
+	if (!ChapterRegistry || ConfiguredRegistryId != ChapterRegistry->GetPrimaryAssetId() || ContentId != ChapterRegistry->ContentId || !ChapterRegistry->IsKnownDirective(ChapterDirectiveId)) return EPRRoomContentResult::RejectedContext;
+	ConfiguredContentId = ContentId;
+	ActiveChapterDirectiveId = ChapterDirectiveId;
+	ActiveAllocationPressure = FMath::Clamp(AllocationPressure, 0, 4);
+	return EPRRoomContentResult::Succeeded;
+}
+
 bool UPRRoomSubsystem::GetRoomRuntimeState(FPRRoomRuntimeState& OutState) const { OutState = RuntimeState; return true; }
 void UPRRoomSubsystem::GetActiveEncounterSpawnIds(TArray<FGuid>& OutSpawnIds) const { OutSpawnIds = ActiveEncounterSpawnIds; }
 void UPRRoomSubsystem::GetAppliedRewards(TArray<FPRRewardApplicationHandle>& OutHandles) const { OutHandles = AppliedRewards; }
+void UPRRoomSubsystem::GetAppliedRewardSnapshots(TArray<FPRAppliedRewardSnapshot>& OutRewards) const
+{
+	OutRewards.Reset();
+	for (const FPRRewardApplicationHandle& Handle : AppliedRewards)
+	{
+		if (const UPRRewardDataAsset* Reward = Registry ? Registry->FindReward(Handle.RewardId) : nullptr)
+		{
+			FPRAppliedRewardSnapshot& Snapshot = OutRewards.AddDefaulted_GetRef();
+			Snapshot.RewardId = Handle.RewardId;
+			Snapshot.FamilyId = Handle.FamilyId;
+			Snapshot.Tier = Handle.Tier;
+			Snapshot.EffectSpec = Reward->EffectSpec;
+		}
+	}
+	OutRewards.Sort([](const FPRAppliedRewardSnapshot& A, const FPRAppliedRewardSnapshot& B) { return A.RewardId.ToString() < B.RewardId.ToString(); });
+}
 FPRRoomStateChangedNative& UPRRoomSubsystem::OnRoomStateChanged() { return StateChanged; }
 FPRRewardOfferChangedNative& UPRRoomSubsystem::OnRewardOfferChanged() { return RewardOfferChanged; }
 FPRRoomEventResolvedNative& UPRRoomSubsystem::OnRoomEventResolved() { return EventResolved; }
@@ -187,10 +284,17 @@ FPRRoomSequenceCompletedNative& UPRRoomSubsystem::OnRoomSequenceCompleted() { re
 bool UPRRoomSubsystem::BuildPath()
 {
 	TArray<const UPRRoomDataAsset*> Rooms;
-	for (const TSoftObjectPtr<UPRRoomDataAsset>& Reference : Registry->Rooms) if (const UPRRoomDataAsset* Room = Reference.LoadSynchronous()) if (IsRoomEligible(*Room) && !PRRoomRuntime::HasType(*Room, TEXT("Room.Type.Shop"))) Rooms.Add(Room);
+	const bool bChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry) != nullptr;
+	for (const TSoftObjectPtr<UPRRoomDataAsset>& Reference : Registry->Rooms)
+	{
+		if (const UPRRoomDataAsset* Room = Reference.LoadSynchronous())
+		{
+			if (IsRoomEligible(*Room) && (bChapterRegistry || !PRRoomRuntime::HasType(*Room, TEXT("Room.Type.Shop")))) Rooms.Add(Room);
+		}
+	}
 	Rooms.Sort([](const UPRRoomDataAsset& A, const UPRRoomDataAsset& B) { return A.GetPrimaryAssetId().ToString() < B.GetPrimaryAssetId().ToString(); });
 	if (Rooms.Num() < 5) return false;
-	const TCHAR* RequiredTypes[] = { TEXT("Room.Type.Combat"), TEXT("Room.Type.Event"), TEXT("Room.Type.Safe") };
+	const TCHAR* RequiredTypes[] = { TEXT("Room.Type.Combat"), TEXT("Room.Type.Event"), bChapterRegistry ? TEXT("Room.Type.Shop") : TEXT("Room.Type.Safe"), TEXT("Room.Type.Safe") };
 	uint32 Random = static_cast<uint32>(RuntimeState.Seed);
 	for (int32 Index = 0; Index < RuntimeState.PathLength; ++Index)
 	{
@@ -296,15 +400,10 @@ void UPRRoomSubsystem::StartEncounter()
 	const UPRRoomDataAsset* Room = Registry ? Registry->FindRoom(RuntimeState.ActiveRoomId) : nullptr;
 	if (!Room) { RuntimeState.FlowStatus = EPRRoomFlowStatus::Cancelled; BroadcastState(); return; }
 	if (PRRoomRuntime::HasType(*Room, TEXT("Room.Type.Event"))) { RuntimeState.FlowStatus = EPRRoomFlowStatus::SelectingEvent; BroadcastState(); return; }
-	if (PRRoomRuntime::HasType(*Room, TEXT("Room.Type.Safe"))) { RuntimeState.FlowStatus = EPRRoomFlowStatus::SelectingReward; CreateRewardOffer(); BroadcastState(); return; }
+	if (PRRoomRuntime::HasType(*Room, TEXT("Room.Type.Safe")) || PRRoomRuntime::HasType(*Room, TEXT("Room.Type.Shop"))) { RuntimeState.FlowStatus = EPRRoomFlowStatus::SelectingReward; CreateRewardOffer(); BroadcastState(); return; }
 	const UPREncounterDataAsset* Encounter = Registry->FindEncounter(Room->EncounterId);
 	if (!Encounter || !GetWorld()) { RuntimeState.FlowStatus = EPRRoomFlowStatus::Cancelled; BroadcastState(); return; }
 	if (UPRCombatSubsystem* Combat = GetWorld()->GetSubsystem<UPRCombatSubsystem>()) CombatEventHandle = Combat->OnCombatEvent().AddUObject(this, &UPRRoomSubsystem::HandleCombatEvent);
-	if (Encounter->Kind == EPRRoomEncounterKind::Boss)
-	{
-		if (UPRBossSubsystem* Boss = GetWorld()->GetSubsystem<UPRBossSubsystem>()) BossCompletedHandle = Boss->OnPrototypeRunCompleted().AddUObject(this, &UPRRoomSubsystem::HandleBossCompleted);
-		RuntimeState.FlowStatus = EPRRoomFlowStatus::EncounterActive; BroadcastState(); return;
-	}
 	UPREnemySubsystem* Enemies = GetWorld()->GetSubsystem<UPREnemySubsystem>();
 	if (!Enemies || !Enemies->IsRegistryReady())
 	{
@@ -312,14 +411,36 @@ void UPRRoomSubsystem::StartEncounter()
 		return;
 	}
 	EnemyStateChangedHandle = Enemies->OnEnemyStateChanged().AddUObject(this, &UPRRoomSubsystem::HandleEnemyStateChanged);
+	if (Encounter->Kind == EPRRoomEncounterKind::Boss)
+	{
+		if (UPRBossSubsystem* Boss = GetWorld()->GetSubsystem<UPRBossSubsystem>()) BossCompletedHandle = Boss->OnPrototypeRunCompleted().AddUObject(this, &UPRRoomSubsystem::HandleBossCompleted);
+		else { RuntimeState.FlowStatus = EPRRoomFlowStatus::Cancelled; BroadcastState(); return; }
+	}
 	APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
 	const FVector Origin = Player ? Player->GetActorLocation() : FVector::ZeroVector;
 	for (const FPREncounterSpawnDefinition& Spawn : Encounter->SpawnDefinitions)
 	{
 		FGuid SpawnId; class APREnemyCharacter* Enemy = nullptr;
-		if (Enemies->SpawnEnemyPrototype(Spawn.PrototypeTag, FTransform(FRotator::ZeroRotator, Origin + Spawn.RelativeLocation), SpawnId, Enemy) == EPREnemySpawnStatus::Spawned) ActiveEncounterSpawnIds.Add(SpawnId);
+		const FTransform SpawnTransform(FRotator::ZeroRotator, Origin + Spawn.RelativeLocation);
+		const EPREnemySpawnStatus SpawnResult = Spawn.PrototypeId.IsValid()
+			? Enemies->SpawnEnemyPrototype(Spawn.PrototypeId, SpawnTransform, SpawnId, Enemy)
+			: Enemies->SpawnEnemyPrototype(Spawn.PrototypeTag, SpawnTransform, SpawnId, Enemy);
+		if (SpawnResult == EPREnemySpawnStatus::Spawned)
+		{
+			ActiveEncounterSpawnIds.Add(SpawnId);
+			if (Encounter->Kind == EPRRoomEncounterKind::Boss && Spawn.PrototypeId.ToString().Contains(TEXT("DA_Boss_Allocator")))
+			{
+				ExpectedBossSpawnId = SpawnId;
+				if (APRAllocatorBoss* Allocator = Cast<APRAllocatorBoss>(Enemy))
+				{
+					TArray<FPRAppliedRewardSnapshot> AppliedSnapshots;
+					GetAppliedRewardSnapshots(AppliedSnapshots);
+					Allocator->GetAllocatorBossComponent()->ConfigureChapterState(ActiveAllocationPressure, AppliedSnapshots);
+				}
+			}
+		}
 	}
-	if (ActiveEncounterSpawnIds.IsEmpty()) { RuntimeState.FlowStatus = EPRRoomFlowStatus::Cancelled; BroadcastState(); return; }
+	if (ActiveEncounterSpawnIds.IsEmpty() || (Encounter->Kind == EPRRoomEncounterKind::Boss && !ExpectedBossSpawnId.IsValid())) { RuntimeState.FlowStatus = EPRRoomFlowStatus::Cancelled; BroadcastState(); return; }
 	RuntimeState.FlowStatus = EPRRoomFlowStatus::EncounterActive;
 	GetWorld()->GetTimerManager().SetTimer(EncounterCompletionTimer, this, &UPRRoomSubsystem::CheckEncounterCompletion, 0.1f, true);
 	BroadcastState();
@@ -330,6 +451,9 @@ void UPRRoomSubsystem::CheckEncounterCompletion()
 	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::EncounterActive || !GetWorld()) return;
 	UPREnemySubsystem* Enemies = GetWorld()->GetSubsystem<UPREnemySubsystem>();
 	if (!Enemies || ActiveEncounterSpawnIds.IsEmpty()) return;
+	const UPRRoomDataAsset* Room = Registry ? Registry->FindRoom(RuntimeState.ActiveRoomId) : nullptr;
+	const UPREncounterDataAsset* Encounter = Room ? Registry->FindEncounter(Room->EncounterId) : nullptr;
+	if (Encounter && Encounter->Kind == EPRRoomEncounterKind::Boss && !bExpectedBossCompletionReceived) return;
 	for (const FGuid& SpawnId : ActiveEncounterSpawnIds) { FPREnemyRuntimeState State; if (Enemies->GetEnemyRuntimeState(SpawnId, State) && State.bAlive) return; }
 	CompleteEncounter();
 }
@@ -337,6 +461,9 @@ void UPRRoomSubsystem::CheckEncounterCompletion()
 void UPRRoomSubsystem::HandleEnemyStateChanged(const FPREnemyRuntimeState& State)
 {
 	if (!ActiveEncounterSpawnIds.Contains(State.SpawnId) || State.bAlive) return;
+	const UPRRoomDataAsset* Room = Registry ? Registry->FindRoom(RuntimeState.ActiveRoomId) : nullptr;
+	const UPREncounterDataAsset* Encounter = Room ? Registry->FindEncounter(Room->EncounterId) : nullptr;
+	if (Encounter && Encounter->Kind == EPRRoomEncounterKind::Boss && !bExpectedBossCompletionReceived) return;
 	for (const FGuid& SpawnId : ActiveEncounterSpawnIds)
 	{
 		FPREnemyRuntimeState Existing;
@@ -345,7 +472,12 @@ void UPRRoomSubsystem::HandleEnemyStateChanged(const FPREnemyRuntimeState& State
 	CompleteEncounter();
 }
 
-void UPRRoomSubsystem::HandleBossCompleted(const FPRPrototypeRunResult& Result) { if (RuntimeState.FlowStatus == EPRRoomFlowStatus::EncounterActive) CompleteEncounter(); }
+void UPRRoomSubsystem::HandleBossCompleted(const FPRPrototypeRunResult& Result)
+{
+	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::EncounterActive || Result.BossId != TEXT("Allocator") || Result.BossSpawnId != ExpectedBossSpawnId || bExpectedBossCompletionReceived) return;
+	bExpectedBossCompletionReceived = true;
+	CheckEncounterCompletion();
+}
 void UPRRoomSubsystem::HandleCombatEvent(const FPRCombatEvent& Event) { if (RuntimeState.FlowStatus == EPRRoomFlowStatus::EncounterActive && Event.EventId.IsValid()) { LastCombatEventId = Event.EventId; LastCombatEventTag = Event.EventTag; } }
 void UPRRoomSubsystem::HandleQTEResult(const FPRQTEResult& Result) { LastQTEResultTag = Result.ResultTag; }
 
@@ -363,24 +495,57 @@ void UPRRoomSubsystem::CreateRewardOffer()
 	const bool bEpicWeightBoosted = bCurrentOfferEpicWeightBoosted;
 	bCurrentOfferEpicWeightBoosted = false;
 	ActiveOffer = FPRRewardOffer(); ActiveOffer.OfferId = FGuid::NewGuid(); RuntimeState.ActiveRewardOfferId = ActiveOffer.OfferId;
+	RuntimeState.ChapterOfferFallbackReason = FName();
 	TArray<const UPRRewardDataAsset*> Eligible;
 	for (const FPrimaryAssetId& Id : Policy->RewardIds) if (const UPRRewardDataAsset* Reward = Registry->FindReward(Id)) if (IsRewardEligible(*Reward)) Eligible.Add(Reward);
 	Eligible.Sort([](const UPRRewardDataAsset& A, const UPRRewardDataAsset& B) { return A.GetPrimaryAssetId().ToString() < B.GetPrimaryAssetId().ToString(); });
 	uint32 Random = static_cast<uint32>(RuntimeState.Seed) ^ static_cast<uint32>(RuntimeState.CurrentStepIndex + 1) * 0x9E3779B9U;
+	float ResourceRatios[3];
+	PRRoomRuntime::GetPlayerResourceRatios(this, ResourceRatios);
+	const UPRRoomDataAsset* ActiveRoom = Registry ? Registry->FindRoom(RuntimeState.ActiveRoomId) : nullptr;
+	const bool bShop = ActiveRoom && PRRoomRuntime::HasType(*ActiveRoom, TEXT("Room.Type.Shop"));
+	int32 HighestResource = 0;
+	int32 LowestResource = 0;
+	for (int32 Index = 1; Index < 3; ++Index)
+	{
+		if (ResourceRatios[Index] > ResourceRatios[HighestResource]) HighestResource = Index;
+		if (ResourceRatios[Index] < ResourceRatios[LowestResource]) LowestResource = Index;
+	}
+	int32 ForcedResource = ActiveChapterDirectiveId == TEXT("Allocator.EqualizationQuota") ? LowestResource : INDEX_NONE;
+	bool bUseDirective = true;
 	TSet<FName> OfferedFamilies;
 	FGameplayTagContainer OfferedExclusions;
 	while (Eligible.Num() && ActiveOffer.Choices.Num() < 3)
 	{
 		int32 TotalWeight = 0;
-		for (const UPRRewardDataAsset* Candidate : Eligible) if (!OfferedFamilies.Contains(Candidate->FamilyId) && !Candidate->MutualExclusionTags.HasAny(OfferedExclusions)) TotalWeight += FPRRewardContract::GetRarityWeight(Candidate->RarityTag, Policy->CommonWeight, Policy->RareWeight, Policy->EpicWeight, bEpicWeightBoosted);
-		if (TotalWeight <= 0) break;
+		for (const UPRRewardDataAsset* Candidate : Eligible) if (!OfferedFamilies.Contains(Candidate->FamilyId) && !Candidate->MutualExclusionTags.HasAny(OfferedExclusions))
+		{
+			if (ForcedResource != INDEX_NONE && ActiveOffer.Choices.IsEmpty() && PRRoomRuntime::GetRewardResourceIndex(*Candidate) != ForcedResource) continue;
+			int32 Weight = FPRRewardContract::GetRarityWeight(Candidate->RarityTag, Policy->CommonWeight, Policy->RareWeight, Policy->EpicWeight, bEpicWeightBoosted);
+			const int32 ResourceIndex = PRRoomRuntime::GetRewardResourceIndex(*Candidate);
+			if (bUseDirective && ActiveChapterDirectiveId == TEXT("Allocator.ResourceLock") && bShop && ResourceIndex == HighestResource) Weight = 0;
+			if (bUseDirective && ActiveChapterDirectiveId == TEXT("Allocator.RewardWithholding") && Candidate->RarityTag.ToString() == TEXT("Reward.Rarity.Epic")) Weight = FMath::Max(1, Weight / 2);
+			if (bUseDirective && ActiveChapterDirectiveId == TEXT("Allocator.ScarcityMarkup") && ResourceIndex != INDEX_NONE && ResourceRatios[ResourceIndex] < 0.35f) Weight = FMath::Max(1, Weight / 2);
+			TotalWeight += Weight;
+		}
+		if (TotalWeight <= 0)
+		{
+			if (ForcedResource != INDEX_NONE) { ForcedResource = INDEX_NONE; RuntimeState.ChapterOfferFallbackReason = TEXT("EqualizationNoEligibleRecovery"); continue; }
+			if (bUseDirective) { bUseDirective = false; RuntimeState.ChapterOfferFallbackReason = TEXT("ChapterOfferBaselineFallback"); continue; }
+			break;
+		}
 		int32 Roll = static_cast<int32>(PRRoomRuntime::NextRandom(Random) % static_cast<uint32>(TotalWeight));
 		int32 Index = INDEX_NONE;
 		for (int32 CandidateIndex = 0; CandidateIndex < Eligible.Num(); ++CandidateIndex)
 		{
 			const UPRRewardDataAsset* Candidate = Eligible[CandidateIndex];
 			if (OfferedFamilies.Contains(Candidate->FamilyId) || Candidate->MutualExclusionTags.HasAny(OfferedExclusions)) continue;
-			const int32 Weight = FPRRewardContract::GetRarityWeight(Candidate->RarityTag, Policy->CommonWeight, Policy->RareWeight, Policy->EpicWeight, bEpicWeightBoosted);
+			if (ForcedResource != INDEX_NONE && ActiveOffer.Choices.IsEmpty() && PRRoomRuntime::GetRewardResourceIndex(*Candidate) != ForcedResource) continue;
+			int32 Weight = FPRRewardContract::GetRarityWeight(Candidate->RarityTag, Policy->CommonWeight, Policy->RareWeight, Policy->EpicWeight, bEpicWeightBoosted);
+			const int32 ResourceIndex = PRRoomRuntime::GetRewardResourceIndex(*Candidate);
+			if (bUseDirective && ActiveChapterDirectiveId == TEXT("Allocator.ResourceLock") && bShop && ResourceIndex == HighestResource) Weight = 0;
+			if (bUseDirective && ActiveChapterDirectiveId == TEXT("Allocator.RewardWithholding") && Candidate->RarityTag.ToString() == TEXT("Reward.Rarity.Epic")) Weight = FMath::Max(1, Weight / 2);
+			if (bUseDirective && ActiveChapterDirectiveId == TEXT("Allocator.ScarcityMarkup") && ResourceIndex != INDEX_NONE && ResourceRatios[ResourceIndex] < 0.35f) Weight = FMath::Max(1, Weight / 2);
 			if (Roll < Weight) { Index = CandidateIndex; break; }
 			Roll -= Weight;
 		}
@@ -454,5 +619,5 @@ void UPRRoomSubsystem::ClearWorldBindings()
 void UPRRoomSubsystem::BroadcastState() { StateChanged.Broadcast(RuntimeState); }
 void UPRRoomSubsystem::ResetSession()
 {
-	ClearWorldBindings(); ClearSessionGameplayEffects(); RuntimeState = FPRRoomRuntimeState(); ActiveOffer = FPRRewardOffer(); AppliedRewards.Reset(); LastCombatEventId.Invalidate(); LastCombatEventTag = FGameplayTag(); LastQTEResultTag = FGameplayTag(); bCurrentOfferEpicWeightBoosted = false;
+	ClearWorldBindings(); ClearSessionGameplayEffects(); RuntimeState = FPRRoomRuntimeState(); ActiveOffer = FPRRewardOffer(); AppliedRewards.Reset(); LastCombatEventId.Invalidate(); LastCombatEventTag = FGameplayTag(); LastQTEResultTag = FGameplayTag(); bCurrentOfferEpicWeightBoosted = false; bExpectedBossCompletionReceived = false; ExpectedBossSpawnId.Invalidate();
 }

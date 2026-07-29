@@ -194,3 +194,43 @@
 /Content/ProjectR/Data/Memory/Companions/DA_MemoryPersona_Kindle.uasset -filter -diff -merge -text
 /Content/ProjectR/Data/Memory/Companions/DA_MemoryPersona_Null.uasset -filter -diff -merge -text
 /Content/ProjectR/UI/RealityHub/WBP_RealityHubMemorySummary.uasset -filter -diff -merge -text
+
+# v0.6.0 Allocator Chapter packages are 187,672 bytes total after exact MCP save.
+# Keep only this exact 37-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Chapters/Allocator/DA_Chapter_Allocator.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/DA_RoguelikeContentRegistry_Allocator.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/DA_EnemyContentRegistry_Allocator.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rules/DA_ChapterRule_Allocator_ResourceLock.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rules/DA_ChapterRule_Allocator_RewardWithholding.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rules/DA_ChapterRule_Allocator_PriceAudit.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rules/DA_ChapterRule_Allocator_ScarcityMarkup.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rules/DA_ChapterRule_Allocator_EqualizationQuota.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Combat_RationLine.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Combat_Warehouse.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Elite_QuotaGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Event_ShortageAppeal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Event_MispricedLot.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Event_ConfiscationNotice.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Event_OverstockLedger.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Shop_AllocationTerminal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Safe_MaintenanceCache.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rooms/DA_Room_Allocator_Boss_Allocator.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Encounters/DA_Encounter_Allocator_RationLine.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Encounters/DA_Encounter_Allocator_Warehouse.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Encounters/DA_Encounter_Allocator_QuotaGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Encounters/DA_Encounter_Allocator_Boss.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Events/DA_RoomEvent_Allocator_ShortageAppeal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Events/DA_RoomEvent_Allocator_MispricedLot.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Events/DA_RoomEvent_Allocator_ConfiscationNotice.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Events/DA_RoomEvent_Allocator_OverstockLedger.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rewards/Policies/DA_RewardPolicy_Allocator_Combat.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rewards/Policies/DA_RewardPolicy_Allocator_Elite.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rewards/Policies/DA_RewardPolicy_Allocator_Event.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rewards/Policies/DA_RewardPolicy_Allocator_Safe.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Rewards/Policies/DA_RewardPolicy_Allocator_Shop.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Enemies/DA_Enemy_AllocatorDebtCollector.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Enemies/DA_Enemy_AllocatorPriceClerk.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Enemies/DA_Enemy_AllocatorQuotaGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Boss/DA_Boss_Allocator.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/Boss/BP_Boss_Allocator.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Allocator/UI/WBP_AllocatorChapterOverlay.uasset -filter -diff -merge -text

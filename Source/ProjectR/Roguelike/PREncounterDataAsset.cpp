@@ -20,7 +20,9 @@ bool UPREncounterDataAsset::IsEncounterDefinitionValid() const
 	if (SpawnDefinitions.IsEmpty()) return false;
 	for (const FPREncounterSpawnDefinition& Spawn : SpawnDefinitions)
 	{
-		if (!Spawn.PrototypeTag.IsValid() || !Spawn.PrototypeTag.ToString().StartsWith(TEXT("Enemy."))) return false;
+		const bool bTagSelector = Spawn.PrototypeTag.IsValid() && Spawn.PrototypeTag.ToString().StartsWith(TEXT("Enemy."));
+		const bool bIdSelector = Spawn.PrototypeId.IsValid() && Spawn.PrototypeId.PrimaryAssetType == FPrimaryAssetType(TEXT("ProjectREnemy"));
+		if (bTagSelector == bIdSelector) return false;
 	}
 	return true;
 }

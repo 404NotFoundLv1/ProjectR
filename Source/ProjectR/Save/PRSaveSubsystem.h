@@ -51,6 +51,11 @@ public:
 
 private:
 	friend class UPRMemorySubsystem;
+	friend class UPRChapterSubsystem;
+	bool GetChapterPersistenceSnapshot(FPRChapterPersistenceData& OutPersistence) const;
+	bool StageChapterPersistenceTransaction(
+		const FPRChapterPersistenceData& ExpectedChapter,
+		const FPRChapterPersistenceData& TargetChapter);
 	bool GetMemoryPersistenceSnapshot(FPRMemoryPersistenceData& OutPersistence) const;
 	bool StageMemoryProgressionTransaction(
 		const FPRMemoryPersistenceData& ExpectedMemory,
@@ -136,6 +141,7 @@ private:
 	TOptional<FPRProgressionPersistenceData> StagedProgressionPersistence;
 	TOptional<FPRCompanionQuestPersistenceData> StagedCompanionQuestPersistence;
 	TOptional<FPRMemoryPersistenceData> StagedMemoryPersistence;
+	TOptional<FPRChapterPersistenceData> StagedChapterPersistence;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;

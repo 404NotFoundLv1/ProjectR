@@ -3,6 +3,7 @@
 #include "Enemies/PREnemySubsystem.h"
 
 #include "Enemies/PREnemyCharacter.h"
+#include "Enemies/PREnemyContentRegistryDataAsset.h"
 #include "Enemies/PREnemyBrainComponent.h"
 #include "Enemies/PREnemyAttackDataAsset.h"
 #include "Enemies/PREnemyProjectile.h"
@@ -44,6 +45,9 @@ void UPREnemySubsystem::Deinitialize()
 	}
 	SpawnedEnemies.Empty();
 	LoadedPrototypes.Empty();
+	LoadedContentPrototypes.Empty();
+	ContentRegistry = nullptr;
+	ConfiguredContentRegistryId = FPrimaryAssetId();
 	bRegistryReady = false;
 	Super::Deinitialize();
 }
@@ -199,12 +203,71 @@ EPREnemySpawnStatus UPREnemySubsystem::SpawnEnemyPrototype(
 	return EPREnemySpawnStatus::Spawned;
 }
 
+EPREnemyContentResult UPREnemySubsystem::ConfigureContentRegistry(const FPrimaryAssetId RegistryId)
+{
+	if (!SpawnedEnemies.IsEmpty()) return EPREnemyContentResult::Busy;
+	if (!RegistryId.IsValid() || RegistryId.PrimaryAssetType != FPrimaryAssetType(TEXT("ProjectREnemyContentRegistry"))) return EPREnemyContentResult::InvalidRegistry;
+	const FSoftObjectPath Path = UAssetManager::Get().GetPrimaryAssetPath(RegistryId);
+	UPREnemyContentRegistryDataAsset* Candidate = Path.IsValid() ? Cast<UPREnemyContentRegistryDataAsset>(Path.TryLoad()) : nullptr;
+	if (!Candidate) return EPREnemyContentResult::NotFound;
+	if (!Candidate->IsRegistryReady()) return EPREnemyContentResult::InvalidRegistry;
+	TMap<FPrimaryAssetId, FLoadedPrototype> CandidateEntries;
+	for (const FPREnemyContentRegistryEntry& Entry : Candidate->Entries)
+	{
+		UPREnemyPrototypeDataAsset* Prototype = Entry.Prototype.LoadSynchronous();
+		UClass* EnemyClass = Entry.EnemyClass.LoadSynchronous();
+		if (!Prototype || !EnemyClass || !EnemyClass->IsChildOf(APREnemyCharacter::StaticClass())) return EPREnemyContentResult::InvalidRegistry;
+		FLoadedPrototype& Loaded = CandidateEntries.Add(Entry.PrototypeId);
+		Loaded.Prototype = Prototype;
+		Loaded.EnemyClass = EnemyClass;
+	}
+	ContentRegistry = Candidate;
+	ConfiguredContentRegistryId = RegistryId;
+	LoadedContentPrototypes = MoveTemp(CandidateEntries);
+	return EPREnemyContentResult::Succeeded;
+}
+
+FPrimaryAssetId UPREnemySubsystem::GetConfiguredContentRegistryId() const
+{
+	return ConfiguredContentRegistryId;
+}
+
+EPREnemySpawnStatus UPREnemySubsystem::SpawnEnemyPrototype(
+	const FPrimaryAssetId PrototypeId,
+	const FTransform& SpawnTransform,
+	FGuid& OutSpawnId,
+	APREnemyCharacter*& OutEnemy)
+{
+	OutSpawnId.Invalidate();
+	OutEnemy = nullptr;
+	if (!GetWorld() || GetWorld()->GetNetMode() == NM_Client) return EPREnemySpawnStatus::NotAuthoritative;
+	if (!ContentRegistry || !ConfiguredContentRegistryId.IsValid()) return EPREnemySpawnStatus::NotReady;
+	if (!IsValidSpawnTransform(SpawnTransform)) return EPREnemySpawnStatus::InvalidTransform;
+	const FLoadedPrototype* Entry = LoadedContentPrototypes.Find(PrototypeId);
+	if (!Entry) return EPREnemySpawnStatus::UnknownPrototype;
+	OutSpawnId = FGuid::NewGuid();
+	APREnemyCharacter* Enemy = GetWorld()->SpawnActorDeferred<APREnemyCharacter>(Entry->EnemyClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!Enemy) { OutSpawnId.Invalidate(); return EPREnemySpawnStatus::SpawnFailed; }
+	Enemy->ConfigureSpawn(Entry->Prototype, OutSpawnId, SpawnTransform.GetLocation().Y);
+	Enemy->FinishSpawning(SpawnTransform);
+	if (!Enemy->GetController()) Enemy->SpawnDefaultController();
+	if (!Enemy->IsEnemyInitialized()) { Enemy->Destroy(); OutSpawnId.Invalidate(); return EPREnemySpawnStatus::SpawnFailed; }
+	SpawnedEnemies.Add(OutSpawnId, Enemy);
+	OutEnemy = Enemy;
+	BroadcastState(Enemy);
+	return EPREnemySpawnStatus::Spawned;
+}
+
 bool UPREnemySubsystem::GetEnemyRuntimeState(const FGuid SpawnId, FPREnemyRuntimeState& OutState) const
 {
 	OutState = FPREnemyRuntimeState();
 	const TWeakObjectPtr<APREnemyCharacter>* Found = SpawnedEnemies.Find(SpawnId);
 	if (!Found || !Found->IsValid()) return false;
 	OutState = (*Found)->GetEnemyBrain()->GetRuntimeState();
+	for (const TPair<FPrimaryAssetId, FLoadedPrototype>& Pair : LoadedContentPrototypes)
+	{
+		if (Pair.Value.Prototype == (*Found)->GetEnemyPrototype()) { OutState.PrototypeId = Pair.Key; break; }
+	}
 	return true;
 }
 

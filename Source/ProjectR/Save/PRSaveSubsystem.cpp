@@ -17,7 +17,10 @@ bool IsSuccessfulRead(const FPRSaveGenerationRead& Read)
 {
 	return Read.Result == EPRSaveResult::Success && IsValid(Read.SaveGame)
 		&& FPRAccountPersistenceContract::IsCanonical(Read.SaveGame->Profile.AccountPersistence)
-		&& FPRProgressionPersistenceContract::IsCanonical(Read.SaveGame->Profile.ProgressionPersistence);
+		&& FPRProgressionPersistenceContract::IsCanonical(Read.SaveGame->Profile.ProgressionPersistence)
+		&& FPRCompanionQuestPersistenceContract::IsCanonical(Read.SaveGame->Profile.CompanionQuestPersistence)
+		&& FPRMemoryPersistenceContract::IsCanonical(Read.SaveGame->Profile.MemoryPersistence)
+		&& FPRChapterPersistenceContract::IsCanonical(Read.SaveGame->Profile.ChapterPersistence);
 }
 
 int32 GetFailurePriority(const EPRSaveResult Result)
@@ -243,6 +246,9 @@ EPRSaveResult UPRSaveSubsystem::CreateNewDefaultProfile(FGuid& OutRequestId)
 		LoadedSave->Profile.CompanionRelationships = FPRCompanionContract::BuildDefaultRelationshipRecords();
 		LoadedSave->Profile.AccountPersistence = FPRAccountPersistenceContract::MakeDefault();
 		LoadedSave->Profile.ProgressionPersistence = FPRProgressionPersistenceContract::MakeDefault();
+		LoadedSave->Profile.CompanionQuestPersistence = FPRCompanionQuestPersistenceContract::MakeDefault();
+		LoadedSave->Profile.MemoryPersistence = FPRMemoryPersistenceContract::MakeDefault();
+		LoadedSave->Profile.ChapterPersistence = FPRChapterPersistenceContract::MakeDefault();
 		LoadedGeneration = EPRSaveGeneration::None;
 		bNeedsResave = true;
 	}
@@ -367,6 +373,25 @@ bool UPRSaveSubsystem::GetMemoryPersistenceSnapshot(FPRMemoryPersistenceData& Ou
 {
 	if (!IsInGameThread() || !LoadedSave || !FPRMemoryPersistenceContract::IsCanonical(LoadedSave->Profile.MemoryPersistence)) return false;
 	OutPersistence = LoadedSave->Profile.MemoryPersistence;
+	return true;
+}
+
+bool UPRSaveSubsystem::GetChapterPersistenceSnapshot(FPRChapterPersistenceData& OutPersistence) const
+{
+	OutPersistence = FPRChapterPersistenceData();
+	if (!IsInGameThread() || !LoadedSave || !FPRChapterPersistenceContract::IsCanonical(LoadedSave->Profile.ChapterPersistence)) return false;
+	OutPersistence = LoadedSave->Profile.ChapterPersistence;
+	return true;
+}
+
+bool UPRSaveSubsystem::StageChapterPersistenceTransaction(const FPRChapterPersistenceData& ExpectedChapter, const FPRChapterPersistenceData& TargetChapter)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRChapterPersistenceContract::IsCanonical(ExpectedChapter)
+		|| !FPRChapterPersistenceContract::IsCanonical(TargetChapter)
+		|| !FPRChapterPersistenceData::StaticStruct()->CompareScriptStruct(&ExpectedChapter, &LoadedSave->Profile.ChapterPersistence, 0)) return false;
+	StagedChapterPersistence = TargetChapter;
+	bNeedsResave = true;
 	return true;
 }
 
@@ -602,7 +627,8 @@ void UPRSaveSubsystem::StartActiveSave()
 		!FPRAccountPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.AccountPersistence) ||
 		!FPRProgressionPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ProgressionPersistence) ||
 		!FPRCompanionQuestPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.CompanionQuestPersistence) ||
-		!FPRMemoryPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.MemoryPersistence))
+		!FPRMemoryPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.MemoryPersistence) ||
+		!FPRChapterPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ChapterPersistence))
 	{
 		CompleteActiveSave(EPRSaveResult::InvalidRequest);
 		return;
@@ -722,6 +748,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 	StagedProgressionPersistence.Reset();
 	StagedCompanionQuestPersistence.Reset();
 	StagedMemoryPersistence.Reset();
+	StagedChapterPersistence.Reset();
 	LoadedGeneration = ActiveSave->TargetGeneration;
 	bNeedsResave = false;
 	if (LoadedGeneration == EPRSaveGeneration::A)
@@ -784,6 +811,7 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 		StagedProgressionPersistence.Reset();
 		StagedCompanionQuestPersistence.Reset();
 		StagedMemoryPersistence.Reset();
+		StagedChapterPersistence.Reset();
 		if (TrailingSave)
 		{
 			PublishOperation(
@@ -828,6 +856,10 @@ UPRSaveGame* UPRSaveSubsystem::CaptureCurrentSnapshot() const
 	if (Snapshot && StagedMemoryPersistence.IsSet())
 	{
 		Snapshot->Profile.MemoryPersistence = StagedMemoryPersistence.GetValue();
+	}
+	if (Snapshot && StagedChapterPersistence.IsSet())
+	{
+		Snapshot->Profile.ChapterPersistence = StagedChapterPersistence.GetValue();
 	}
 	return Snapshot;
 }
