@@ -590,3 +590,11 @@ Commit：
 - BuildEditor、Chapter 5/5、Schema-7 Save 5/5、合同 `-game` Debug 12/12、37 Package 精确保存/重启/Dirty=0、0-error Data Validation、固定 PIE、人工完整通关、ADR-035 和 FCR 均已有 PASS。广泛 Editor runner 的四项 Debug 失败继续按既有 GameInstance runner-context 诊断记录，不冒充同进程全量 PASS。
 - 新建单一 `Docs/Versions/v0.6.1.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.6.1 / In Progress`。E-036 固定 Allocator 硬编码的加法兼容、Proof 驱动章节推进、无经济 Shop、瞬态平台封锁、固定律衡 StoryBeat 与 Schema-7 不升版边界。
 - 本次仅执行六份文档的版本转换；没有开始 Warden C++、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.6.1 保持一个公共版本、一个完成门和唯一未来功能提交。
+
+# 2026-07-29 - v0.6.1 Warden chapter implementation
+
+- 完成 Warden 的闭合 Chapter/Room/Enemy PrimaryAssetId 加法接缝、三种 Enemy 变体、四事件、五条局部指令、非经济 RiskProvisionTerminal、固定律衡 StoryBeat、三阶段 Boss、Schema-7 幂等 Warden Proof 结算与 37 个精确 Package；Allocator 上游路径保持回归覆盖。
+- 冻结 Config 不会自动发现 Warden Enemy Registry。实际 Warden PIE 首次暴露该闭包缺口后，限定为 `UPRChapterSubsystem` 对单一编译期固定 Registry 路径的 bundle-backed `AddDynamicAsset` 注册和精确类型/路径校验；未使用 ScanPath，未改 Config、EnemySubsystem 或任意 Spawn 输入。
+- 证据：BuildEditor 成功；`ProjectR.Chapter.Warden` 5/5、组合 Chapter 10/10、Save 5/5、合同 `-game` Debug 12/12；Data Validation 为 0 errors/1 warning；MCP 37 Package 精确保存、重启回读、Dirty=0；Seed 61101 隔离 PIE 实际进入 Warden combat Encounter，退出后 automation A/B storage 清理 PASS，未触及用户存档。
+- 广泛 Editor `ProjectR` runner 为 122 succeeded、13 succeeded-with-warnings、4 failed；四项失败均为既有 GameInstance-dependent Debug 测试在非 `-game` runner 的上下文诊断，合同 `-game` Debug 12/12 已单独 PASS。用户在完整 Warden 人工验收后明确返回 `PASS`。最终报告为 `Saved/AutomationReports/v061-final-report-20260729/v061final-None/result.json`；本任务未创建提交。
+- Future Compatibility Review PASS：v0.6.2 只能添加新的闭合内容；v0.7.x 只能读取公开 Proof 快照；v0.8.0 才能建立经济；v0.8.4 继续同步既有 PRSV A/B Schema-7。无新增阻断 KnownIssue。

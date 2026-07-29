@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameplayTagContainer.h"
 #include "PRChapterRuleDataAsset.generated.h"
 
 /**
@@ -20,8 +21,16 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chapter")
     FName ContentId;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chapter")
-    FName DirectiveId;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chapter")
+	FName DirectiveId;
+
+	/** The only validated Director handle this local directive may inspect. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chapter")
+	FGameplayTag RequiredDirectorRuleId;
+
+	/** Closed known rooms whose deterministic candidate weight this directive may adjust. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Chapter")
+	TArray<FPrimaryAssetId> PreferredRoomIds;
 
     /** Returns true only for one of the fixed, Allocator chapter directives. */
     bool IsRuleDefinitionValid() const;

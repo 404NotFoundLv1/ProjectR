@@ -32,6 +32,12 @@ date: "2026-07-10"
 | KI-021 | 本机旧 NVIDIA 566.26 驱动在打包程序默认 D3D12/Ray Tracing 启动时于 `nvgpucomp64.dll` 崩溃，Windows 异常 `0xc0000409`；一次运行还记录 D3D12 PSO `0x8007000e` | 旧驱动曾阻断 Development/Shipping 默认图形路径验收 | 用户更新到 NVIDIA 610.47 后，在无其他 UE 进程的干净条件下重新运行默认 D3D12 Development/Shipping 顶层入口、F1/输入烟测和新时间窗日志，均未复现崩溃 | Closed |
 | KI-022 | 官方 SceneTools 在活动 PIE 中禁止创建 Actor，且 v0.2.0-B transient 技能目标代理不可放置 | 现有官方工具不能构造固定 Shadow/Fire PIE 场景；B 的 `FixedPIE` 与 38/38 报告被阻断 | 用户单独批准并验证固定无参、Editor-only `RunPIEPlayerSkillCheckpointBSmoke()`；该入口只在 PlayWorld 创建/清理 transient 场景、不保存 Package，并使固定 PIE、Dirty=0 和 B 报告全部 PASS | Closed |
 
+# 2026-07-29 - v0.6.1 Known Issues Review
+
+- 未发现由 Warden 的闭合 Chapter/Room/Enemy Registry、固定动态 Enemy Registry 注册、Boss 清理、Schema-7 Proof 追加或 37 个新 Package 引入的持续性阻断问题。
+- 初始 Warden PIE 曾拒绝未被冻结 Config 发现的 Enemy Registry；该问题已由只注册单一编译期固定路径、带 bundle 元数据且类型/路径回读验证的 Chapter-local bridge 修复。它不保留为 Open KI，也不扩展为路径扫描或通用加载能力。
+- 广泛 Editor runner 的四项 GameInstance-dependent Debug 失败继续按既有 runner-context 诊断处理；合同 `-game` Debug 12/12 已通过。既有 Open/Accepted Risk 状态不变。
+
 # 2026-07-10 - v0.0.1 Known Issues Review
 
 - 未发现由 `UPRDeveloperSettings`、规范文档或模块依赖引入的持续性问题。

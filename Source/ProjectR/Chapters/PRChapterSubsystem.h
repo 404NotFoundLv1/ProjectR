@@ -22,6 +22,11 @@ public:
 	FPRChapterStateChangedNative& OnStateChanged();
 	FPRChapterCompletionNative& OnChapterCompleted();
 
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Fixed editor-only fixture seam: persists only the Allocator proof into an already-isolated automation profile. */
+	bool StageFixedAllocatorProofForAutomation();
+#endif
+
 private:
 	struct FPendingSettlement
 	{
@@ -30,6 +35,19 @@ private:
 		FPRChapterPersistenceData Target;
 		FPRChapterCompletionResult Completion;
 		bool bPending = false;
+	};
+
+	/** Closed runtime selection. It never accepts a caller supplied chapter, asset, or proof id. */
+	struct FActiveChapterDefinition
+	{
+		FPrimaryAssetId ChapterId;
+		FPrimaryAssetId RoomRegistryId;
+		FPrimaryAssetId EnemyRegistryId;
+		FPrimaryAssetId FinalRoomId;
+		FName ContentId;
+		FName BossId;
+		FName ProofId;
+		bool bIsWarden = false;
 	};
 
 	void HandleRunStateChanged(const struct FPRRunRuntimeState& State);
@@ -44,9 +62,15 @@ private:
 	void UnbindWorld(UWorld* World);
 	void PublishState();
 	void ResetTransientSession();
-	bool ConfigureAllocatorContent();
-	bool IsAllocatorSequence(const struct FPRRoomSequenceCompleted& Completion) const;
+	bool ConfigureActiveContent();
+	bool SelectActiveDefinition(FActiveChapterDefinition& OutDefinition) const;
+	bool IsActiveSequence(const struct FPRRoomSequenceCompleted& Completion) const;
 	bool BeginSettlement();
+	bool SubmitPendingSettlement();
+	void RefreshWardenStoryProjection();
+	void ClearWardenPresentation();
+	void EnsureWardenPresentation();
+	bool IsExpectedBossCompletion(const struct FPRPrototypeRunResult& Completion) const;
 
 	FPRChapterSnapshot Snapshot;
 	FPRChapterCompletionResult LatestCompletion;
@@ -57,7 +81,11 @@ private:
 	FGuid FrozenAccountId;
 	int32 FrozenSeed = 0;
 	bool bRoomSequenceVerified = false;
-	bool bAllocatorBossVerified = false;
+	bool bBossVerified = false;
+	FGuid VerifiedBossCompletionId;
+	FGuid VerifiedBossSpawnId;
+	FActiveChapterDefinition ActiveDefinition;
+	TWeakObjectPtr<class UPRWardenChapterWidget> WardenOverlay;
 	FDelegateHandle RunStateHandle;
 	FDelegateHandle RoomCompletedHandle;
 	FDelegateHandle RoomEventHandle;

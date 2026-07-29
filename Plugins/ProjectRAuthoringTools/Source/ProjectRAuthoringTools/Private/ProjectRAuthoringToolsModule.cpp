@@ -28,6 +28,7 @@
 #include "PRProgressionAuthoringToolset.h"
 #include "PRProgressionAutomationToolset.h"
 #include "PRRealityHubAuthoringToolset.h"
+#include "PRWardenAutomationToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -62,12 +63,14 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPRProgressionAuthoringToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRProgressionAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRRealityHubAuthoringToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRWardenAutomationToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
 	{
 		UToolsetRegistry::UnregisterToolsetClass(UPRProgressionAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRRealityHubAuthoringToolset::StaticClass());
+		UToolsetRegistry::UnregisterToolsetClass(UPRWardenAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRProgressionAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRDirectorAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRAccountAutomationToolset::StaticClass());

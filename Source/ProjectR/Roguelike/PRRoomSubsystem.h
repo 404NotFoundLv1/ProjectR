@@ -34,6 +34,8 @@ public:
 	/** Installs the single active Chapter directive and bounded event pressure. */
 	EPRRoomContentResult ConfigureContentContext(FName ContentId, FName ChapterDirectiveId, int32 AllocationPressure);
 	bool GetRoomRuntimeState(FPRRoomRuntimeState& OutState) const;
+	bool GetExpectedBossSpawnId(FGuid& OutSpawnId) const;
+	FName GetChapterRouteFallbackReason() const;
 	/** Returns only the active encounter's registered runtime spawn handles; callers cannot mutate session ownership. */
 	void GetActiveEncounterSpawnIds(TArray<FGuid>& OutSpawnIds) const;
 	void GetAppliedRewards(TArray<FPRRewardApplicationHandle>& OutHandles) const;
@@ -49,6 +51,8 @@ private:
 	bool IsRewardEligible(const class UPRRewardDataAsset& Reward) const;
 	bool IsRelationshipDeltaEmpty(const struct FPRRelationshipDelta& Delta) const;
 	int32 GetRoomWeight(const class UPRRoomDataAsset& Room) const;
+	bool ApplyChapterRouteConstraint(const struct FPRChapterEventPressureBinding& Binding);
+	bool IsValidatedWardenDirective(int32& OutLevel) const;
 	bool DoesConditionPass(const FPRRoomCondition& Condition) const;
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 	void StartEncounter();
@@ -72,6 +76,8 @@ private:
 	FName ConfiguredContentId;
 	FName ActiveChapterDirectiveId;
 	int32 ActiveAllocationPressure = 0;
+	bool bWardenDirectiveValidated = false;
+	int32 WardenDirectiveLevel = 1;
 	FPRRoomRuntimeState RuntimeState;
 	FPRRewardOffer ActiveOffer;
 	TArray<FPRRewardApplicationHandle> AppliedRewards;

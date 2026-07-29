@@ -470,6 +470,20 @@ date: "2026-07-10"
 
 **Verification:** BuildEditor, fresh `ProjectR.Chapter` 5/5, Save Schema-7 5/5, contractual `-game` Debug 12/12, broad historical runner evidence, exact MCP re-read/save/restart/Dirty=0, 0-error Data Validation, fixed PIE and user manual `PASS` are recorded in `Saved/AutomationReports/v060-final-report-20260729/v060final-None/result.json`.
 
+# ADR-036 - Warden is an additive closed Chapter Registry projection
+
+**Status:** Accepted and implemented (v0.6.1)
+
+**Context:** Chapter one hard-coded the closed Allocator projection, while the frozen Asset Manager configuration does not discover a future Warden Enemy Registry automatically. Chapter two must add fixed Warden content after Allocator proof ownership without changing RealityHub, RunState, EnemySubsystem, Save Schema 7, Config, map or the base registries.
+
+**Decision:** `UPRChapterSubsystem` remains the single Chapter owner and accepts only the fixed Allocator/Warden whitelist. It selects Warden only after the public `HumanAnomalyProof.Allocator` value fact; Warden proof permits replay but not a second settlement. Before a Warden Room can request its closed PrimaryAssetId enemy set, the subsystem registers exactly `ProjectREnemyContentRegistry:DA_EnemyContentRegistry_Warden` from its compiled-in soft object path using `AddDynamicAsset` with exact bundle metadata, then verifies the typed registry and exact registered path. It does not scan paths, accept a caller-provided asset/class/path, alter Asset Manager settings, or change the Enemy subsystem. Warden uses the existing Schema-7 bounded proof partition, fixed local directives and transient RiskPressure; its Boss completion and proof publication remain one-time, write-back-verified Chapter transactions.
+
+**Consequences:** Allocator remains a required regression path. There is no new GameplayTag, StateTree, map/platform actor, global economy, Director Rule, arbitrary spawn, direct Save/Blueprint write entry, or read of private Quest/Memory/Provider state. Warden Boss warning windows and cleanup are local runtime state only. The dynamic registration is a closed compatibility bridge, not a general content loader.
+
+**Migration/rollback:** Schema stays `1->2->3->4->5->6->7`; Warden is an idempotent addition to the existing maximum-five Chapter/Proof sets. Rollback is confined to v0.6.1 Warden source/tests, narrow Chapter/Room changes, 37 exact new packages, conditional editor-only Toolset, exact `.gitattributes` exceptions and documentation. Saved Package deletion remains individually approval-gated.
+
+**Verification:** BuildEditor, `ProjectR.Chapter.Warden` 5/5, combined Chapter 10/10, Save 5/5, contractual `-game` Debug 12/12, exact MCP re-read/save/restart/Dirty=0, 0-error Data Validation, isolated Warden PIE and user `PASS` are summarized in `Saved/AutomationReports/v061-final-report-20260729/v061final-None/result.json`. The broad Editor runner's four GameInstance-dependent Debug failures remain the established runner-context diagnostic.
+
 # ADR 模板
 
 ```text

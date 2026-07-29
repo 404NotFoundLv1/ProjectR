@@ -6,6 +6,8 @@
 #include "Chapters/PRChapterContentRegistryDataAsset.h"
 #include "Chapters/Allocator/PRAllocatorBoss.h"
 #include "Chapters/Allocator/PRAllocatorBossComponent.h"
+#include "Chapters/Warden/PRWardenBoss.h"
+#include "Chapters/Warden/PRWardenBossComponent.h"
 #include "Abilities/PRAbilitySystemComponent.h"
 #include "Abilities/PRAttributeSet.h"
 #include "Companions/PRCompanionSubsystem.h"
@@ -25,6 +27,7 @@
 #include "Roguelike/PRRewardPolicyDataAsset.h"
 #include "Roguelike/PRRoguelikeContentRegistryDataAsset.h"
 #include "Roguelike/PRChapterRoguelikeContentRegistryDataAsset.h"
+#include "Roguelike/PRChapterRuleDataAsset.h"
 #include "Roguelike/PRRoomDataAsset.h"
 #include "Roguelike/PRRoomEventDataAsset.h"
 #include "QTE/PRQTESubsystem.h"
@@ -120,9 +123,14 @@ EPRRoomOperationResult UPRRoomSubsystem::StartRoomSequence(const int32 Seed, FGu
 	RuntimeState.Seed = Seed;
 	if (const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry))
 	{
-		ActiveChapterDirectiveId = UPRChapterContentRegistryDataAsset::GetDirectiveForSeed(Seed);
+		ActiveChapterDirectiveId = UPRChapterContentRegistryDataAsset::GetDirectiveForContentAndSeed(ChapterRegistry->ContentId, Seed);
 		if (!ChapterRegistry->IsKnownDirective(ActiveChapterDirectiveId)) { ResetSession(); return EPRRoomOperationResult::NotReady; }
 		ActiveAllocationPressure = 0;
+		bWardenDirectiveValidated = IsValidatedWardenDirective(WardenDirectiveLevel);
+		if (ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId() && !bWardenDirectiveValidated)
+		{
+			RuntimeState.ChapterOfferFallbackReason = TEXT("Warden.DirectorNeutralFallback");
+		}
 	}
 	RuntimeState.PathLength = GetRoomPathLengthForSeed(Seed);
 	if (!BuildPath()) { ResetSession(); return EPRRoomOperationResult::NoEligibleContent; }
@@ -165,9 +173,15 @@ EPRRoomOperationResult UPRRoomSubsystem::SelectEventChoice(const FName ChoiceId)
 	Result.ResolutionId = FGuid::NewGuid(); Result.RoomId = RuntimeState.ActiveRoomId; Result.EventId = EventId; Result.ChoiceId = ChoiceId; Result.bEpicWeightBoosted = Choice->bBoostEpicWeight;
 	if (const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry))
 	{
-		int32 PressureDelta = 0;
-		if (!ChapterRegistry->FindPressureDelta(EventId, ChoiceId, PressureDelta)) return EPRRoomOperationResult::Rejected;
-		ActiveAllocationPressure = FMath::Clamp(ActiveAllocationPressure + PressureDelta, 0, 4);
+		FPRChapterEventPressureBinding Binding;
+		if (!ChapterRegistry->FindEventPressureBinding(EventId, ChoiceId, Binding)) return EPRRoomOperationResult::Rejected;
+		ActiveAllocationPressure = FMath::Clamp(ActiveAllocationPressure + Binding.PressureDelta, 0, 4);
+		if (ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId())
+		{
+			ApplyChapterRouteConstraint(Binding);
+			// Warden events are chapter-local choices: accepting one is observable, but never writes relationship state.
+			Result.bChoiceApplied = true;
+		}
 	}
 	UPRCompanionSubsystem* Companions = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRCompanionSubsystem>() : nullptr;
 	if (Save && Save->GetSaveRuntimeState().bHasLoadedProfile && Companions)
@@ -230,6 +244,11 @@ EPRRoomContentResult UPRRoomSubsystem::ConfigureContentRegistry(const FPrimaryAs
 	if (!RegistryId.IsValid() || RegistryId.PrimaryAssetType != FPrimaryAssetType(TEXT("ProjectRChapterRoguelikeRegistry"))) return EPRRoomContentResult::InvalidRegistry;
 	const FSoftObjectPath Path = UAssetManager::Get().GetPrimaryAssetPath(RegistryId);
 	UPRChapterRoguelikeContentRegistryDataAsset* Candidate = Path.IsValid() ? Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Path.TryLoad()) : nullptr;
+	if (!Candidate && RegistryId == UPRChapterContentRegistryDataAsset::GetWardenRoomRegistryId())
+	{
+		// Exact v0.6.1 compatibility fallback; no caller-controlled object path.
+		Candidate = LoadObject<UPRChapterRoguelikeContentRegistryDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Warden/DA_RoguelikeContentRegistry_Warden.DA_RoguelikeContentRegistry_Warden"));
+	}
 	if (!Candidate) return EPRRoomContentResult::NotFound;
 	if (!Candidate->IsRegistryReady()) return EPRRoomContentResult::InvalidRegistry;
 	RegistryAsset = Candidate;
@@ -238,6 +257,8 @@ EPRRoomContentResult UPRRoomSubsystem::ConfigureContentRegistry(const FPrimaryAs
 	ConfiguredContentId = Candidate->ContentId;
 	ActiveChapterDirectiveId = FName();
 	ActiveAllocationPressure = 0;
+	bWardenDirectiveValidated = false;
+	WardenDirectiveLevel = 1;
 	return EPRRoomContentResult::Succeeded;
 }
 
@@ -254,10 +275,14 @@ EPRRoomContentResult UPRRoomSubsystem::ConfigureContentContext(const FName Conte
 	ConfiguredContentId = ContentId;
 	ActiveChapterDirectiveId = ChapterDirectiveId;
 	ActiveAllocationPressure = FMath::Clamp(AllocationPressure, 0, 4);
+	bWardenDirectiveValidated = false;
+	WardenDirectiveLevel = 1;
 	return EPRRoomContentResult::Succeeded;
 }
 
 bool UPRRoomSubsystem::GetRoomRuntimeState(FPRRoomRuntimeState& OutState) const { OutState = RuntimeState; return true; }
+bool UPRRoomSubsystem::GetExpectedBossSpawnId(FGuid& OutSpawnId) const { OutSpawnId = ExpectedBossSpawnId; return OutSpawnId.IsValid(); }
+FName UPRRoomSubsystem::GetChapterRouteFallbackReason() const { return RuntimeState.ChapterOfferFallbackReason; }
 void UPRRoomSubsystem::GetActiveEncounterSpawnIds(TArray<FGuid>& OutSpawnIds) const { OutSpawnIds = ActiveEncounterSpawnIds; }
 void UPRRoomSubsystem::GetAppliedRewards(TArray<FPRRewardApplicationHandle>& OutHandles) const { OutHandles = AppliedRewards; }
 void UPRRoomSubsystem::GetAppliedRewardSnapshots(TArray<FPRAppliedRewardSnapshot>& OutRewards) const
@@ -370,7 +395,58 @@ int32 UPRRoomSubsystem::GetRoomWeight(const UPRRoomDataAsset& Room) const
 		FPRDirectorRuleRuntimeState State;
 		if (Director->GetRuleRuntimeState(Adjustment.RuleId, State) && (State.Status == EPRDirectorRuleRuntimeStatus::Active || State.Status == EPRDirectorRuleRuntimeStatus::Degraded)) Weight += Adjustment.WeightDelta * State.Level;
 	}
+	if (ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId() && bWardenDirectiveValidated)
+	{
+		const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
+		const UPRChapterRuleDataAsset* Rule = ChapterRegistry ? ChapterRegistry->FindChapterRule(ActiveChapterDirectiveId) : nullptr;
+		if (Rule && Rule->PreferredRoomIds.Contains(Room.GetPrimaryAssetId())) Weight *= 1 + FMath::Clamp(WardenDirectiveLevel, 1, 5);
+	}
 	return FMath::Max(0, Weight);
+}
+
+bool UPRRoomSubsystem::ApplyChapterRouteConstraint(const FPRChapterEventPressureBinding& Binding)
+{
+	if (Binding.ExcludedFutureRoomIds.IsEmpty()) return true;
+	TArray<FPRRoomPathStep> CandidatePath = RuntimeState.Path;
+	for (int32 Index = RuntimeState.CurrentStepIndex + 1; Index < CandidatePath.Num(); ++Index)
+	{
+		FPRRoomPathStep& Step = CandidatePath[Index];
+		if (Step.SelectedRoomId.IsValid()) continue;
+		Step.CandidateRoomIds.RemoveAll([&Binding](const FPrimaryAssetId& Id) { return Binding.ExcludedFutureRoomIds.Contains(Id); });
+		if (Step.CandidateRoomIds.IsEmpty())
+		{
+			RuntimeState.ChapterOfferFallbackReason = TEXT("Warden.RouteConstraintNoEligibleAlternative");
+			return false;
+		}
+	}
+	RuntimeState.Path = MoveTemp(CandidatePath);
+	return true;
+}
+
+bool UPRRoomSubsystem::IsValidatedWardenDirective(int32& OutLevel) const
+{
+	OutLevel = 1;
+	if (ConfiguredContentId != UPRChapterContentRegistryDataAsset::GetWardenContentId()) return false;
+	const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
+	const UPRChapterRuleDataAsset* Rule = ChapterRegistry ? ChapterRegistry->FindChapterRule(ActiveChapterDirectiveId) : nullptr;
+	const UPRDirectorSubsystem* Director = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRDirectorSubsystem>() : nullptr;
+	if (!Rule || !Director || !Rule->RequiredDirectorRuleId.IsValid()) return false;
+	TArray<FPRAppliedDirectorRuleHandle> AppliedRules;
+	if (!Director->GetAppliedRules(AppliedRules)) return false;
+	const FPRAppliedDirectorRuleHandle* Match = nullptr;
+	for (const FPRAppliedDirectorRuleHandle& Handle : AppliedRules)
+	{
+		if (Handle.RuleId != Rule->RequiredDirectorRuleId) continue;
+		if (!Handle.HandleId.IsValid() || Handle.Level < 1 || Handle.Level > 5 || Match) return false;
+		Match = &Handle;
+	}
+	if (!Match) return false;
+	FPRDirectorRuleRuntimeState Runtime;
+	if (!Director->GetRuleRuntimeState(Match->RuleId, Runtime)
+		|| Runtime.Level != Match->Level
+		|| (Runtime.Status != EPRDirectorRuleRuntimeStatus::Active && Runtime.Status != EPRDirectorRuleRuntimeStatus::Degraded)) return false;
+	OutLevel = Match->Level;
+	return true;
 }
 
 bool UPRRoomSubsystem::DoesConditionPass(const FPRRoomCondition& Condition) const
@@ -428,14 +504,21 @@ void UPRRoomSubsystem::StartEncounter()
 		if (SpawnResult == EPREnemySpawnStatus::Spawned)
 		{
 			ActiveEncounterSpawnIds.Add(SpawnId);
-			if (Encounter->Kind == EPRRoomEncounterKind::Boss && Spawn.PrototypeId.ToString().Contains(TEXT("DA_Boss_Allocator")))
+			if (Encounter->Kind == EPRRoomEncounterKind::Boss && (Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetAllocatorBossPrototypeId() || Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetWardenBossPrototypeId()))
 			{
 				ExpectedBossSpawnId = SpawnId;
-				if (APRAllocatorBoss* Allocator = Cast<APRAllocatorBoss>(Enemy))
+				if (Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetAllocatorBossPrototypeId())
 				{
-					TArray<FPRAppliedRewardSnapshot> AppliedSnapshots;
-					GetAppliedRewardSnapshots(AppliedSnapshots);
-					Allocator->GetAllocatorBossComponent()->ConfigureChapterState(ActiveAllocationPressure, AppliedSnapshots);
+					if (APRAllocatorBoss* Allocator = Cast<APRAllocatorBoss>(Enemy))
+					{
+						TArray<FPRAppliedRewardSnapshot> AppliedSnapshots;
+						GetAppliedRewardSnapshots(AppliedSnapshots);
+						Allocator->GetAllocatorBossComponent()->ConfigureChapterState(ActiveAllocationPressure, AppliedSnapshots);
+					}
+				}
+				else if (APRWardenBoss* Warden = Cast<APRWardenBoss>(Enemy))
+				{
+					Warden->GetWardenBossComponent()->ConfigureChapterState(ActiveAllocationPressure);
 				}
 			}
 		}
@@ -474,7 +557,11 @@ void UPRRoomSubsystem::HandleEnemyStateChanged(const FPREnemyRuntimeState& State
 
 void UPRRoomSubsystem::HandleBossCompleted(const FPRPrototypeRunResult& Result)
 {
-	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::EncounterActive || Result.BossId != TEXT("Allocator") || Result.BossSpawnId != ExpectedBossSpawnId || bExpectedBossCompletionReceived) return;
+	const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
+	const FName ExpectedBossId = ChapterRegistry && ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
+		? UPRChapterContentRegistryDataAsset::GetWardenBossId()
+		: UPRChapterContentRegistryDataAsset::GetAllocatorBossId();
+	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::EncounterActive || Result.BossId != ExpectedBossId || Result.BossSpawnId != ExpectedBossSpawnId || bExpectedBossCompletionReceived) return;
 	bExpectedBossCompletionReceived = true;
 	CheckEncounterCompletion();
 }

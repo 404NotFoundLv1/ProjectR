@@ -26,6 +26,7 @@ FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetAllocatorChapterId()
 
 FName UPRChapterContentRegistryDataAsset::GetAllocatorContentId() { return TEXT("Allocator"); }
 FName UPRChapterContentRegistryDataAsset::GetAllocatorBossId() { return TEXT("Allocator"); }
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetAllocatorBossPrototypeId() { return FPrimaryAssetId(TEXT("ProjectREnemy"), TEXT("DA_Boss_Allocator")); }
 FName UPRChapterContentRegistryDataAsset::GetAllocatorProofId() { return TEXT("HumanAnomalyProof.Allocator"); }
 
 const TArray<FName>& UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveIds()
@@ -41,6 +42,50 @@ const TArray<FName>& UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveId
 
 FName UPRChapterContentRegistryDataAsset::GetDirectiveForSeed(const int32 Seed)
 {
-	const TArray<FName>& Directives = GetAllocatorDirectiveIds();
-	return Directives[static_cast<uint32>(Seed) % Directives.Num()];
+	return GetDirectiveForContentAndSeed(GetAllocatorContentId(), Seed);
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetWardenChapterId()
+{
+	return FPrimaryAssetId(PRChapterContent::ChapterType, TEXT("DA_Chapter_Warden"));
+}
+
+FName UPRChapterContentRegistryDataAsset::GetWardenContentId() { return TEXT("Warden"); }
+FName UPRChapterContentRegistryDataAsset::GetWardenBossId() { return TEXT("Warden"); }
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetWardenBossPrototypeId() { return FPrimaryAssetId(TEXT("ProjectREnemy"), TEXT("DA_Boss_Warden")); }
+FName UPRChapterContentRegistryDataAsset::GetWardenProofId() { return TEXT("HumanAnomalyProof.Warden"); }
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetWardenRoomRegistryId()
+{
+	return FPrimaryAssetId(TEXT("ProjectRChapterRoguelikeRegistry"), TEXT("DA_RoguelikeContentRegistry_Warden"));
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetWardenEnemyRegistryId()
+{
+	return FPrimaryAssetId(TEXT("ProjectREnemyContentRegistry"), TEXT("DA_EnemyContentRegistry_Warden"));
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetWardenFinalRoomId()
+{
+	return FPrimaryAssetId(TEXT("ProjectRRoom"), TEXT("DA_Room_Warden_Boss_Warden"));
+}
+
+const TArray<FName>& UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds()
+{
+	static const TArray<FName> Directives = {
+		TEXT("Warden.PredictivePatrol"),
+		TEXT("Warden.RouteForewarning"),
+		TEXT("Warden.PreemptiveLockdown"),
+		TEXT("Warden.RiskMarking"),
+		TEXT("Warden.TrapEscalation")};
+	return Directives;
+}
+
+FName UPRChapterContentRegistryDataAsset::GetDirectiveForContentAndSeed(const FName ContentId, const int32 Seed)
+{
+	const TArray<FName>* Directives = nullptr;
+	if (ContentId == GetAllocatorContentId()) Directives = &GetAllocatorDirectiveIds();
+	else if (ContentId == GetWardenContentId()) Directives = &GetWardenDirectiveIds();
+	if (!Directives || Directives->IsEmpty()) return NAME_None;
+	return (*Directives)[static_cast<uint32>(Seed) % Directives->Num()];
 }

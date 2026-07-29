@@ -6,8 +6,30 @@
 
 bool UPRChapterRuleDataAsset::IsRuleDefinitionValid() const
 {
-    return ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId()
-        && UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveIds().Contains(DirectiveId);
+	if (ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId())
+	{
+		return UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveIds().Contains(DirectiveId)
+			&& !RequiredDirectorRuleId.IsValid() && PreferredRoomIds.IsEmpty();
+	}
+	if (ContentId != UPRChapterContentRegistryDataAsset::GetWardenContentId()
+		|| !UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds().Contains(DirectiveId)
+		|| !RequiredDirectorRuleId.IsValid()) return false;
+
+	const FGameplayTag ExpectedRule =
+		DirectiveId == TEXT("Warden.PredictivePatrol") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.PredictionLock"), false) :
+		DirectiveId == TEXT("Warden.RouteForewarning") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.OptimalPath"), false) :
+		DirectiveId == TEXT("Warden.PreemptiveLockdown") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.DistanceCorrection"), false) :
+		DirectiveId == TEXT("Warden.RiskMarking") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.RiskReward"), false) :
+		FGameplayTag::RequestGameplayTag(TEXT("Rule.RepetitionPenalty"), false);
+	if (RequiredDirectorRuleId != ExpectedRule || PreferredRoomIds.IsEmpty() || PreferredRoomIds.Num() > 2) return false;
+	TArray<FPrimaryAssetId> Canonical = PreferredRoomIds;
+	Canonical.Sort([](const FPrimaryAssetId& Left, const FPrimaryAssetId& Right) { return Left.ToString() < Right.ToString(); });
+	for (int32 Index = 0; Index < Canonical.Num(); ++Index)
+	{
+		if (!Canonical[Index].IsValid() || Canonical[Index].PrimaryAssetType != FPrimaryAssetType(TEXT("ProjectRRoom"))
+			|| (Index > 0 && Canonical[Index] == Canonical[Index - 1])) return false;
+	}
+	return Canonical == PreferredRoomIds;
 }
 
 FPrimaryAssetId UPRChapterRuleDataAsset::GetPrimaryAssetId() const

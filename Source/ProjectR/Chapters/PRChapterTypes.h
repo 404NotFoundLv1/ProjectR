@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Chapters/Warden/PRWardenTypes.h"
 #include "Engine/AssetManagerTypes.h"
 
 #include "PRChapterTypes.generated.h"
@@ -64,7 +65,11 @@ struct PROJECTR_API FPRChapterSnapshot
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FName ContentId;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FName DirectiveId;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int32 AllocationPressure = 0;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int32 RiskPressure = 0;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRAllocatorBossRuntimeState Boss;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRWardenBossRuntimeState WardenBoss;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRWardenStoryProjection WardenStory;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FName FallbackReason;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") bool bHasHumanAnomalyProof = false;
 };
 

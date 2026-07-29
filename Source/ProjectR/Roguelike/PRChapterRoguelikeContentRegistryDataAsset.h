@@ -16,6 +16,8 @@ struct PROJECTR_API FPRChapterEventPressureBinding
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") FPrimaryAssetId EventId;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") FName ChoiceId;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") int32 PressureDelta = 0;
+	/** Closed Warden-only future candidates to remove atomically after this choice. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") TArray<FPrimaryAssetId> ExcludedFutureRoomIds;
 };
 
 /**
@@ -33,7 +35,9 @@ public:
 	virtual bool IsRegistryReady() const override;
 	bool SupportsChapterShopRooms() const;
 	bool IsKnownDirective(FName DirectiveId) const;
+	const UPRChapterRuleDataAsset* FindChapterRule(FName DirectiveId) const;
 	bool FindPressureDelta(FPrimaryAssetId EventId, FName ChoiceId, int32& OutDelta) const;
+	bool FindEventPressureBinding(FPrimaryAssetId EventId, FName ChoiceId, FPRChapterEventPressureBinding& OutBinding) const;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") FName ContentId;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") TArray<TSoftObjectPtr<UPRChapterRuleDataAsset>> ChapterRules;

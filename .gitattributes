@@ -234,3 +234,43 @@
 /Content/ProjectR/Chapters/Allocator/Boss/DA_Boss_Allocator.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Allocator/Boss/BP_Boss_Allocator.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Allocator/UI/WBP_AllocatorChapterOverlay.uasset -filter -diff -merge -text
+
+# v0.6.1 Warden Chapter packages are 192,689 bytes total after exact MCP save.
+# Keep only this exact 37-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Chapters/Warden/DA_Chapter_Warden.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/DA_EnemyContentRegistry_Warden.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/DA_RoguelikeContentRegistry_Warden.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rules/DA_ChapterRule_Warden_PredictivePatrol.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rules/DA_ChapterRule_Warden_PreemptiveLockdown.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rules/DA_ChapterRule_Warden_RiskMarking.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rules/DA_ChapterRule_Warden_RouteForewarning.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rules/DA_ChapterRule_Warden_TrapEscalation.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Boss_Warden.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Combat_ForecastPatrol.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Combat_RiskSweep.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Elite_LockdownGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Event_EarlyLockdown.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Event_FalseAlarm.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Event_RouteWarning.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Event_TrapGrid.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Safe_ObservationPost.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rooms/DA_Room_Warden_Shop_RiskProvisionTerminal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Encounters/DA_Encounter_Warden_Boss.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Encounters/DA_Encounter_Warden_ForecastPatrol.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Encounters/DA_Encounter_Warden_LockdownGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Encounters/DA_Encounter_Warden_RiskSweep.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Events/DA_RoomEvent_Warden_EarlyLockdown.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Events/DA_RoomEvent_Warden_FalseAlarm.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Events/DA_RoomEvent_Warden_RouteWarning.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Events/DA_RoomEvent_Warden_TrapGrid.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rewards/Policies/DA_RewardPolicy_Warden_Combat.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rewards/Policies/DA_RewardPolicy_Warden_Elite.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rewards/Policies/DA_RewardPolicy_Warden_Event.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rewards/Policies/DA_RewardPolicy_Warden_Safe.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Rewards/Policies/DA_RewardPolicy_Warden_Shop.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Enemies/DA_Enemy_WardenForecastSentinel.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Enemies/DA_Enemy_WardenLockdownGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Enemies/DA_Enemy_WardenRiskMarker.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Boss/DA_Boss_Warden.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/Boss/BP_Boss_Warden.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Warden/UI/WBP_WardenChapterOverlay.uasset -filter -diff -merge -text
