@@ -598,3 +598,11 @@ Commit：
 - 证据：BuildEditor 成功；`ProjectR.Chapter.Warden` 5/5、组合 Chapter 10/10、Save 5/5、合同 `-game` Debug 12/12；Data Validation 为 0 errors/1 warning；MCP 37 Package 精确保存、重启回读、Dirty=0；Seed 61101 隔离 PIE 实际进入 Warden combat Encounter，退出后 automation A/B storage 清理 PASS，未触及用户存档。
 - 广泛 Editor `ProjectR` runner 为 122 succeeded、13 succeeded-with-warnings、4 failed；四项失败均为既有 GameInstance-dependent Debug 测试在非 `-game` runner 的上下文诊断，合同 `-game` Debug 12/12 已单独 PASS。用户在完整 Warden 人工验收后明确返回 `PASS`。最终报告为 `Saved/AutomationReports/v061-final-report-20260729/v061final-None/result.json`；本任务未创建提交。
 - Future Compatibility Review PASS：v0.6.2 只能添加新的闭合内容；v0.7.x 只能读取公开 Proof 快照；v0.8.0 才能建立经济；v0.8.4 继续同步既有 PRSV A/B Schema-7。无新增阻断 KnownIssue。
+
+# 2026-07-30 - v0.6.1 正式收尾与 v0.6.2 合同转换
+
+- v0.6.1 已由 `03eb7de`（`v0.6.1 Add chapter two Warden content pack`）正式提交；转换审计确认 `main` 与 `origin/main` 同步、领先/落后为 `0/0`，转换前工作区干净。
+- 依据 `Saved/AutomationReports/v061-final-report-20260729/v061final-None/result.json` 的既有证据正式关闭 v0.6.1；报告生成时的 `commit: NOT CREATED` 保留为历史事实，任务页另行记录后续正式提交。
+- BuildEditor、Warden 5/5、Chapter 10/10、Save 5/5、合同 `-game` Debug 12/12、MCP 37 Package 精确保存/重启/Dirty=0、Data Validation、固定 PIE、人工完整通关、ADR-036、KnownIssues Review 和 FCR 均已有 PASS。广泛 Editor runner 的四项 Debug 失败继续作为既有 GameInstance runner-context 诊断记录。
+- 新建单一 `Docs/Versions/v0.6.2.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.6.2 / In Progress`。E-037 固定三章节闭包、独立 ComfortPressure、非经济安全奖励、瞬态幻象、严格 Proof 链与单版本交付。
+- 本次仅执行六份文档的版本转换；没有开始 Pacifier C++、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.6.2 保持一个公共版本、一个完成门和唯一未来功能提交。
