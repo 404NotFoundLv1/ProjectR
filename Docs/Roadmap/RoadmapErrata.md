@@ -120,6 +120,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-034 | v6 将“每轮生成 RunSummary”、长期记忆、`memory_refs`/带关系 Delta 的对话选项、LLM 安全层和 MemoryFragments 来源并列；但 `FPRRunSummary` 已由 v0.4.3 RunState 所有，v0.5.1 只允许公开 Completed/entitlement/LineId 消费，Progression 是 MemoryFragments 余额所有者，仓库也没有正式网络端点、凭据或远程模型合同。用户要求 v0.5.2 一次完整交付，不拆分子版本或中间功能提交 | v0.5.2 使用单一合同、单一完成门和唯一功能提交。`UPRMemorySubsystem` 只从 `FPRAccountDeletedEvent.Record.Summary` 与公开值事件派生有界 `FPRMemorySummary`，不创建第二套 RunSummary、不修改 RunState。Provider 输出严格只允许 `scene`、`companion_id`、`emotion`、`summary`、`player_options` 五字段；`memory_refs` 留在本地请求上下文，Player options 只能是 Persona Registry 的固定 ID，不携带关系 Delta、Tag、效果或自由指令。每个首次成功持久化、非 `InterruptedRecovery` 且含合法 KeyEventId 的 SummaryId 原子奖励 1 个 MemoryFragment；Progression 继续拥有余额，只增加 MemorySubsystem friend 可调用的私有单枚入账投影，重复/失败/迁移旧档不补发。Schema 6 以同一 A/B 快照原子暂存 Memory 与 Progression，落盘成功前不发布摘要或余额。默认仅实现 typed Provider boundary、Validator、确定性本地 Mock 与离线 fallback，不创建 HTTP Provider、Transport、端点、API Key、远程模型或客户端凭据 | 保持 RunState、Quest、Progression、Save 和 Dialogue 的冻结所有权，避免重复摘要权威、任意经济入口与生成式选项越权，同时满足长期有界、离线可用、可验证和未来 Provider 可替换边界 | Active for v0.5.2 |
 
+# v0.6.0 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.6.0 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-035 | v6 要求配给官房间池、商店规则、五条资源/商店法令、三种敌人、Boss 结算和首枚人类异常证明；真实工程的 RoomSubsystem 固定加载基础 Registry、排除 `Room.Type.Shop` 并硬编码基础数量，Enemy Registry 只按冻结 GameplayTag 生成，Director 只允许十二条全局 Rule，`FPRRunSummary::BossId` 也是不能承载 `Allocator` 的 `FGameplayTag`。正式经济归 v0.8.0，现有地图、RunState、Account 和 Boss Auditor 合同均已冻结。用户要求 v0.6.0 一次完整交付，不拆分子版本、检查点或中间功能提交 | v0.6.0 使用单一合同、单一完成门和唯一功能提交。Room 增加仅 C++、仅空闲态可配置的 PrimaryAssetId Registry 接缝；基础 Registry 行为保持不变。Enemy 增加 PrimaryAssetId 内容 Registry/Spawn 重载，三种变体以独立 EnemyId/PrototypeId 复用现有 Melee/Shield/Ranged archetype Tag，不增加 GameplayTag。五条“法令”是章节局部 `FName` 指令，只消费已验证 Director Handle 并调整已知章节权重/审计输入，不进入 Director Request/Response、Validator、Registry、RuntimeState 或执行器。Shop 只是既有三选一、不可重掷 Reward Offer 的章节配给终端，不建立货币、库存、价格扣款或第二套结算。Allocator 由新增 Actor/Component 拥有三阶段状态，只发布既有 `FPRPrototypeRunResult`；ChapterSubsystem 以冻结的 RunId/Seed、RoomSequenceCompleted、`BossId=Allocator` 的 Boss 值结果和成功 AccountDeleted 关联证明资格，不写入或依赖 `FPRRunSummary::BossId`。Human Anomaly Proof 是独立、不可消费的 Schema-7 Profile 资格，与 CounterproofFragments/MemoryFragments 分离。不创建或修改地图，所有章节 Room 只读复用 `L_Network_Prototype` | 让 v0.6.0 可在不重写冻结上游、不伪造全局经济/Director Rule/GameplayTag 或 RunSummary 字段的条件下完成端到端章节，并为 v0.6.1+ 提供稳定的 Chapter/Room/Enemy 内容注册合同 | Active for v0.6.0 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

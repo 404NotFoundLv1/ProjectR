@@ -565,3 +565,11 @@ Commit：
 - Provider 回调现携带冻结 RequestId 的传输信封元数据；RED 后的 GREEN 验证确认错误、重复或迟到的回调不能终结较新的请求。该元数据不是 Provider JSON 的第六字段，不持久化也不暴露给 Widget。
 - Future Compatibility Review PASS：v0.6.0+ 只能消费有界 Memory 快照、最新摘要、固定 Companion/Emotion/PlayerOption ID 与 fallback 状态；不得读取 Provider 候选、Prompt、原始事件、私有 Quest/Save 数据或 MemoryFragments 事务。真实 Transport/凭据、章节与经济仍不属于本版本。
 - 非 `-game` 全量 runner 的 Debug/Enemy 上下文误报继续只作为 KI-023 runner 诊断，不替代各自合同 runner 的 PASS；没有新增阻断 KnownIssue。
+
+# 2026-07-29 - v0.5.2 正式收尾与 v0.6.0 合同转换
+
+- v0.5.2 已由 `ea1e2ea`（`v0.5.2 Add memory summary and safe dialogue provider`）正式提交；收尾审计确认 `main` 与 `origin/main` 同步、转换前工作区干净。
+- 依据 `Saved/AutomationReports/v052-final-report-20260729/v052final-None/result.json` 的既有 PASS 证据关闭 v0.5.2：BuildEditor、Memory 6/6、Save 5/5、Progression 4/4、合同 `-game` Debug 12/12、Data Validation、MCP 精确保存/重启回载/Dirty=0、固定 PIE、人工验收与 FCR 均已完成。本次未补造或重跑产品验证。
+- ADR-034 与 MemorySummary/安全 Provider 数据合同和最终报告一致；v0.5.2 未新增阻断 KnownIssue，既有问题状态保持不变。
+- 新建单一 `Docs/Versions/v0.6.0.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.6.0 / In Progress`。E-035 固定章节内容 Registry 接缝、PrimaryAssetId 敌人变体、章节局部指令、非经济 Shop、Human Anomaly Proof 和无地图修改边界。
+- 本次仅执行六份文档的版本转换，没有开始 v0.6.0 C++、Schema 7、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.6.0 保持一个公共版本、一个完成门和唯一未来功能提交。
