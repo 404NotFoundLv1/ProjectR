@@ -40,7 +40,8 @@ FPrimaryAssetId UPRChapterRoguelikeContentRegistryDataAsset::GetPrimaryAssetId()
 bool UPRChapterRoguelikeContentRegistryDataAsset::SupportsChapterShopRooms() const
 {
 	return ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId()
-		|| ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId();
+		|| ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
+		|| ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId();
 }
 
 bool UPRChapterRoguelikeContentRegistryDataAsset::IsKnownDirective(const FName DirectiveId) const
@@ -104,9 +105,12 @@ bool UPRChapterRoguelikeContentRegistryDataAsset::IsRegistryReady() const
 		ActualRuleIds.Add(Rule->DirectiveId);
 	}
 	if (PreviousRuleId.IsEmpty()) return Fail(TEXT("missing-rules"));
-	TArray<FName> ExpectedRuleIds = ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId()
-		? UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveIds()
-		: UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds();
+	TArray<FName> ExpectedRuleIds =
+		ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId()
+			? UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveIds()
+			: ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
+				? UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds()
+				: UPRChapterContentRegistryDataAsset::GetPacifierDirectiveIds();
 	ExpectedRuleIds.Sort([](const FName& Left, const FName& Right) { return Left.LexicalLess(Right); });
 	if (ActualRuleIds != ExpectedRuleIds) return Fail(TEXT("rule-whitelist"));
 	TSet<FString> UniqueEventChoices;

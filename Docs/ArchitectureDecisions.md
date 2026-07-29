@@ -484,6 +484,20 @@ date: "2026-07-10"
 
 **Verification:** BuildEditor, `ProjectR.Chapter.Warden` 5/5, combined Chapter 10/10, Save 5/5, contractual `-game` Debug 12/12, exact MCP re-read/save/restart/Dirty=0, 0-error Data Validation, isolated Warden PIE and user `PASS` are summarized in `Saved/AutomationReports/v061-final-report-20260729/v061final-None/result.json`. The broad Editor runner's four GameInstance-dependent Debug failures remain the established runner-context diagnostic.
 
+# ADR-037 - Pacifier extends the fixed chapter closure and filters account death to the player target
+
+**Status:** Accepted and implemented (v0.6.2 Completed)
+
+**Context:** The frozen Warden implementation contains chapter-specific selection, pressure, Registry registration and presentation branches. Pacifier must add a third fixed content pack without creating a general loader, economy, map content, Director Rule or new Save schema. A real Pacifier full-path PIE also exposed a pre-existing integration defect: the global CombatEvent stream includes enemy deaths, while RunState previously treated every fatal event during an active run as player death. Killing the first Pacifier enemy therefore deleted the active account and returned to RealityHub before the chapter could continue.
+
+**Decision:** `UPRChapterSubsystem` remains the sole Chapter authority and expands only to the fixed Allocator/Warden/Pacifier closure. It selects Pacifier from the strict public Proof chain, dynamically registers only the compiled-in Pacifier Enemy Registry ID/path, owns transient ComfortPressure, fixed local directives, Story/Boss projections and the frozen Schema-7 settlement transaction. Pacifier safety offers remain existing non-economic Reward Offers; Illusion actors are transient, non-combat projections; all Boss damage continues through CombatSubsystem. As the minimum upstream compatibility correction, RunState now consumes global CombatEvents for run damage/death only when the target is the current player Pawn, with a `TargetId == Player` fallback solely for actor-less bounded legacy automation facts.
+
+**Consequences:** Allocator and Warden remain mandatory regressions. No Save Runtime/Migration, Account lifecycle, RealityHub, Director, Enemy base, BossSubsystem, Combat publication, AttributeSet, Ability, QTE, Companion, Quest, Dialogue, Progression, Memory, GameplayTag, Input, Config, Build.cs, plugin metadata or map contract changes. The RunState correction narrows an existing consumer to its documented player-death authority; it adds no API, state, schema or future business logic.
+
+**Migration/rollback:** Schema stays `1->2->3->4->5->6->7`; Pacifier is an idempotent addition to the existing bounded Chapter/Proof sets. Rollback is limited to Pacifier/UI source and tests, Chapter/Room additive changes, the exact player-target RunState guard, 37 exact packages, conditional fixed editor-only Toolset, exact `.gitattributes` exceptions and v0.6.2 documentation. Saved Package deletion remains individually approval-gated.
+
+**Verification:** BuildEditor passed after the final presentation change. `ProjectR.Chapter` is 15/15, Save 5/5, Account 4/4, Account PIE 6/6, contractual `-game` Debug 12/12 and fixed Pacifier PIE 3/3. The broad historical runner's four Debug failures remain the established wrong-context diagnostic; Checkpoint-D is independently PASS through the fixed rendered Editor PIE tool and also passed in the prior broad snapshot. Unreal MCP reloaded all 37 packages after a normal restart, compiled Boss/Widget with warnings-as-errors, confirmed the exact Registry closure and 411 ProjectR assets Dirty=0. Data Validation completed with 0 errors and the single established MCP EULA warning. The isolated manual complete path received explicit user `PASS`; its automation storage cleanup confirmed `userSlotsTouched=false`. Final report `Saved/AutomationReports/v062-final-report2-20260730/v062final-None/result.json` derived PASS with 12/12 required checks.
+
 # ADR 模板
 
 ```text

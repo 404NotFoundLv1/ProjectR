@@ -52,7 +52,7 @@ private:
 	bool IsRelationshipDeltaEmpty(const struct FPRRelationshipDelta& Delta) const;
 	int32 GetRoomWeight(const class UPRRoomDataAsset& Room) const;
 	bool ApplyChapterRouteConstraint(const struct FPRChapterEventPressureBinding& Binding);
-	bool IsValidatedWardenDirective(int32& OutLevel) const;
+	bool IsValidatedChapterDirective(int32& OutLevel) const;
 	bool DoesConditionPass(const FPRRoomCondition& Condition) const;
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 	void StartEncounter();
@@ -75,9 +75,9 @@ private:
 	FPrimaryAssetId ConfiguredRegistryId;
 	FName ConfiguredContentId;
 	FName ActiveChapterDirectiveId;
-	int32 ActiveAllocationPressure = 0;
-	bool bWardenDirectiveValidated = false;
-	int32 WardenDirectiveLevel = 1;
+	int32 ActiveChapterPressure = 0;
+	bool bChapterDirectiveValidated = false;
+	int32 ChapterDirectiveLevel = 1;
 	FPRRoomRuntimeState RuntimeState;
 	FPRRewardOffer ActiveOffer;
 	TArray<FPRRewardApplicationHandle> AppliedRewards;

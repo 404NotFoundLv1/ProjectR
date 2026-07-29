@@ -146,6 +146,13 @@ date: "2026-07-10"
 - 关闭证据：以既有 `-game -NullRHI` GameInstance 入口重跑 `ProjectR.Debug`，12/12 PASS；以单独可渲染 Editor PIE 入口重跑 `ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression`，1/1 PASS。未修改 Debug 或 Enemy 代码。
 - 影响：所有 116 项历史测试现均有其合同规定运行器上的 PASS 证据；该问题不再阻断 v0.4.4。
 
+# 2026-07-30 - v0.6.2 Known Issues Review（Completed）
+
+- 未新增持续性产品阻断。真实 Pacifier full-path PIE 暴露的 RunState 全局 CombatEvent 目标过滤缺口已按 ADR-037 最小修正，并由 Account 4/4、Account PIE 6/6、Chapter 15/15 和 Pacifier full-path PIE 回归；该修正不改变 Combat 发布、Account 生命周期、Save Schema 或公共 API。
+- KI-023 的 runner 隔离规则保持有效：广泛非 `-game` Editor runner 中四项 `ProjectR.Debug.*` 仍因缺少 GameInstance 失败，合同 `-game` Debug 为 12/12 PASS。`ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression` 在前一完整快照中 PASS；独立可渲染 Editor PIE 的固定 Checkpoint-D 入口本轮再次返回 PASS，未修改 Enemy 上游。
+- Data Validation 第一次最终复验因前一个已超时的命令行进程短暂占用 MCP 8000 端口而以环境错误退出；所有 Unreal 进程退出后从干净状态重跑，命令退出 0、0 errors、1 个既有 MCP EULA warning。失败日志不作为通过证据。
+- KI-019、KI-020 与 KI-006 状态不变；本版本不修改 `.uplugin`、Build.cs、冻结时序阈值或 Experimental MCP 安全边界。隔离人工完整通关已获用户 `PASS`，最终 AutomationReport 为 12/12 required PASS；没有新增阻断 KnownIssue。
+
 # 记录规则
 
 问题必须包含复现/证据、影响版本、临时处理、负责人和可验证关闭条件。不能用删除日志或降低校验来关闭问题。

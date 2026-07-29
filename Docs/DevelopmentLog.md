@@ -606,3 +606,12 @@ Commit：
 - BuildEditor、Warden 5/5、Chapter 10/10、Save 5/5、合同 `-game` Debug 12/12、MCP 37 Package 精确保存/重启/Dirty=0、Data Validation、固定 PIE、人工完整通关、ADR-036、KnownIssues Review 和 FCR 均已有 PASS。广泛 Editor runner 的四项 Debug 失败继续作为既有 GameInstance runner-context 诊断记录。
 - 新建单一 `Docs/Versions/v0.6.2.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.6.2 / In Progress`。E-037 固定三章节闭包、独立 ComfortPressure、非经济安全奖励、瞬态幻象、严格 Proof 链与单版本交付。
 - 本次仅执行六份文档的版本转换；没有开始 Pacifier C++、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.6.2 保持一个公共版本、一个完成门和唯一未来功能提交。
+
+# 2026-07-30 - v0.6.2 Pacifier chapter implementation（Completed）
+
+- 已完成固定 Allocator/Warden/Pacifier 三章节闭包、严格 Proof 链、独立 ComfortPressure、四 Event、五条局部指令、无经济 SafetyProvisionTerminal、三种 PrimaryAssetId Enemy、固定 Kindle StoryBeat、三阶段 Pacifier Boss、瞬态可见幻象和 Schema-7 幂等 Proof 结算。未升级 Schema，未建立通用加载器、经济、Director Rule、地图内容或自由生成。
+- 真实完整路径首次杀死 Enemy 时暴露冻结 RunState 对全局 CombatEvent 未过滤目标的上游缺口：Enemy fatal 被误判为玩家死亡并触发删号/回 Hub。最小兼容修正只允许 RunState 聚合当前 Player Pawn 的事件；没有 transient Actor 的旧有界自动化事实仅以稳定 `TargetId=Player` 兼容。Account 4/4 与固定 Account PIE 6/6 已回归，Account/Save/Combat 公共合同和生命周期未改变。
+- Unreal MCP 创建并回读准确 37 个 Pacifier Package：10 Room、4 Encounter、4 Event、5 RewardPolicy、3 Enemy、Boss DA/BP、Chapter/双 Registry、5 Rule 和 Overlay。正常重启后 Registry 闭包为 10/4/4/5/30/4；Boss Blueprint 与 Widget warnings-as-errors 编译，37 项及全 `/Game/ProjectR` 411 个可浏览资产 Dirty=0。Package 总计 195,586 bytes、最大 27,566 bytes，全部准确普通 Git 例外低于 256 KiB/1 MiB 门且未进入 LFS。
+- 自动证据：最终 BuildEditor PASS；Chapter 15/15、Save 5/5、Account 4/4、Account PIE 6/6、合同 `-game` Debug 12/12、固定 Pacifier PIE 3/3。广泛历史 runner 最终快照的四项 Debug 仍是既有 GameInstance runner-context 诊断；Checkpoint-D 在独立可渲染 Editor PIE 固定入口实际 1/1 PASS，未修改冻结 Enemy 代码。Data Validation 最终为 0 errors/1 个既有 MCP EULA warning。
+- ADR-037 与 Pacifier Data Contract 固定三章节所有权、动态 Registry 的编译期输入、RunState 玩家目标过滤、一次性 Completion、完整清理及 Future Compatibility Review 边界。隔离 Profile 的人工完整通关收到用户明确 `PASS`；PIE 停止后 automation storage cleanup PASS、`userSlotsTouched=false`，37 个 Pacifier Package 再检 Dirty=0，编辑器正常关闭。
+- 最终 AutomationReport `Saved/AutomationReports/v062-final-report2-20260730/v062final-None/result.json` 退出 0，12/12 required checks PASS。v0.6.2 任务页、VersionIndex 与 `CURRENT_VERSION.md` 已标记 Completed；未创建提交或推送，建议提交仍为 `v0.6.2 Add chapter three Pacifier content pack`。

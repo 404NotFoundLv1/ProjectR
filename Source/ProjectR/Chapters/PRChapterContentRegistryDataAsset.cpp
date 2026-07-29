@@ -81,11 +81,48 @@ const TArray<FName>& UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds()
 	return Directives;
 }
 
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetPacifierChapterId()
+{
+	return FPrimaryAssetId(PRChapterContent::ChapterType, TEXT("DA_Chapter_Pacifier"));
+}
+
+FName UPRChapterContentRegistryDataAsset::GetPacifierContentId() { return TEXT("Pacifier"); }
+FName UPRChapterContentRegistryDataAsset::GetPacifierBossId() { return TEXT("Pacifier"); }
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetPacifierBossPrototypeId() { return FPrimaryAssetId(TEXT("ProjectREnemy"), TEXT("DA_Boss_Pacifier")); }
+FName UPRChapterContentRegistryDataAsset::GetPacifierProofId() { return TEXT("HumanAnomalyProof.Pacifier"); }
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetPacifierRoomRegistryId()
+{
+	return FPrimaryAssetId(TEXT("ProjectRChapterRoguelikeRegistry"), TEXT("DA_RoguelikeContentRegistry_Pacifier"));
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetPacifierEnemyRegistryId()
+{
+	return FPrimaryAssetId(TEXT("ProjectREnemyContentRegistry"), TEXT("DA_EnemyContentRegistry_Pacifier"));
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetPacifierFinalRoomId()
+{
+	return FPrimaryAssetId(TEXT("ProjectRRoom"), TEXT("DA_Room_Pacifier_Boss_Pacifier"));
+}
+
+const TArray<FName>& UPRChapterContentRegistryDataAsset::GetPacifierDirectiveIds()
+{
+	static const TArray<FName> Directives = {
+		TEXT("Pacifier.ComfortProjection"),
+		TEXT("Pacifier.EmotionalDampening"),
+		TEXT("Pacifier.IllusionVeil"),
+		TEXT("Pacifier.RiskSuppression"),
+		TEXT("Pacifier.SafetyIncentive")};
+	return Directives;
+}
+
 FName UPRChapterContentRegistryDataAsset::GetDirectiveForContentAndSeed(const FName ContentId, const int32 Seed)
 {
 	const TArray<FName>* Directives = nullptr;
 	if (ContentId == GetAllocatorContentId()) Directives = &GetAllocatorDirectiveIds();
 	else if (ContentId == GetWardenContentId()) Directives = &GetWardenDirectiveIds();
+	else if (ContentId == GetPacifierContentId()) Directives = &GetPacifierDirectiveIds();
 	if (!Directives || Directives->IsEmpty()) return NAME_None;
 	return (*Directives)[static_cast<uint32>(Seed) % Directives->Num()];
 }

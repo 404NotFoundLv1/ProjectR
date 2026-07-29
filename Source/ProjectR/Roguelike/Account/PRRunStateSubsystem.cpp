@@ -15,6 +15,7 @@
 #include "Companions/PRCompanionSubsystem.h"
 
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -279,6 +280,17 @@ void UPRRunStateSubsystem::HandleRoomSequenceCompleted(const FPRRoomSequenceComp
 void UPRRunStateSubsystem::HandleCombatEvent(const FPRCombatEvent& Event)
 {
 	if (RuntimeState.State != EPRRunLifecycleState::RunActive && RuntimeState.State != EPRRunLifecycleState::AwaitingDivergence) return;
+	// CombatEvent is global and includes damage against enemies. Run summary and
+	// account death authority may only consume events targeting the current player.
+	// Legacy bounded automation facts intentionally omit the transient actor and use
+	// the stable combatant ID instead, so retain that value-contract fallback.
+	const APawn* PlayerPawn = BoundWorld.IsValid() ? UGameplayStatics::GetPlayerPawn(BoundWorld.Get(), 0) : nullptr;
+	if (Event.Target.IsValid()
+		? Event.Target.Get() != PlayerPawn
+		: Event.TargetId != FName(TEXT("Player")))
+	{
+		return;
+	}
 	const float Ratio = Event.MaxHealth > 0.0f ? Event.RemainingHealth / Event.MaxHealth : 1.0f;
 	SummaryBuilder.RecordDamage(Event.HealthDamage, Event.bFatal ? Event.HealthDamage : 0.0, Event.ShieldAbsorbed, Ratio);
 	if (!Event.bFatal || !Event.EventId.IsValid() || bDeathPending) return;

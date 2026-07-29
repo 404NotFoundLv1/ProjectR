@@ -274,3 +274,43 @@
 /Content/ProjectR/Chapters/Warden/Boss/DA_Boss_Warden.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Warden/Boss/BP_Boss_Warden.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Warden/UI/WBP_WardenChapterOverlay.uasset -filter -diff -merge -text
+
+# v0.6.2 Pacifier Chapter packages are 195,586 bytes total after final exact MCP save.
+# Keep only this exact 37-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Chapters/Pacifier/DA_Chapter_Pacifier.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/DA_EnemyContentRegistry_Pacifier.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/DA_RoguelikeContentRegistry_Pacifier.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rules/DA_ChapterRule_Pacifier_ComfortProjection.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rules/DA_ChapterRule_Pacifier_EmotionalDampening.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rules/DA_ChapterRule_Pacifier_IllusionVeil.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rules/DA_ChapterRule_Pacifier_RiskSuppression.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rules/DA_ChapterRule_Pacifier_SafetyIncentive.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Boss_Pacifier.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Combat_ComfortPatrol.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Combat_IllusionSweep.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Elite_EmotionGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Event_EmotionalInterference.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Event_IllusionGallery.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Event_SacrificeSimulation.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Event_SafeRewardOffer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Safe_QuietChamber.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rooms/DA_Room_Pacifier_Shop_SafetyProvisionTerminal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Encounters/DA_Encounter_Pacifier_Boss.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Encounters/DA_Encounter_Pacifier_ComfortPatrol.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Encounters/DA_Encounter_Pacifier_EmotionGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Encounters/DA_Encounter_Pacifier_IllusionSweep.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Events/DA_RoomEvent_Pacifier_EmotionalInterference.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Events/DA_RoomEvent_Pacifier_IllusionGallery.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Events/DA_RoomEvent_Pacifier_SacrificeSimulation.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Events/DA_RoomEvent_Pacifier_SafeRewardOffer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rewards/Policies/DA_RewardPolicy_Pacifier_Combat.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rewards/Policies/DA_RewardPolicy_Pacifier_Elite.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rewards/Policies/DA_RewardPolicy_Pacifier_Event.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rewards/Policies/DA_RewardPolicy_Pacifier_Safe.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Rewards/Policies/DA_RewardPolicy_Pacifier_Shop.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Enemies/DA_Enemy_PacifierComfortGuard.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Enemies/DA_Enemy_PacifierMirageEmitter.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Enemies/DA_Enemy_PacifierRiskSuppressor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Boss/DA_Boss_Pacifier.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/Boss/BP_Boss_Pacifier.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Pacifier/UI/WBP_PacifierChapterOverlay.uasset -filter -diff -merge -text
