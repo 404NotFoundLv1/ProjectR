@@ -126,6 +126,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-035 | v6 要求配给官房间池、商店规则、五条资源/商店法令、三种敌人、Boss 结算和首枚人类异常证明；真实工程的 RoomSubsystem 固定加载基础 Registry、排除 `Room.Type.Shop` 并硬编码基础数量，Enemy Registry 只按冻结 GameplayTag 生成，Director 只允许十二条全局 Rule，`FPRRunSummary::BossId` 也是不能承载 `Allocator` 的 `FGameplayTag`。正式经济归 v0.8.0，现有地图、RunState、Account 和 Boss Auditor 合同均已冻结。用户要求 v0.6.0 一次完整交付，不拆分子版本、检查点或中间功能提交 | v0.6.0 使用单一合同、单一完成门和唯一功能提交。Room 增加仅 C++、仅空闲态可配置的 PrimaryAssetId Registry 接缝；基础 Registry 行为保持不变。Enemy 增加 PrimaryAssetId 内容 Registry/Spawn 重载，三种变体以独立 EnemyId/PrototypeId 复用现有 Melee/Shield/Ranged archetype Tag，不增加 GameplayTag。五条“法令”是章节局部 `FName` 指令，只消费已验证 Director Handle 并调整已知章节权重/审计输入，不进入 Director Request/Response、Validator、Registry、RuntimeState 或执行器。Shop 只是既有三选一、不可重掷 Reward Offer 的章节配给终端，不建立货币、库存、价格扣款或第二套结算。Allocator 由新增 Actor/Component 拥有三阶段状态，只发布既有 `FPRPrototypeRunResult`；ChapterSubsystem 以冻结的 RunId/Seed、RoomSequenceCompleted、`BossId=Allocator` 的 Boss 值结果和成功 AccountDeleted 关联证明资格，不写入或依赖 `FPRRunSummary::BossId`。Human Anomaly Proof 是独立、不可消费的 Schema-7 Profile 资格，与 CounterproofFragments/MemoryFragments 分离。不创建或修改地图，所有章节 Room 只读复用 `L_Network_Prototype` | 让 v0.6.0 可在不重写冻结上游、不伪造全局经济/Director Rule/GameplayTag 或 RunSummary 字段的条件下完成端到端章节，并为 v0.6.1+ 提供稳定的 Chapter/Room/Enemy 内容注册合同 | Active for v0.6.0 |
 
+# v0.6.1 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.6.1 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-036 | v6 只给出守夜者的陷阱、预警路线、提前封锁、三种 Boss 机制、三种敌人和律衡剧情方向；真实 v0.6.0 实现仍在 ChapterSubsystem、Chapter Room Registry 验证、指令选择、Enemy Registry 重绑、Boss 关联和 Proof 结算中固定 `Allocator`，RealityHub 也没有章节选择入口。冻结 Room 路径要求章节包包含一个 Shop；正式地图没有可安全改写的平台或陷阱 Actor，正式经济仍归 v0.8.0。用户要求 v0.6.1 一次完整交付，不拆分子版本、检查点或中间功能提交 | v0.6.1 以加法方式把 Chapter/Room/Enemy 接缝从固定 Allocator 扩展为固定 Allocator/Warden 白名单，保留全部 Allocator API、资产、Seed 和行为。章节入口只读取公开 Schema-7 Proof：未持有 `HumanAnomalyProof.Allocator` 时进入 Allocator，持有后进入 Warden；不修改 RealityHub 或 RunState，也不接受任意 ChapterId。Warden 的陷阱、预警和提前封锁只形成有界 RiskPressure、固定候选约束和可见 fallback；“封锁平台”实现为 Boss 相对坐标的瞬态三分区预警/伤害窗口，不创建或保存平台、地图 Actor 或碰撞资产。Warden 保留一个无货币、无库存、无价格和无交易记录的 RiskProvisionTerminal，以复用冻结的三选一不可重掷 Reward Offer。五条风险/陷阱指令只读取已验证 Director Applied Handle/RuntimeState 并调整已知 Warden 内容；律衡强化只投影固定本地 StoryBeat，消费公开 Companion/Quest/Memory 快照，不写关系、任务、记忆或 Dialogue 队列。Schema 保持 7，仅向既有有界 Chapter/Proof 集合幂等追加 Warden | 满足第二章端到端内容和可读反制，同时不建立第二套章节选择、地图平台、经济、Director Rule、剧情 Provider 或 Save Schema，并保持 v0.6.0 与 v0.6.2 的兼容接缝 | Active for v0.6.1 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

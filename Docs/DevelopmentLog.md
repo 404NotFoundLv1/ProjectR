@@ -582,3 +582,11 @@ Commit：
 - Fresh final evidence: BuildEditor succeeded; `ProjectR.Chapter` is 5/5, Save Schema-7 is 5/5, and contractual `-game` Debug is 12/12. The broad Editor `ProjectR` runner reports 118 succeeded plus 12 succeeded-with-warnings; its only 4 failures are the established GameInstance-dependent Debug tests, which are separately green in the required `-game` runner.
 - The fixed PIE gates and user manual complete path are closed. The user explicitly returned `PASS` after RealityHub account creation, network entry, Allocator run completion, Boss flow and return path. No real user save was accessed. ADR-035 and the Allocator/Data Schema-7 contract record the permanent ownership boundaries.
 - Future Compatibility Review PASS: v0.6.1/v0.6.2 append content only through the closed Chapter/Room/Enemy PrimaryAssetId seams; v0.7.x reads public proof snapshots only; v0.8.0 alone may add economy; v0.8.4 preserves PRSV A/B Schema-7. No new blocking KnownIssue was found. No commit was created by this implementation task.
+
+# 2026-07-29 - v0.6.0 正式收尾与 v0.6.1 合同转换
+
+- v0.6.0 已由 `f0eec10`（`v0.6.0 Add chapter one Allocator content pack`）正式提交；转换审计确认 `main` 与 `origin/main` 同步且工作区干净。
+- 依据 `Saved/AutomationReports/v060-final-report-20260729/v060final-None/result.json` 的既有证据正式关闭 v0.6.0；报告生成时的 `commit: NOT CREATED` 保留为历史事实，任务页另行记录后续正式提交。
+- BuildEditor、Chapter 5/5、Schema-7 Save 5/5、合同 `-game` Debug 12/12、37 Package 精确保存/重启/Dirty=0、0-error Data Validation、固定 PIE、人工完整通关、ADR-035 和 FCR 均已有 PASS。广泛 Editor runner 的四项 Debug 失败继续按既有 GameInstance runner-context 诊断记录，不冒充同进程全量 PASS。
+- 新建单一 `Docs/Versions/v0.6.1.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.6.1 / In Progress`。E-036 固定 Allocator 硬编码的加法兼容、Proof 驱动章节推进、无经济 Shop、瞬态平台封锁、固定律衡 StoryBeat 与 Schema-7 不升版边界。
+- 本次仅执行六份文档的版本转换；没有开始 Warden C++、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.6.1 保持一个公共版本、一个完成门和唯一未来功能提交。
