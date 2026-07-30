@@ -6,6 +6,8 @@
 #include "Chapters/PRChapterContentRegistryDataAsset.h"
 #include "Chapters/Auditor/PRAuditorChapterBoss.h"
 #include "Chapters/Auditor/PRAuditorChapterBossComponent.h"
+#include "Chapters/Headmind/PRHeadmindProjectionBoss.h"
+#include "Chapters/Headmind/PRHeadmindProjectionBossComponent.h"
 #include "Chapters/Allocator/PRAllocatorBoss.h"
 #include "Chapters/Allocator/PRAllocatorBossComponent.h"
 #include "Chapters/Pacifier/PRPacifierBoss.h"
@@ -85,6 +87,16 @@ void GetPlayerResourceRatios(const UObject* Context, float (&OutRatios)[3])
 	OutRatios[1] = Attributes->GetMaxShield() > UE_SMALL_NUMBER ? FMath::Clamp(Attributes->GetShield() / Attributes->GetMaxShield(), 0.0f, 1.0f) : 1.0f;
 	OutRatios[2] = Attributes->GetMaxEnergy() > UE_SMALL_NUMBER ? FMath::Clamp(Attributes->GetEnergy() / Attributes->GetMaxEnergy(), 0.0f, 1.0f) : 1.0f;
 }
+
+FGameplayTag GetHeadmindSecondaryRuleId(const FName DirectiveId)
+{
+	if (DirectiveId == TEXT("Headmind.ObediencePrediction")) return FixedTag(TEXT("Rule.PredictionLock"));
+	if (DirectiveId == TEXT("Headmind.RepetitionOptimality")) return FixedTag(TEXT("Rule.OptimalPath"));
+	if (DirectiveId == TEXT("Headmind.IsolationCooperation")) return FixedTag(TEXT("Rule.CooperationAudit"));
+	if (DirectiveId == TEXT("Headmind.SurvivalRisk")) return FixedTag(TEXT("Rule.RiskReward"));
+	if (DirectiveId == TEXT("Headmind.ResourceDistance")) return FixedTag(TEXT("Rule.DistanceCorrection"));
+	return FGameplayTag();
+}
 }
 
 int32 UPRRoomSubsystem::GetRoomPathLengthForSeed(const int32 Seed)
@@ -134,7 +146,8 @@ EPRRoomOperationResult UPRRoomSubsystem::StartRoomSequence(const int32 Seed, FGu
 		bChapterDirectiveValidated = IsValidatedChapterDirective(ChapterDirectiveLevel);
 		if ((ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
 				|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
-				|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId())
+				|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
+				|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId())
 			&& !bChapterDirectiveValidated)
 		{
 			RuntimeState.ChapterOfferFallbackReason =
@@ -142,7 +155,9 @@ EPRRoomOperationResult UPRRoomSubsystem::StartRoomSequence(const int32 Seed, FGu
 					? TEXT("Pacifier.DirectorNeutralFallback")
 					: ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
 						? TEXT("Auditor.DirectorNeutralFallback")
-						: TEXT("Warden.DirectorNeutralFallback");
+						: ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId()
+							? TEXT("Headmind.DirectiveFusionUnavailable")
+							: TEXT("Warden.DirectorNeutralFallback");
 		}
 	}
 	RuntimeState.PathLength = GetRoomPathLengthForSeed(Seed);
@@ -179,19 +194,29 @@ EPRRoomOperationResult UPRRoomSubsystem::SelectEventChoice(const FName ChoiceId)
 	if (!Event) return EPRRoomOperationResult::NotFound;
 	const FPRRoomEventChoice* Choice = Event->Choices.FindByPredicate([ChoiceId](const FPRRoomEventChoice& Candidate) { return Candidate.ChoiceId == ChoiceId; });
 	if (!Choice) return EPRRoomOperationResult::Rejected;
+	const UPRChapterRoguelikeContentRegistryDataAsset* ActiveChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
+	if (ActiveChapterRegistry
+		&& ActiveChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId()
+		&& !IsRelationshipDeltaEmpty(Choice->RelationshipDelta))
+	{
+		// Headmind events are transient synthesis-pressure choices.  A malformed
+		// DataAsset must not turn them into a relationship or Save write seam.
+		return EPRRoomOperationResult::Rejected;
+	}
 	if (Choice->bRequiresQTESuccess && LastQTEResultTag != UPRTagLibrary::GetQTEResultSuccessTag()) return EPRRoomOperationResult::Rejected;
 	UPRSaveSubsystem* Save = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRSaveSubsystem>() : nullptr;
 	if (!IsRelationshipDeltaEmpty(Choice->RelationshipDelta) && (!Save || !Save->GetSaveRuntimeState().bHasLoadedProfile)) return EPRRoomOperationResult::Rejected;
 	FPRRoomEventResult Result;
 	Result.ResolutionId = FGuid::NewGuid(); Result.RoomId = RuntimeState.ActiveRoomId; Result.EventId = EventId; Result.ChoiceId = ChoiceId; Result.bEpicWeightBoosted = Choice->bBoostEpicWeight;
-	if (const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry))
+	if (const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = ActiveChapterRegistry)
 	{
 		FPRChapterEventPressureBinding Binding;
 		if (!ChapterRegistry->FindEventPressureBinding(EventId, ChoiceId, Binding)) return EPRRoomOperationResult::Rejected;
 		ActiveChapterPressure = FMath::Clamp(ActiveChapterPressure + Binding.PressureDelta, 0, 4);
 		if (ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
 			|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
-			|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId())
+			|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
+			|| ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId())
 		{
 			ApplyChapterRouteConstraint(Binding);
 			// Warden events are chapter-local choices: accepting one is observable, but never writes relationship state.
@@ -271,6 +296,10 @@ EPRRoomContentResult UPRRoomSubsystem::ConfigureContentRegistry(const FPrimaryAs
 	if (!Candidate && RegistryId == UPRChapterContentRegistryDataAsset::GetAuditorRoomRegistryId())
 	{
 		Candidate = LoadObject<UPRChapterRoguelikeContentRegistryDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Auditor/DA_RoguelikeContentRegistry_Auditor.DA_RoguelikeContentRegistry_Auditor"));
+	}
+	if (!Candidate && RegistryId == UPRChapterContentRegistryDataAsset::GetHeadmindRoomRegistryId())
+	{
+		Candidate = LoadObject<UPRChapterRoguelikeContentRegistryDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Headmind/DA_RoguelikeContentRegistry_Headmind.DA_RoguelikeContentRegistry_Headmind"));
 	}
 	if (!Candidate) return EPRRoomContentResult::NotFound;
 	if (!Candidate->IsRegistryReady()) return EPRRoomContentResult::InvalidRegistry;
@@ -420,7 +449,8 @@ int32 UPRRoomSubsystem::GetRoomWeight(const UPRRoomDataAsset& Room) const
 	}
 	if ((ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
 			|| ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
-			|| ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId())
+			|| ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
+			|| ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId())
 		&& bChapterDirectiveValidated)
 	{
 		const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
@@ -446,7 +476,9 @@ bool UPRRoomSubsystem::ApplyChapterRouteConstraint(const FPRChapterEventPressure
 					? TEXT("Pacifier.ConstraintNoEligibleAlternative")
 					: ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
 						? TEXT("Auditor.ConstraintNoEligibleAlternative")
-						: TEXT("Warden.RouteConstraintNoEligibleAlternative");
+						: ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId()
+							? TEXT("Headmind.ConstraintNoEligibleAlternative")
+							: TEXT("Warden.RouteConstraintNoEligibleAlternative");
 			return false;
 		}
 	}
@@ -459,7 +491,8 @@ bool UPRRoomSubsystem::IsValidatedChapterDirective(int32& OutLevel) const
 	OutLevel = 1;
 	if (ConfiguredContentId != UPRChapterContentRegistryDataAsset::GetWardenContentId()
 		&& ConfiguredContentId != UPRChapterContentRegistryDataAsset::GetPacifierContentId()
-		&& ConfiguredContentId != UPRChapterContentRegistryDataAsset::GetAuditorContentId()) return false;
+		&& ConfiguredContentId != UPRChapterContentRegistryDataAsset::GetAuditorContentId()
+		&& ConfiguredContentId != UPRChapterContentRegistryDataAsset::GetHeadmindContentId()) return false;
 	const UPRChapterRoguelikeContentRegistryDataAsset* ChapterRegistry = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry);
 	const UPRChapterRuleDataAsset* Rule = ChapterRegistry ? ChapterRegistry->FindChapterRule(ActiveChapterDirectiveId) : nullptr;
 	const UPRDirectorSubsystem* Director = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRDirectorSubsystem>() : nullptr;
@@ -479,6 +512,23 @@ bool UPRRoomSubsystem::IsValidatedChapterDirective(int32& OutLevel) const
 		|| Runtime.Level != Match->Level
 		|| (Runtime.Status != EPRDirectorRuleRuntimeStatus::Active && Runtime.Status != EPRDirectorRuleRuntimeStatus::Degraded)) return false;
 	OutLevel = Match->Level;
+	if (ConfiguredContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId())
+	{
+		const FGameplayTag SecondaryRuleId = PRRoomRuntime::GetHeadmindSecondaryRuleId(ActiveChapterDirectiveId);
+		if (!SecondaryRuleId.IsValid()) return false;
+		const FPRAppliedDirectorRuleHandle* SecondaryMatch = nullptr;
+		for (const FPRAppliedDirectorRuleHandle& Handle : AppliedRules)
+		{
+			if (Handle.RuleId != SecondaryRuleId) continue;
+			if (!Handle.HandleId.IsValid() || Handle.Level < 1 || Handle.Level > 5 || SecondaryMatch) return false;
+			SecondaryMatch = &Handle;
+		}
+		FPRDirectorRuleRuntimeState SecondaryRuntime;
+		if (!SecondaryMatch || !Director->GetRuleRuntimeState(SecondaryRuleId, SecondaryRuntime)
+			|| SecondaryRuntime.Level != SecondaryMatch->Level
+			|| (SecondaryRuntime.Status != EPRDirectorRuleRuntimeStatus::Active && SecondaryRuntime.Status != EPRDirectorRuleRuntimeStatus::Degraded)) return false;
+		OutLevel = FMath::Min(OutLevel, SecondaryMatch->Level);
+	}
 	return true;
 }
 
@@ -541,7 +591,8 @@ void UPRRoomSubsystem::StartEncounter()
 				&& (Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetAllocatorBossPrototypeId()
 					|| Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetWardenBossPrototypeId()
 					|| Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetPacifierBossPrototypeId()
-					|| Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetAuditorBossPrototypeId()))
+					|| Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetAuditorBossPrototypeId()
+					|| Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetHeadmindBossPrototypeId()))
 			{
 				ExpectedBossSpawnId = SpawnId;
 				if (Spawn.PrototypeId == UPRChapterContentRegistryDataAsset::GetAllocatorBossPrototypeId())
@@ -564,6 +615,12 @@ void UPRRoomSubsystem::StartEncounter()
 				else if (APRAuditorChapterBoss* Auditor = Cast<APRAuditorChapterBoss>(Enemy))
 				{
 					Auditor->GetAuditorChapterBossComponent()->ConfigureChapterState(ActiveChapterPressure);
+				}
+				else if (APRHeadmindProjectionBoss* Headmind = Cast<APRHeadmindProjectionBoss>(Enemy))
+				{
+					const FGameplayTag PrimaryRule = Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry) && Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry)->FindChapterRule(ActiveChapterDirectiveId)
+						? Cast<UPRChapterRoguelikeContentRegistryDataAsset>(Registry)->FindChapterRule(ActiveChapterDirectiveId)->RequiredDirectorRuleId : FGameplayTag();
+					Headmind->GetHeadmindProjectionBossComponent()->ConfigureChapterState(ActiveChapterPressure, PrimaryRule, PRRoomRuntime::GetHeadmindSecondaryRuleId(ActiveChapterDirectiveId), bChapterDirectiveValidated);
 				}
 			}
 		}
@@ -616,8 +673,26 @@ void UPRRoomSubsystem::HandleBossCompleted(const FPRPrototypeRunResult& Result)
 				? UPRChapterContentRegistryDataAsset::GetPacifierBossId()
 				: ChapterRegistry && ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
 					? UPRChapterContentRegistryDataAsset::GetAuditorBossId()
-					: UPRChapterContentRegistryDataAsset::GetAllocatorBossId();
-	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::EncounterActive || Result.BossId != ExpectedBossId || Result.BossSpawnId != ExpectedBossSpawnId || bExpectedBossCompletionReceived) return;
+					: ChapterRegistry && ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId()
+						? UPRChapterContentRegistryDataAsset::GetHeadmindBossId()
+						: UPRChapterContentRegistryDataAsset::GetAllocatorBossId();
+	bool bMatchesExpectedBoss = Result.BossId == ExpectedBossId;
+	if (!bMatchesExpectedBoss
+		&& ChapterRegistry && ChapterRegistry->ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId()
+		&& Result.BossId == UPRChapterContentRegistryDataAsset::GetAuditorBossId()
+		&& GetWorld())
+	{
+		// APRBossAuditor's prototype completion identity is frozen as "Auditor".
+		// Accept it only for the exact closed Headmind projection actor and its
+		// currently expected spawn; no other legacy boss result crosses this seam.
+		APREnemyCharacter* SpawnedEnemy = nullptr;
+		if (UPREnemySubsystem* Enemies = GetWorld()->GetSubsystem<UPREnemySubsystem>())
+		{
+			bMatchesExpectedBoss = Enemies->ResolveSpawnedEnemy(Result.BossSpawnId, SpawnedEnemy)
+				&& Cast<APRHeadmindProjectionBoss>(SpawnedEnemy) != nullptr;
+		}
+	}
+	if (RuntimeState.FlowStatus != EPRRoomFlowStatus::EncounterActive || !bMatchesExpectedBoss || Result.BossSpawnId != ExpectedBossSpawnId || bExpectedBossCompletionReceived) return;
 	bExpectedBossCompletionReceived = true;
 	// Boss components publish their completion from the health-change delegate.
 	// Defer despawn eligibility until Combat has finished the same fatal-damage

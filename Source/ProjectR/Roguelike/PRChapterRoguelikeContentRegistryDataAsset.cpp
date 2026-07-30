@@ -42,13 +42,17 @@ bool UPRChapterRoguelikeContentRegistryDataAsset::SupportsChapterShopRooms() con
 	return ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId()
 		|| ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
 		|| ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
-		|| ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId();
+		|| ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
+		|| ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId();
 }
 
 int32 UPRChapterRoguelikeContentRegistryDataAsset::GetExpectedEventPressureBindingCount(const FName InContentId)
 {
 	// Auditor's four fixed events expose 2 + 2 + 2 + 3 declared choices.
-	return InContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId() ? 9 : 10;
+	// Headmind exposes exactly two controlled choices for each of its four events.
+	if (InContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()) return 9;
+	if (InContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId()) return 8;
+	return 10;
 }
 
 bool UPRChapterRoguelikeContentRegistryDataAsset::IsKnownDirective(const FName DirectiveId) const
@@ -119,7 +123,9 @@ bool UPRChapterRoguelikeContentRegistryDataAsset::IsRegistryReady() const
 				? UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds()
 				: ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
 					? UPRChapterContentRegistryDataAsset::GetPacifierDirectiveIds()
-					: UPRChapterContentRegistryDataAsset::GetAuditorDirectiveIds();
+					: ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId()
+						? UPRChapterContentRegistryDataAsset::GetAuditorDirectiveIds()
+						: UPRChapterContentRegistryDataAsset::GetHeadmindDirectiveIds();
 	ExpectedRuleIds.Sort([](const FName& Left, const FName& Right) { return Left.LexicalLess(Right); });
 	if (ActualRuleIds != ExpectedRuleIds) return Fail(TEXT("rule-whitelist"));
 	TSet<FString> UniqueEventChoices;

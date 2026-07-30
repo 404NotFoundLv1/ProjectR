@@ -159,6 +159,13 @@ date: "2026-07-10"
 - The broad non-`-game` `ProjectR` snapshot is 147/152. The four established `ProjectR.Debug.*` failures still lack their required GameInstance context. `ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression` also fails only in that no-render batch runner; the fixed rendered authoritative PIE Checkpoint-D entry passed independently with `runtimeClean=true`. No Debug or Enemy source was modified. This remains the KI-023 runner-isolation diagnostic, not a v0.7.0 gameplay failure.
 - Data Validation completed with 0 errors and one established MCP EULA warning. Existing KI-006, KI-019 and KI-020 states remain unchanged. No new Open KnownIssue is created for v0.7.0.
 
+# 2026-07-31 - v0.7.1 Known Issues Review
+
+- No new persistent product blocker was introduced. The Headmind final Encounter initially omitted its three fixed variants; the exact DataAsset was corrected through MCP, saved, restarted and reread before the final 61402 full-path PIE passed.
+- The frozen Demo Auditor completion remains `Auditor`. ADR-039 documents the exact active-Headmind-Actor plus expected-SpawnId mapping used only by Room/Chapter consumers; it preserves Demo Auditor and BossSubsystem ownership rather than creating a second Completion.
+- Broad `ProjectR` automation is 153 successes and four failures, all established non-`-game` GameInstance-dependent `ProjectR.Debug.*` diagnostics. The contractual `-game` Debug runner is 12/12 PASS; no Debug or Enemy source was changed. Existing KI-006, KI-019, KI-020 and KI-023 statuses remain unchanged.
+- Data Validation is 0 error. All 37 Headmind packages are ordinary Git (209,744 bytes total; 28,516 bytes max), restart inspection is exact and Dirty=0, and manual complete-path acceptance is PASS. No new Open KnownIssue is created for v0.7.1.
+
 # 记录规则
 
 问题必须包含复现/证据、影响版本、临时处理、负责人和可验证关闭条件。不能用删除日志或降低校验来关闭问题。

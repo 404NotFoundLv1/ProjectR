@@ -1,6 +1,46 @@
 *.uasset filter=lfs diff=lfs merge=lfs -text
 *.umap filter=lfs diff=lfs merge=lfs -text
 
+# v0.7.1 Headmind chapter manifest is 37 tiny verified packages (204.83 KiB total;
+# every package is below 256 KiB). Keep this exact closed manifest in ordinary Git.
+/Content/ProjectR/Chapters/Headmind/DA_Chapter_Headmind.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/DA_EnemyContentRegistry_Headmind.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/DA_RoguelikeContentRegistry_Headmind.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Boss/BP_Boss_HeadmindProjection.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Boss/DA_Boss_HeadmindProjection.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Encounters/DA_Encounter_Headmind_BasiliskExecutor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Encounters/DA_Encounter_Headmind_Boss.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Encounters/DA_Encounter_Headmind_ObedienceEnforcer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Encounters/DA_Encounter_Headmind_PredictionEcho.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Enemies/DA_Enemy_HeadmindBasiliskExecutor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Enemies/DA_Enemy_HeadmindObedienceEnforcer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Enemies/DA_Enemy_HeadmindPredictionEcho.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Events/DA_RoomEvent_Headmind_CompanionConsensus.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Events/DA_RoomEvent_Headmind_CounterproofArchive.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Events/DA_RoomEvent_Headmind_PropositionCrossExam.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Events/DA_RoomEvent_Headmind_RewriteThreshold.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rewards/Policies/DA_RewardPolicy_Headmind_Combat.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rewards/Policies/DA_RewardPolicy_Headmind_Elite.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rewards/Policies/DA_RewardPolicy_Headmind_Event.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rewards/Policies/DA_RewardPolicy_Headmind_Safe.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rewards/Policies/DA_RewardPolicy_Headmind_Shop.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Boss_HeadmindProjection.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Combat_ObedienceEnforcer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Combat_PredictionEcho.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Elite_BasiliskExecutor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Event_CompanionConsensus.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Event_CounterproofArchive.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Event_PropositionCrossExam.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Event_RewriteThreshold.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Safe_HumanExceptionBuffer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rooms/DA_Room_Headmind_Shop_SynthesisProvisionTerminal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rules/DA_ChapterRule_Headmind_IsolationCooperation.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rules/DA_ChapterRule_Headmind_ObediencePrediction.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rules/DA_ChapterRule_Headmind_RepetitionOptimality.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rules/DA_ChapterRule_Headmind_ResourceDistance.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/Rules/DA_ChapterRule_Headmind_SurvivalRisk.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Headmind/UI/WBP_HeadmindChapterOverlay.uasset -filter -diff -merge -text
+
 # v0.3.0 Companion identity assets are immutable, tiny DataAssets (8.4 KiB total).
 # Keep these four exact files in ordinary Git so their pointers do not consume LFS quota.
 /Content/ProjectR/Companions/DA_Companion_Axiom.uasset -filter -diff -merge -text

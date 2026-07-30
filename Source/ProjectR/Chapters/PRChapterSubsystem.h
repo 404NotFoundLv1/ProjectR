@@ -32,10 +32,16 @@ public:
 	bool StageFixedAuditorPrerequisitesForAutomation();
 	/** Re-selects only the fixed Auditor closure after its isolated prerequisite transaction commits and before the fixture starts a run. */
 	bool RefreshFixedAuditorSelectionForAutomation();
+	/** Fixed v0.7.1 fixture: persists only the four already-completed Chapter proofs in isolated automation storage. */
+	bool StageFixedHeadmindPrerequisitesForAutomation();
+	/** Re-selects only the fixed Headmind closure after its isolated prerequisite transaction commits and before the fixture starts a run. */
+	bool RefreshFixedHeadmindSelectionForAutomation();
 	/** Fixed v0.6.2 persistence fixture: marks only the already-active Pacifier run's bounded completion facts. */
 	bool StageFixedPacifierCompletionFactsForAutomation();
 	/** Fixed v0.7.0 persistence fixture: marks only the already-active Auditor run's bounded completion facts. */
 	bool StageFixedAuditorCompletionFactsForAutomation();
+	/** Fixed v0.7.1 persistence fixture: marks only the already-active Headmind run's bounded completion facts. */
+	bool StageFixedHeadmindCompletionFactsForAutomation();
 	/** Read-only fixed diagnostics for the Pacifier settlement acceptance runner. */
 	void GetFixedPacifierSettlementDiagnosticsForAutomation(
 		bool& bOutRoomVerified,
@@ -53,12 +59,15 @@ public:
 #endif
 
 private:
+	friend class UPRHeadmindProjectionBossComponent;
+
 	struct FPendingSettlement
 	{
 		FGuid SaveRequestId;
 		FPRChapterPersistenceData Expected;
 		FPRChapterPersistenceData Target;
 		FPRChapterCompletionResult Completion;
+		FPRHeadmindEndingInputSnapshot HeadmindEndingInput;
 		bool bPending = false;
 	};
 
@@ -70,7 +79,8 @@ private:
 			Allocator,
 			Warden,
 			Pacifier,
-			Auditor
+			Auditor,
+			Headmind
 		};
 
 		FPrimaryAssetId ChapterId;
@@ -107,12 +117,16 @@ private:
 	void RefreshWardenStoryProjection();
 	void RefreshPacifierStoryProjection();
 	void RefreshAuditorStoryProjection();
+	void RefreshHeadmindPresentation();
 	void ClearWardenPresentation();
 	void ClearPacifierPresentation();
 	void ClearAuditorPresentation();
+	void ClearHeadmindPresentation();
 	void EnsureWardenPresentation();
 	void EnsurePacifierPresentation();
 	void EnsureAuditorPresentation();
+	void EnsureHeadmindPresentation();
+	void PublishHeadmindBossRuntimeState(const FPRHeadmindBossRuntimeState& InRuntimeState);
 	bool IsExpectedBossCompletion(const struct FPRPrototypeRunResult& Completion) const;
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -136,6 +150,7 @@ private:
 	TWeakObjectPtr<class UPRWardenChapterWidget> WardenOverlay;
 	TWeakObjectPtr<class UPRPacifierChapterWidget> PacifierOverlay;
 	TWeakObjectPtr<class UPRAuditorChapterWidget> AuditorOverlay;
+	TWeakObjectPtr<class UPRHeadmindChapterWidget> HeadmindOverlay;
 	FDelegateHandle RunStateHandle;
 	FDelegateHandle RoomCompletedHandle;
 	FDelegateHandle RoomEventHandle;
@@ -149,4 +164,5 @@ private:
 	FPendingSettlement PendingSettlement;
 	/** Frozen AccountDeleted intent waiting for an upstream bounded save consumer to release SaveSubsystem. */
 	bool bSettlementRequested = false;
+	FPRHeadmindEndingInputSnapshot FrozenHeadmindEndingInput;
 };

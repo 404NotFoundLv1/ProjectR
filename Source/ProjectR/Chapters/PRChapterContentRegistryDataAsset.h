@@ -50,7 +50,16 @@ public:
 	static FPrimaryAssetId GetAuditorEnemyRegistryId();
 	static FPrimaryAssetId GetAuditorFinalRoomId();
 	static const TArray<FName>& GetAuditorDirectiveIds();
-	/** Resolves only the closed Allocator/Warden/Pacifier/Auditor seed mapping; unknown content is rejected. */
+	static FPrimaryAssetId GetHeadmindChapterId();
+	static FName GetHeadmindContentId();
+	static FName GetHeadmindBossId();
+	static FPrimaryAssetId GetHeadmindBossPrototypeId();
+	static FName GetHeadmindProofId();
+	static FPrimaryAssetId GetHeadmindRoomRegistryId();
+	static FPrimaryAssetId GetHeadmindEnemyRegistryId();
+	static FPrimaryAssetId GetHeadmindFinalRoomId();
+	static const TArray<FName>& GetHeadmindDirectiveIds();
+	/** Resolves only the closed chapter seed mapping; unknown content is rejected. */
 	static FName GetDirectiveForContentAndSeed(FName ContentId, int32 Seed);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|Chapter") FPrimaryAssetId ChapterId;

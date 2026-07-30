@@ -32,6 +32,8 @@
 #include "PRPacifierAutomationToolset.h"
 #include "PRAuditorChapterAuthoringToolset.h"
 #include "PRAuditorAutomationToolset.h"
+#include "PRHeadmindChapterAuthoringToolset.h"
+#include "PRHeadmindChapterAutomationToolset.h"
 #include "ToolsetRegistry/UToolsetRegistry.h"
 
 class FProjectRAuthoringToolsModule final : public IModuleInterface
@@ -70,6 +72,8 @@ public:
 		UToolsetRegistry::RegisterToolsetClass(UPRPacifierAutomationToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRAuditorChapterAuthoringToolset::StaticClass());
 		UToolsetRegistry::RegisterToolsetClass(UPRAuditorAutomationToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRHeadmindChapterAuthoringToolset::StaticClass());
+		UToolsetRegistry::RegisterToolsetClass(UPRHeadmindChapterAutomationToolset::StaticClass());
 	}
 
 	virtual void ShutdownModule() override
@@ -80,6 +84,8 @@ public:
 		UToolsetRegistry::UnregisterToolsetClass(UPRPacifierAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRAuditorChapterAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRAuditorAutomationToolset::StaticClass());
+		UToolsetRegistry::UnregisterToolsetClass(UPRHeadmindChapterAutomationToolset::StaticClass());
+		UToolsetRegistry::UnregisterToolsetClass(UPRHeadmindChapterAuthoringToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRProgressionAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRDirectorAutomationToolset::StaticClass());
 		UToolsetRegistry::UnregisterToolsetClass(UPRAccountAutomationToolset::StaticClass());

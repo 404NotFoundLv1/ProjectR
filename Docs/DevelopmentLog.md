@@ -631,6 +631,13 @@ Commit：
 - Evidence: final BuildEditor PASS; Chapter 20/20; Save 5/5; contractual `-game` Debug 12/12; fixed Auditor PIE Selection/FullPath/Settlement 3/3; rendered Checkpoint-D PASS; Data Validation 0 errors/1 established MCP EULA warning; all 37 exact Packages restarted/reread Dirty=0. The user explicitly returned `PASS` for isolated manual complete-path acceptance. Final report: `Saved/AutomationReports/v070-final-report-20260730/v070final-None/result.json`.
 - The broad non-`-game` Editor snapshot is 147/152: four established GameInstance Debug tests and Checkpoint-D lack their intended runner context. The separate contractual runners pass; KnownIssues records this distinction. Future Compatibility Review passes for v0.7.1, v0.7.2, v0.8.0 and v0.8.4. No commit or push was created; `CURRENT_VERSION.md` remains `v0.7.0 / In Progress` pending a separate release instruction.
 
+# 2026-07-31 - v0.7.1 Headmind final chapter implementation
+
+- Implemented the fixed fifth Chapter projection: strict five-Proof selection, Seeds 61400--61404, local directive fusion, transient SynthesisPressure, four Events, non-economic terminal, three closed Enemy variants, Headmind projection Boss, deferred TripleResonance and idempotent fifth Schema-7 Proof settlement.
+- The Demo Auditor's immutable `Auditor` Completion is consumed as Headmind only for the exact active projection and expected SpawnId. This preserves Demo Auditor, BossSubsystem and Combat ownership; the final Encounter now contains exactly the Boss plus its three fixed variants.
+- Evidence: BuildEditor PASS; Headmind 5/5; Chapter 25/25; Save 5/5; Account 4/4; `-game` Debug 12/12; Headmind PIE 3/3; Data Validation 0 errors; 37 packages compiled/saved/restarted/reread Dirty=0; and user manual complete-path PASS. Final report: `Saved/AutomationReports/v071-final-report-20260731/v071final-None/result.json`.
+- FCR PASS: v0.7.2 consumes only bounded TripleResonance/proof/ending values; v0.8.0 cannot reinterpret pressure or terminal as economy; v0.8.4 keeps PRSV A/B Schema-7 without transient state. No commit or push was created; CURRENT_VERSION remains v0.7.1/In Progress pending release authorization.
+
 # 2026-07-30 - v0.7.0 正式收尾与 v0.7.1 合同转换
 
 - v0.7.0 已由 `d50d22db070a28e86d20d97d07a99e36ca0f6893`（`v0.7.0 Expand Auditor to full chapter four`）正式提交；转换审计确认 `main` 与 `origin/main` 同步、领先/落后为 `0/0`，转换前工作区干净。

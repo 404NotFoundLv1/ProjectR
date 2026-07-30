@@ -512,6 +512,14 @@ date: "2026-07-10"
 
 **Verification:** Final BuildEditor passed. `ProjectR.Chapter` is 20/20, `ProjectR.Save` is 5/5, contractual `-game` Debug is 12/12, fixed Auditor PIE is 3/3 and the rendered Checkpoint-D runner is PASS. All 37 packages were restarted and reread with `Dirty=0`; Data Validation ended with 0 errors and one established MCP EULA warning. The isolated complete-path manual acceptance received explicit user `PASS`. Evidence is in `Saved/AutomationReports/v070-final-report-20260730/v070final-None/result.json`; the broad `-NullRHI` Editor runner's five wrong-context diagnostics are documented in KnownIssues.
 
+# ADR-039 - Headmind consumes the frozen Auditor completion through an exact closed compatibility mapping
+
+**Status:** Accepted and implemented (v0.7.1).
+
+**Decision:** `UPRChapterSubsystem` expands only to the five-item Allocator/Warden/Pacifier/Auditor/Headmind whitelist. Room and Chapter consumers accept the legacy `Auditor` completion only when the active closed Headmind Registry, expected SpawnId and resolved `APRHeadmindProjectionBoss` all match. This is a one-way closed compatibility interpretation; the Demo Boss retains its original one-and-only Completion. Headmind owns only local pressure, fixed directive fusion, fixed StoryBeat, bounded ending input and the final Schema-7 Proof slot.
+
+**Consequences and verification:** No BossSubsystem, Demo Auditor, Combat, Save Runtime/Migration, Director, RunState, Account, RealityHub, map, GameplayTag or QTE contract changes. The final Encounter is exactly the Boss plus three fixed PrimaryAssetIds. BuildEditor, Headmind 5/5, Chapter 25/25, Save 5/5, Account 4/4, `-game` Debug 12/12, fixed PIE 3/3, Data Validation 0 error, 37 exact packages restart/Dirty=0 and manual complete-path PASS are recorded by `Saved/AutomationReports/v071-final-report-20260731/v071final-None/result.json`.
+
 # ADR 模板
 
 ```text

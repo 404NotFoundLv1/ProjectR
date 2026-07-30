@@ -4,6 +4,9 @@
 
 #include "Chapters/PRChapterContentRegistryDataAsset.h"
 #include "Chapters/Auditor/PRAuditorChapterDataAsset.h"
+#include "Chapters/Headmind/PRHeadmindChapterDataAsset.h"
+#include "Chapters/Headmind/PRHeadmindEndingEvaluator.h"
+#include "Chapters/Headmind/PRHeadmindProjectionBoss.h"
 #include "Chapters/Pacifier/PRPacifierChapterDataAsset.h"
 #include "Chapters/Warden/PRWardenChapterDataAsset.h"
 #include "Companions/PRCompanionSubsystem.h"
@@ -18,9 +21,11 @@
 #include "Roguelike/Account/PRRunStateSubsystem.h"
 #include "Roguelike/PRChapterRoguelikeContentRegistryDataAsset.h"
 #include "Roguelike/PRRoomSubsystem.h"
+#include "Roguelike/Progression/PRProgressionSubsystem.h"
 #include "Save/PRSaveSubsystem.h"
 #include "UI/PRPacifierChapterWidget.h"
 #include "UI/PRAuditorChapterWidget.h"
+#include "UI/PRHeadmindChapterWidget.h"
 #include "UI/PRWardenChapterWidget.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -32,6 +37,7 @@ namespace PRChapterSubsystemPrivate
 	const FSoftObjectPath WardenEnemyRegistryPath(TEXT("/Game/ProjectR/Chapters/Warden/DA_EnemyContentRegistry_Warden.DA_EnemyContentRegistry_Warden"));
 	const FSoftObjectPath PacifierEnemyRegistryPath(TEXT("/Game/ProjectR/Chapters/Pacifier/DA_EnemyContentRegistry_Pacifier.DA_EnemyContentRegistry_Pacifier"));
 	const FSoftObjectPath AuditorEnemyRegistryPath(TEXT("/Game/ProjectR/Chapters/Auditor/DA_EnemyContentRegistry_Auditor.DA_EnemyContentRegistry_Auditor"));
+	const FSoftObjectPath HeadmindEnemyRegistryPath(TEXT("/Game/ProjectR/Chapters/Headmind/DA_EnemyContentRegistry_Headmind.DA_EnemyContentRegistry_Headmind"));
 
 	const UPRChapterRoguelikeContentRegistryDataAsset* LoadRoomRegistry(const FPrimaryAssetId& RegistryId)
 	{
@@ -50,6 +56,10 @@ namespace PRChapterSubsystemPrivate
 		if (RegistryId == UPRChapterContentRegistryDataAsset::GetAuditorRoomRegistryId())
 		{
 			return LoadObject<UPRChapterRoguelikeContentRegistryDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Auditor/DA_RoguelikeContentRegistry_Auditor.DA_RoguelikeContentRegistry_Auditor"));
+		}
+		if (RegistryId == UPRChapterContentRegistryDataAsset::GetHeadmindRoomRegistryId())
+		{
+			return LoadObject<UPRChapterRoguelikeContentRegistryDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Headmind/DA_RoguelikeContentRegistry_Headmind.DA_RoguelikeContentRegistry_Headmind"));
 		}
 		return nullptr;
 	}
@@ -73,6 +83,13 @@ namespace PRChapterSubsystemPrivate
 		const FSoftObjectPath Path = UAssetManager::Get().GetPrimaryAssetPath(UPRChapterContentRegistryDataAsset::GetAuditorChapterId());
 		if (const UPRAuditorChapterDataAsset* Definition = Path.IsValid() ? Cast<UPRAuditorChapterDataAsset>(Path.TryLoad()) : nullptr) return Definition;
 		return LoadObject<UPRAuditorChapterDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Auditor/DA_Chapter_Auditor.DA_Chapter_Auditor"));
+	}
+
+	const UPRHeadmindChapterDataAsset* LoadHeadmindDefinition()
+	{
+		const FSoftObjectPath Path = UAssetManager::Get().GetPrimaryAssetPath(UPRChapterContentRegistryDataAsset::GetHeadmindChapterId());
+		if (const UPRHeadmindChapterDataAsset* Definition = Path.IsValid() ? Cast<UPRHeadmindChapterDataAsset>(Path.TryLoad()) : nullptr) return Definition;
+		return LoadObject<UPRHeadmindChapterDataAsset>(nullptr, TEXT("/Game/ProjectR/Chapters/Headmind/DA_Chapter_Headmind.DA_Chapter_Headmind"));
 	}
 
 	bool EnsureFixedEnemyRegistryIsRegistered(const FPrimaryAssetId& RegistryId, const FSoftObjectPath& RegistryPath, const FName BundleName)
@@ -108,6 +125,14 @@ namespace PRChapterSubsystemPrivate
 			UPRChapterContentRegistryDataAsset::GetAuditorEnemyRegistryId(),
 			AuditorEnemyRegistryPath,
 			TEXT("AuditorRegistry"));
+	}
+
+	bool EnsureHeadmindEnemyRegistryIsRegistered()
+	{
+		return EnsureFixedEnemyRegistryIsRegistered(
+			UPRChapterContentRegistryDataAsset::GetHeadmindEnemyRegistryId(),
+			HeadmindEnemyRegistryPath,
+			TEXT("HeadmindRegistry"));
 	}
 }
 
@@ -298,6 +323,66 @@ bool UPRChapterSubsystem::RefreshFixedAuditorSelectionForAutomation()
 		&& ActiveDefinition.FixedContent == FActiveChapterDefinition::EFixedContent::Auditor;
 }
 
+bool UPRChapterSubsystem::StageFixedHeadmindPrerequisitesForAutomation()
+{
+	UPRSaveSubsystem* Save = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRSaveSubsystem>() : nullptr;
+	FPRChapterPersistenceData Current;
+	if (!Save || !UPRSaveSubsystem::HasAutomationStorageOverride() || !Save->GetChapterPersistenceSnapshot(Current)
+		|| !IsFixedProofChainValid(Current)
+		|| Current.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetHeadmindProofId()))
+	{
+		return false;
+	}
+	struct FFixedPrerequisite
+	{
+		FPrimaryAssetId ChapterId;
+		FName ProofId;
+	};
+	const TArray<FFixedPrerequisite> Required = {
+		{ UPRChapterContentRegistryDataAsset::GetAllocatorChapterId(), UPRChapterContentRegistryDataAsset::GetAllocatorProofId() },
+		{ UPRChapterContentRegistryDataAsset::GetWardenChapterId(), UPRChapterContentRegistryDataAsset::GetWardenProofId() },
+		{ UPRChapterContentRegistryDataAsset::GetPacifierChapterId(), UPRChapterContentRegistryDataAsset::GetPacifierProofId() },
+		{ UPRChapterContentRegistryDataAsset::GetAuditorChapterId(), UPRChapterContentRegistryDataAsset::GetAuditorProofId() }};
+	int32 MissingSettlements = 0;
+	for (const FFixedPrerequisite& Entry : Required)
+	{
+		MissingSettlements += Current.HumanAnomalyProofIds.Contains(Entry.ProofId) ? 0 : 1;
+	}
+	if (MissingSettlements == 0) return true;
+	if (Current.CompletedChapterIds.Num() + MissingSettlements > FPRChapterPersistenceContract::MaxEntries
+		|| Current.HumanAnomalyProofIds.Num() + MissingSettlements > FPRChapterPersistenceContract::MaxEntries
+		|| Current.SettlementSequence > MAX_int64 - MissingSettlements)
+	{
+		return false;
+	}
+	FPRChapterPersistenceData Target = Current;
+	for (const FFixedPrerequisite& Entry : Required)
+	{
+		Target.CompletedChapterIds.Add(Entry.ChapterId);
+		Target.HumanAnomalyProofIds.Add(Entry.ProofId);
+	}
+	Target.SettlementSequence = Current.SettlementSequence + MissingSettlements;
+	FPRChapterPersistenceContract::Normalize(Target);
+	if (!IsFixedProofChainValid(Target)) return false;
+	FGuid RequestId;
+	return Save->StageChapterPersistenceTransaction(Current, Target)
+		&& Save->RequestSaveCurrentProfile(RequestId) == EPRSaveRequestStatus::Started;
+}
+
+bool UPRChapterSubsystem::RefreshFixedHeadmindSelectionForAutomation()
+{
+	UPRRunStateSubsystem* RunState = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRRunStateSubsystem>() : nullptr;
+	if (!UPRSaveSubsystem::HasAutomationStorageOverride()
+		|| !RunState
+		|| RunState->GetRunRuntimeState().State != EPRRunLifecycleState::AccountReady)
+	{
+		return false;
+	}
+	ResetTransientSession();
+	return ConfigureActiveContent()
+		&& ActiveDefinition.FixedContent == FActiveChapterDefinition::EFixedContent::Headmind;
+}
+
 bool UPRChapterSubsystem::StageFixedPacifierCompletionFactsForAutomation()
 {
 	if (!UPRSaveSubsystem::HasAutomationStorageOverride()
@@ -324,6 +409,23 @@ bool UPRChapterSubsystem::StageFixedAuditorCompletionFactsForAutomation()
 		|| !FrozenAccountId.IsValid()
 		|| FrozenSeed < 61300
 		|| FrozenSeed > 61304)
+	{
+		return false;
+	}
+	bRoomSequenceVerified = true;
+	bBossVerified = true;
+	return true;
+}
+
+bool UPRChapterSubsystem::StageFixedHeadmindCompletionFactsForAutomation()
+{
+	if (!UPRSaveSubsystem::HasAutomationStorageOverride()
+		|| Snapshot.State != EPRChapterLifecycleState::RunActive
+		|| ActiveDefinition.FixedContent != FActiveChapterDefinition::EFixedContent::Headmind
+		|| !FrozenRunId.IsValid()
+		|| !FrozenAccountId.IsValid()
+		|| FrozenSeed < 61400
+		|| FrozenSeed > 61404)
 	{
 		return false;
 	}
@@ -389,6 +491,7 @@ void UPRChapterSubsystem::HandleRunStateChanged(const FPRRunRuntimeState& State)
 		Snapshot.RiskPressure = 0;
 		Snapshot.ComfortPressure = 0;
 		Snapshot.AuditPressure = 0;
+		Snapshot.SynthesisPressure = 0;
 		Snapshot.FallbackReason = NAME_None;
 		if (UPRRoomSubsystem* Room = GetGameInstance()->GetSubsystem<UPRRoomSubsystem>())
 		{
@@ -397,6 +500,7 @@ void UPRChapterSubsystem::HandleRunStateChanged(const FPRRunRuntimeState& State)
 		RefreshWardenStoryProjection();
 		RefreshPacifierStoryProjection();
 		RefreshAuditorStoryProjection();
+		RefreshHeadmindPresentation();
 		PublishState();
 	}
 }
@@ -425,6 +529,9 @@ void UPRChapterSubsystem::HandleRoomEventResolved(const FPRRoomEventResult& Resu
 	case FActiveChapterDefinition::EFixedContent::Auditor:
 		Snapshot.AuditPressure = FMath::Clamp(Snapshot.AuditPressure + Delta, 0, 4);
 		break;
+	case FActiveChapterDefinition::EFixedContent::Headmind:
+		Snapshot.SynthesisPressure = FMath::Clamp(Snapshot.SynthesisPressure + Delta, 0, 4);
+		break;
 	default:
 		Snapshot.AllocationPressure = FMath::Clamp(Snapshot.AllocationPressure + Delta, 0, 4);
 		break;
@@ -448,6 +555,24 @@ void UPRChapterSubsystem::HandleAccountDeleted(const FPRAccountDeletedEvent& Eve
 		|| Record.TerminationReason != EPRAccountTerminationReason::RoomSequenceCompleted
 		|| Record.AccountId != FrozenAccountId || Record.Summary.RunId != FrozenRunId || Record.Summary.Seed != FrozenSeed) return;
 	bAccountDeletedVerified = true;
+	if (ActiveDefinition.FixedContent == FActiveChapterDefinition::EFixedContent::Headmind)
+	{
+		FPRProgressionSnapshot ProgressionSnapshot;
+		UPRProgressionSubsystem* Progression = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRProgressionSubsystem>() : nullptr;
+		if (!Progression || !Progression->GetProgressionSnapshot(ProgressionSnapshot)
+			|| !FPRHeadmindEndingEvaluator::BuildInput(Record.Summary, ProgressionSnapshot, FrozenHeadmindEndingInput))
+		{
+			bAccountDeletedVerified = false;
+			Snapshot.FallbackReason = FrozenHeadmindEndingInput.FallbackReason.IsNone() ? TEXT("Headmind.EndingInputUnavailable") : FrozenHeadmindEndingInput.FallbackReason;
+			PublishState();
+			return;
+		}
+		if (const UPRHeadmindChapterDataAsset* Headmind = PRChapterSubsystemPrivate::LoadHeadmindDefinition())
+		{
+			FText IgnoredText;
+			Headmind->ResolveEndingParagraph(FrozenHeadmindEndingInput, Snapshot.HeadmindEnding, IgnoredText);
+		}
+	}
 	TryBeginSettlement();
 }
 
@@ -514,6 +639,7 @@ void UPRChapterSubsystem::BindWorld(UWorld* World)
 	EnsureWardenPresentation();
 	EnsurePacifierPresentation();
 	EnsureAuditorPresentation();
+	EnsureHeadmindPresentation();
 }
 
 void UPRChapterSubsystem::UnbindWorld(UWorld* World)
@@ -531,6 +657,7 @@ void UPRChapterSubsystem::ResetTransientSession()
 	ClearWardenPresentation();
 	ClearPacifierPresentation();
 	ClearAuditorPresentation();
+	ClearHeadmindPresentation();
 	FrozenRunId.Invalidate();
 	FrozenAccountId.Invalidate();
 	FrozenSeed = 0;
@@ -541,6 +668,7 @@ void UPRChapterSubsystem::ResetTransientSession()
 	VerifiedBossSpawnId.Invalidate();
 	ActiveDefinition = FActiveChapterDefinition();
 	PendingSettlement = FPendingSettlement();
+	FrozenHeadmindEndingInput = FPRHeadmindEndingInputSnapshot();
 	bSettlementRequested = false;
 	if (SettlementRetryTickerHandle.IsValid())
 	{
@@ -565,7 +693,8 @@ bool UPRChapterSubsystem::SelectActiveDefinition(FActiveChapterDefinition& OutDe
 	const bool bWardenProof = Persistence.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetWardenProofId());
 	const bool bPacifierProof = Persistence.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetPacifierProofId());
 	const bool bAuditorProof = Persistence.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetAuditorProofId());
-	if ((bWardenProof && !bAllocatorProof) || (bPacifierProof && (!bAllocatorProof || !bWardenProof)) || (bAuditorProof && (!bAllocatorProof || !bWardenProof || !bPacifierProof)))
+	const bool bHeadmindProof = Persistence.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetHeadmindProofId());
+	if ((bWardenProof && !bAllocatorProof) || (bPacifierProof && (!bAllocatorProof || !bWardenProof)) || (bAuditorProof && (!bAllocatorProof || !bWardenProof || !bPacifierProof)) || (bHeadmindProof && (!bAllocatorProof || !bWardenProof || !bPacifierProof || !bAuditorProof)))
 	{
 		OutFailureReason = TEXT("Chapter.InvalidProofChain");
 		return false;
@@ -609,16 +738,45 @@ bool UPRChapterSubsystem::SelectActiveDefinition(FActiveChapterDefinition& OutDe
 		OutDefinition.FixedContent = FActiveChapterDefinition::EFixedContent::Pacifier;
 		return true;
 	}
-	const UPRAuditorChapterDataAsset* Auditor = PRChapterSubsystemPrivate::LoadAuditorDefinition();
-	if (!Auditor || !Auditor->IsAuditorDefinitionValid()) return false;
-	OutDefinition.ChapterId = Auditor->ChapterId;
-	OutDefinition.RoomRegistryId = Auditor->RoomContentRegistryId;
-	OutDefinition.EnemyRegistryId = Auditor->EnemyContentRegistryId;
-	OutDefinition.FinalRoomId = UPRChapterContentRegistryDataAsset::GetAuditorFinalRoomId();
-	OutDefinition.ContentId = Auditor->ContentId;
-	OutDefinition.BossId = Auditor->BossId;
-	OutDefinition.ProofId = Auditor->ProofId;
-	OutDefinition.FixedContent = FActiveChapterDefinition::EFixedContent::Auditor;
+	if (!bAuditorProof)
+	{
+		const UPRAuditorChapterDataAsset* Auditor = PRChapterSubsystemPrivate::LoadAuditorDefinition();
+		if (!Auditor || !Auditor->IsAuditorDefinitionValid()) return false;
+		OutDefinition.ChapterId = Auditor->ChapterId;
+		OutDefinition.RoomRegistryId = Auditor->RoomContentRegistryId;
+		OutDefinition.EnemyRegistryId = Auditor->EnemyContentRegistryId;
+		OutDefinition.FinalRoomId = UPRChapterContentRegistryDataAsset::GetAuditorFinalRoomId();
+		OutDefinition.ContentId = Auditor->ContentId;
+		OutDefinition.BossId = Auditor->BossId;
+		OutDefinition.ProofId = Auditor->ProofId;
+		OutDefinition.FixedContent = FActiveChapterDefinition::EFixedContent::Auditor;
+		return true;
+	}
+	if (!bHeadmindProof)
+	{
+		const UPRHeadmindChapterDataAsset* Headmind = PRChapterSubsystemPrivate::LoadHeadmindDefinition();
+		if (!Headmind || !Headmind->IsHeadmindDefinitionValid()) return false;
+		OutDefinition.ChapterId = Headmind->ChapterId;
+		OutDefinition.RoomRegistryId = Headmind->RoomContentRegistryId;
+		OutDefinition.EnemyRegistryId = Headmind->EnemyContentRegistryId;
+		OutDefinition.FinalRoomId = UPRChapterContentRegistryDataAsset::GetHeadmindFinalRoomId();
+		OutDefinition.ContentId = Headmind->ContentId;
+		OutDefinition.BossId = Headmind->BossId;
+		OutDefinition.ProofId = Headmind->ProofId;
+		OutDefinition.FixedContent = FActiveChapterDefinition::EFixedContent::Headmind;
+		return true;
+	}
+	// A completed Headmind proof has no alternate selector: the final chapter remains replayable.
+	const UPRHeadmindChapterDataAsset* Headmind = PRChapterSubsystemPrivate::LoadHeadmindDefinition();
+	if (!Headmind || !Headmind->IsHeadmindDefinitionValid()) return false;
+	OutDefinition.ChapterId = Headmind->ChapterId;
+	OutDefinition.RoomRegistryId = Headmind->RoomContentRegistryId;
+	OutDefinition.EnemyRegistryId = Headmind->EnemyContentRegistryId;
+	OutDefinition.FinalRoomId = UPRChapterContentRegistryDataAsset::GetHeadmindFinalRoomId();
+	OutDefinition.ContentId = Headmind->ContentId;
+	OutDefinition.BossId = Headmind->BossId;
+	OutDefinition.ProofId = Headmind->ProofId;
+	OutDefinition.FixedContent = FActiveChapterDefinition::EFixedContent::Headmind;
 	return true;
 }
 
@@ -628,21 +786,23 @@ bool UPRChapterSubsystem::IsFixedProofChainValid(const FPRChapterPersistenceData
 	const FPrimaryAssetId WardenChapterId = UPRChapterContentRegistryDataAsset::GetWardenChapterId();
 	const FPrimaryAssetId PacifierChapterId = UPRChapterContentRegistryDataAsset::GetPacifierChapterId();
 	const FPrimaryAssetId AuditorChapterId = UPRChapterContentRegistryDataAsset::GetAuditorChapterId();
+	const FPrimaryAssetId HeadmindChapterId = UPRChapterContentRegistryDataAsset::GetHeadmindChapterId();
 	const FName AllocatorProofId = UPRChapterContentRegistryDataAsset::GetAllocatorProofId();
 	const FName WardenProofId = UPRChapterContentRegistryDataAsset::GetWardenProofId();
 	const FName PacifierProofId = UPRChapterContentRegistryDataAsset::GetPacifierProofId();
 	const FName AuditorProofId = UPRChapterContentRegistryDataAsset::GetAuditorProofId();
+	const FName HeadmindProofId = UPRChapterContentRegistryDataAsset::GetHeadmindProofId();
 
 	for (const FPrimaryAssetId& ChapterId : Persistence.CompletedChapterIds)
 	{
-		if (ChapterId != AllocatorChapterId && ChapterId != WardenChapterId && ChapterId != PacifierChapterId && ChapterId != AuditorChapterId)
+		if (ChapterId != AllocatorChapterId && ChapterId != WardenChapterId && ChapterId != PacifierChapterId && ChapterId != AuditorChapterId && ChapterId != HeadmindChapterId)
 		{
 			return false;
 		}
 	}
 	for (const FName ProofId : Persistence.HumanAnomalyProofIds)
 	{
-		if (ProofId != AllocatorProofId && ProofId != WardenProofId && ProofId != PacifierProofId && ProofId != AuditorProofId)
+		if (ProofId != AllocatorProofId && ProofId != WardenProofId && ProofId != PacifierProofId && ProofId != AuditorProofId && ProofId != HeadmindProofId)
 		{
 			return false;
 		}
@@ -652,17 +812,20 @@ bool UPRChapterSubsystem::IsFixedProofChainValid(const FPRChapterPersistenceData
 	const bool bWardenCompleted = Persistence.CompletedChapterIds.Contains(WardenChapterId);
 	const bool bPacifierCompleted = Persistence.CompletedChapterIds.Contains(PacifierChapterId);
 	const bool bAuditorCompleted = Persistence.CompletedChapterIds.Contains(AuditorChapterId);
+	const bool bHeadmindCompleted = Persistence.CompletedChapterIds.Contains(HeadmindChapterId);
 	const bool bAllocatorProof = Persistence.HumanAnomalyProofIds.Contains(AllocatorProofId);
 	const bool bWardenProof = Persistence.HumanAnomalyProofIds.Contains(WardenProofId);
 	const bool bPacifierProof = Persistence.HumanAnomalyProofIds.Contains(PacifierProofId);
 	const bool bAuditorProof = Persistence.HumanAnomalyProofIds.Contains(AuditorProofId);
-	if (bAllocatorCompleted != bAllocatorProof || bWardenCompleted != bWardenProof || bPacifierCompleted != bPacifierProof || bAuditorCompleted != bAuditorProof)
+	const bool bHeadmindProof = Persistence.HumanAnomalyProofIds.Contains(HeadmindProofId);
+	if (bAllocatorCompleted != bAllocatorProof || bWardenCompleted != bWardenProof || bPacifierCompleted != bPacifierProof || bAuditorCompleted != bAuditorProof || bHeadmindCompleted != bHeadmindProof)
 	{
 		return false;
 	}
 	return (!bWardenProof || bAllocatorProof)
 		&& (!bPacifierProof || (bAllocatorProof && bWardenProof))
-		&& (!bAuditorProof || (bAllocatorProof && bWardenProof && bPacifierProof));
+		&& (!bAuditorProof || (bAllocatorProof && bWardenProof && bPacifierProof))
+		&& (!bHeadmindProof || (bAllocatorProof && bWardenProof && bPacifierProof && bAuditorProof));
 }
 
 bool UPRChapterSubsystem::ConfigureActiveContent()
@@ -684,7 +847,9 @@ bool UPRChapterSubsystem::ConfigureActiveContent()
 				? PRChapterSubsystemPrivate::EnsurePacifierEnemyRegistryIsRegistered()
 				: Selected.FixedContent == FActiveChapterDefinition::EFixedContent::Auditor
 					? PRChapterSubsystemPrivate::EnsureAuditorEnemyRegistryIsRegistered()
-					: true;
+					: Selected.FixedContent == FActiveChapterDefinition::EFixedContent::Headmind
+						? PRChapterSubsystemPrivate::EnsureHeadmindEnemyRegistryIsRegistered()
+						: true;
 	if (!bEnemyRegistryReady)
 	{
 		Snapshot.State = EPRChapterLifecycleState::Rejected;
@@ -701,6 +866,25 @@ bool UPRChapterSubsystem::ConfigureActiveContent()
 		return false;
 	}
 	ActiveDefinition = Selected;
+	// The active World can already be bound when an account/profile transition
+	// chooses its Chapter closure.  Configure the same closed Enemy registry in
+	// that ordering too; otherwise the first Room would still attempt its
+	// PrimaryAssetId spawns against the preceding chapter's whitelist.
+	if (UWorld* ActiveWorld = BoundWorld.Get())
+	{
+		if (UPREnemySubsystem* Enemies = ActiveWorld->GetSubsystem<UPREnemySubsystem>())
+		{
+			const EPREnemyContentResult EnemyResult = Enemies->ConfigureContentRegistry(Selected.EnemyRegistryId);
+			if (EnemyResult != EPREnemyContentResult::Succeeded
+				&& Enemies->GetConfiguredContentRegistryId() != Selected.EnemyRegistryId)
+			{
+				Snapshot.State = EPRChapterLifecycleState::Rejected;
+				Snapshot.FallbackReason = TEXT("Chapter.EnemyRegistryUnavailable");
+				PublishState();
+				return false;
+			}
+		}
+	}
 	Snapshot.ChapterId = Selected.ChapterId;
 	Snapshot.ContentId = Selected.ContentId;
 	Snapshot.bHasHumanAnomalyProof = false;
@@ -714,9 +898,11 @@ bool UPRChapterSubsystem::ConfigureActiveContent()
 	RefreshWardenStoryProjection();
 	RefreshPacifierStoryProjection();
 	RefreshAuditorStoryProjection();
+	RefreshHeadmindPresentation();
 	EnsureWardenPresentation();
 	EnsurePacifierPresentation();
 	EnsureAuditorPresentation();
+	EnsureHeadmindPresentation();
 	PublishState();
 	return true;
 }
@@ -733,10 +919,20 @@ bool UPRChapterSubsystem::IsActiveSequence(const FPRRoomSequenceCompleted& Compl
 
 bool UPRChapterSubsystem::IsExpectedBossCompletion(const FPRPrototypeRunResult& Completion) const
 {
-	if (!Completion.CompletionId.IsValid() || !Completion.BossSpawnId.IsValid() || Completion.BossId != ActiveDefinition.BossId) return false;
+	if (!Completion.CompletionId.IsValid() || !Completion.BossSpawnId.IsValid()) return false;
 	UPRRoomSubsystem* Room = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRRoomSubsystem>() : nullptr;
 	FGuid ExpectedSpawn;
-	return Room && Room->GetExpectedBossSpawnId(ExpectedSpawn) && ExpectedSpawn == Completion.BossSpawnId;
+	if (!Room || !Room->GetExpectedBossSpawnId(ExpectedSpawn) || ExpectedSpawn != Completion.BossSpawnId) return false;
+	if (Completion.BossId == ActiveDefinition.BossId) return true;
+	if (ActiveDefinition.FixedContent != FActiveChapterDefinition::EFixedContent::Headmind
+		|| Completion.BossId != UPRChapterContentRegistryDataAsset::GetAuditorBossId()) return false;
+	// The frozen Demo Auditor emits its original identity. Reinterpret it only
+	// when the active closed Registry spawned the exact Headmind projection at
+	// this expected spawn; every other chapter remains strict.
+	APREnemyCharacter* SpawnedEnemy = nullptr;
+	UPREnemySubsystem* Enemies = BoundWorld.IsValid() ? BoundWorld->GetSubsystem<UPREnemySubsystem>() : nullptr;
+	return Enemies && Enemies->ResolveSpawnedEnemy(Completion.BossSpawnId, SpawnedEnemy)
+		&& Cast<APRHeadmindProjectionBoss>(SpawnedEnemy) != nullptr;
 }
 
 bool UPRChapterSubsystem::BeginSettlement()
@@ -763,6 +959,17 @@ bool UPRChapterSubsystem::BeginSettlement()
 		PublishState();
 		return false;
 	}
+	if (ActiveDefinition.FixedContent == FActiveChapterDefinition::EFixedContent::Headmind
+		&& (!Current.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetAllocatorProofId())
+			|| !Current.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetWardenProofId())
+			|| !Current.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetPacifierProofId())
+			|| !Current.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetAuditorProofId())))
+	{
+		Snapshot.State = EPRChapterLifecycleState::Rejected;
+		Snapshot.FallbackReason = TEXT("Chapter.InvalidProofChain");
+		PublishState();
+		return false;
+	}
 	if (Current.CompletedChapterIds.Contains(ActiveDefinition.ChapterId) || Current.HumanAnomalyProofIds.Contains(ActiveDefinition.ProofId))
 	{
 		Snapshot.State = EPRChapterLifecycleState::Completed;
@@ -783,6 +990,11 @@ bool UPRChapterSubsystem::BeginSettlement()
 	Transaction.Completion.ProofId = ActiveDefinition.ProofId;
 	Transaction.Completion.SettlementSequence = Transaction.Target.SettlementSequence;
 	Transaction.Completion.bProofAwarded = true;
+	Transaction.HeadmindEndingInput = FrozenHeadmindEndingInput;
+	if (ActiveDefinition.FixedContent == FActiveChapterDefinition::EFixedContent::Headmind)
+	{
+		Transaction.Completion.HeadmindEnding = Snapshot.HeadmindEnding;
+	}
 	Transaction.bPending = true;
 	PendingSettlement = MoveTemp(Transaction);
 	return SubmitPendingSettlement();
@@ -932,6 +1144,31 @@ void UPRChapterSubsystem::RefreshAuditorStoryProjection()
 	}
 }
 
+void UPRChapterSubsystem::RefreshHeadmindPresentation()
+{
+	Snapshot.HeadmindBoss = FPRHeadmindBossRuntimeState();
+	Snapshot.HeadmindEnding = FPRHeadmindEndingResult();
+	if (ActiveDefinition.FixedContent != FActiveChapterDefinition::EFixedContent::Headmind) return;
+	FPRChapterPersistenceData Persistence;
+	if (UPRSaveSubsystem* Save = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPRSaveSubsystem>() : nullptr)
+	{
+		if (Save->GetChapterPersistenceSnapshot(Persistence)
+			&& Persistence.HumanAnomalyProofIds.Contains(UPRChapterContentRegistryDataAsset::GetAuditorProofId()))
+		{
+			Snapshot.TripleResonancePrerequisiteId = TEXT("TripleResonance.ChapterPrerequisite.Auditor");
+			Snapshot.bHasTripleResonancePrerequisite = true;
+		}
+	}
+}
+
+void UPRChapterSubsystem::PublishHeadmindBossRuntimeState(const FPRHeadmindBossRuntimeState& InRuntimeState)
+{
+	if (ActiveDefinition.FixedContent != FActiveChapterDefinition::EFixedContent::Headmind
+		|| Snapshot.State != EPRChapterLifecycleState::RunActive) return;
+	Snapshot.HeadmindBoss = InRuntimeState;
+	PublishState();
+}
+
 void UPRChapterSubsystem::ClearWardenPresentation()
 {
 	if (UPRWardenChapterWidget* Overlay = WardenOverlay.Get()) Overlay->RemoveFromParent();
@@ -948,6 +1185,12 @@ void UPRChapterSubsystem::ClearAuditorPresentation()
 {
 	if (UPRAuditorChapterWidget* Overlay = AuditorOverlay.Get()) Overlay->RemoveFromParent();
 	AuditorOverlay.Reset();
+}
+
+void UPRChapterSubsystem::ClearHeadmindPresentation()
+{
+	if (UPRHeadmindChapterWidget* Overlay = HeadmindOverlay.Get()) Overlay->RemoveFromParent();
+	HeadmindOverlay.Reset();
 }
 
 void UPRChapterSubsystem::EnsureWardenPresentation()
@@ -991,6 +1234,21 @@ void UPRChapterSubsystem::EnsureAuditorPresentation()
 	if (UPRAuditorChapterWidget* Overlay = CreateWidget<UPRAuditorChapterWidget>(Controller, OverlayClass))
 	{
 		AuditorOverlay = Overlay;
+		Overlay->AddToViewport(20);
+	}
+}
+
+void UPRChapterSubsystem::EnsureHeadmindPresentation()
+{
+	if (ActiveDefinition.FixedContent != FActiveChapterDefinition::EFixedContent::Headmind || HeadmindOverlay.IsValid()) return;
+	const UPRHeadmindChapterDataAsset* Headmind = PRChapterSubsystemPrivate::LoadHeadmindDefinition();
+	UClass* OverlayClass = Headmind ? Headmind->OverlayWidgetClass.LoadSynchronous() : nullptr;
+	UWorld* World = BoundWorld.Get();
+	APlayerController* Controller = World ? UGameplayStatics::GetPlayerController(World, 0) : nullptr;
+	if (!OverlayClass || !Controller) return;
+	if (UPRHeadmindChapterWidget* Overlay = CreateWidget<UPRHeadmindChapterWidget>(Controller, OverlayClass))
+	{
+		HeadmindOverlay = Overlay;
 		Overlay->AddToViewport(20);
 	}
 }

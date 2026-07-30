@@ -153,6 +153,42 @@ const TArray<FName>& UPRChapterContentRegistryDataAsset::GetAuditorDirectiveIds(
 	return Directives;
 }
 
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetHeadmindChapterId()
+{
+	return FPrimaryAssetId(PRChapterContent::ChapterType, TEXT("DA_Chapter_Headmind"));
+}
+
+FName UPRChapterContentRegistryDataAsset::GetHeadmindContentId() { return TEXT("Headmind"); }
+FName UPRChapterContentRegistryDataAsset::GetHeadmindBossId() { return TEXT("HeadmindProjection"); }
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetHeadmindBossPrototypeId() { return FPrimaryAssetId(TEXT("ProjectREnemy"), TEXT("DA_Boss_HeadmindProjection")); }
+FName UPRChapterContentRegistryDataAsset::GetHeadmindProofId() { return TEXT("HumanAnomalyProof.Headmind"); }
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetHeadmindRoomRegistryId()
+{
+	return FPrimaryAssetId(TEXT("ProjectRChapterRoguelikeRegistry"), TEXT("DA_RoguelikeContentRegistry_Headmind"));
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetHeadmindEnemyRegistryId()
+{
+	return FPrimaryAssetId(TEXT("ProjectREnemyContentRegistry"), TEXT("DA_EnemyContentRegistry_Headmind"));
+}
+
+FPrimaryAssetId UPRChapterContentRegistryDataAsset::GetHeadmindFinalRoomId()
+{
+	return FPrimaryAssetId(TEXT("ProjectRRoom"), TEXT("DA_Room_Headmind_Boss_HeadmindProjection"));
+}
+
+const TArray<FName>& UPRChapterContentRegistryDataAsset::GetHeadmindDirectiveIds()
+{
+	static const TArray<FName> Directives = {
+		TEXT("Headmind.ObediencePrediction"),
+		TEXT("Headmind.RepetitionOptimality"),
+		TEXT("Headmind.IsolationCooperation"),
+		TEXT("Headmind.SurvivalRisk"),
+		TEXT("Headmind.ResourceDistance")};
+	return Directives;
+}
+
 FName UPRChapterContentRegistryDataAsset::GetDirectiveForContentAndSeed(const FName ContentId, const int32 Seed)
 {
 	const TArray<FName>* Directives = nullptr;
@@ -160,6 +196,7 @@ FName UPRChapterContentRegistryDataAsset::GetDirectiveForContentAndSeed(const FN
 	else if (ContentId == GetWardenContentId()) Directives = &GetWardenDirectiveIds();
 	else if (ContentId == GetPacifierContentId()) Directives = &GetPacifierDirectiveIds();
 	else if (ContentId == GetAuditorContentId()) Directives = &GetAuditorDirectiveIds();
+	else if (ContentId == GetHeadmindContentId()) Directives = &GetHeadmindDirectiveIds();
 	if (!Directives || Directives->IsEmpty()) return NAME_None;
 	return (*Directives)[static_cast<uint32>(Seed) % Directives->Num()];
 }

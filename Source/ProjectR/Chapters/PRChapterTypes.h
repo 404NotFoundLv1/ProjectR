@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Chapters/Auditor/PRAuditorChapterTypes.h"
+#include "Chapters/Headmind/PRHeadmindTypes.h"
 #include "Chapters/Pacifier/PRPacifierTypes.h"
 #include "Chapters/Warden/PRWardenTypes.h"
 #include "Engine/AssetManagerTypes.h"
@@ -70,6 +71,7 @@ struct PROJECTR_API FPRChapterSnapshot
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int32 RiskPressure = 0;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int32 ComfortPressure = 0;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int32 AuditPressure = 0;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int32 SynthesisPressure = 0;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRAllocatorBossRuntimeState Boss;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRWardenBossRuntimeState WardenBoss;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRWardenStoryProjection WardenStory;
@@ -77,6 +79,8 @@ struct PROJECTR_API FPRChapterSnapshot
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRPacifierStoryProjection PacifierStory;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRAuditorChapterBossRuntimeState AuditorBoss;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRAuditorStoryProjection AuditorStory;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRHeadmindBossRuntimeState HeadmindBoss;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRHeadmindEndingResult HeadmindEnding;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FName TripleResonancePrerequisiteId;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") bool bHasTripleResonancePrerequisite = false;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FName FallbackReason;
@@ -93,6 +97,7 @@ struct PROJECTR_API FPRChapterCompletionResult
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FName ProofId;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") int64 SettlementSequence = 0;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") bool bProofAwarded = false;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Chapter") FPRHeadmindEndingResult HeadmindEnding;
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FPRChapterStateChangedNative, const FPRChapterSnapshot&);

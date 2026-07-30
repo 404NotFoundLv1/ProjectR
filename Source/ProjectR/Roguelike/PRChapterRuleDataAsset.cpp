@@ -14,10 +14,12 @@ bool UPRChapterRuleDataAsset::IsRuleDefinitionValid() const
 	const bool bWarden = ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId();
 	const bool bPacifier = ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId();
 	const bool bAuditor = ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId();
-	if ((!bWarden && !bPacifier && !bAuditor)
+	const bool bHeadmind = ContentId == UPRChapterContentRegistryDataAsset::GetHeadmindContentId();
+	if ((!bWarden && !bPacifier && !bAuditor && !bHeadmind)
 		|| !(bWarden ? UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds()
 			: bPacifier ? UPRChapterContentRegistryDataAsset::GetPacifierDirectiveIds()
-			: UPRChapterContentRegistryDataAsset::GetAuditorDirectiveIds()).Contains(DirectiveId)
+			: bAuditor ? UPRChapterContentRegistryDataAsset::GetAuditorDirectiveIds()
+			: UPRChapterContentRegistryDataAsset::GetHeadmindDirectiveIds()).Contains(DirectiveId)
 		|| !RequiredDirectorRuleId.IsValid()) return false;
 
 	const FGameplayTag ExpectedRule =
@@ -32,11 +34,16 @@ bool UPRChapterRuleDataAsset::IsRuleDefinitionValid() const
 				DirectiveId == TEXT("Pacifier.IllusionVeil") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.PredictionLock"), false) :
 				DirectiveId == TEXT("Pacifier.RiskSuppression") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.RiskReward"), false) :
 				FGameplayTag::RequestGameplayTag(TEXT("Rule.OptimalPath"), false))
-			: (DirectiveId == TEXT("Auditor.HabitReplication") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.RepetitionPenalty"), false) :
+			: bAuditor ? (DirectiveId == TEXT("Auditor.HabitReplication") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.RepetitionPenalty"), false) :
 				DirectiveId == TEXT("Auditor.DistanceAudit") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.DistanceCorrection"), false) :
 				DirectiveId == TEXT("Auditor.CooperationAudit") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.CooperationAudit"), false) :
 				DirectiveId == TEXT("Auditor.PredictionEscalation") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.PredictionLock"), false) :
-				FGameplayTag::RequestGameplayTag(TEXT("Rule.ObedienceTest"), false));
+				FGameplayTag::RequestGameplayTag(TEXT("Rule.ObedienceTest"), false))
+			: (DirectiveId == TEXT("Headmind.ObediencePrediction") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.ObedienceTest"), false) :
+				DirectiveId == TEXT("Headmind.RepetitionOptimality") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.RepetitionPenalty"), false) :
+				DirectiveId == TEXT("Headmind.IsolationCooperation") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.CompanionIsolation"), false) :
+				DirectiveId == TEXT("Headmind.SurvivalRisk") ? FGameplayTag::RequestGameplayTag(TEXT("Rule.SurvivalProtocol"), false) :
+				FGameplayTag::RequestGameplayTag(TEXT("Rule.ResourceBalance"), false));
 	if (RequiredDirectorRuleId != ExpectedRule || PreferredRoomIds.IsEmpty() || PreferredRoomIds.Num() > 2) return false;
 	TArray<FPrimaryAssetId> Canonical = PreferredRoomIds;
 	Canonical.Sort([](const FPrimaryAssetId& Left, const FPrimaryAssetId& Right) { return Left.ToString() < Right.ToString(); });

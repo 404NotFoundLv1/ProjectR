@@ -466,6 +466,15 @@ AccountRecord 保存账号 ID、身份、开始/结束时间、结束原因、�
 6. 运行当前版本和直接下游版本冒烟测试。
 7. 更新版本依赖矩阵后才能关闭变更。
 
+# v0.7.1 Headmind final chapter contract
+
+**Owner:** `UPRChapterSubsystem`. **Direct consumers:** fixed Headmind content, public Chapter snapshots, v0.7.2, QA and release surfaces.
+
+- The only legal fifth selection is `Allocator -> Warden -> Pacifier -> Auditor -> Headmind`. `HumanAnomalyProof.Headmind` and `ProjectRChapter:DA_Chapter_Headmind` consume the fifth final Schema-7 slot. Unknown, duplicate, out-of-order or incomplete chains reject as `Chapter.InvalidProofChain`; replay is a settlement no-op.
+- Headmind accepts only Seeds `61400..61404`, exact Registry/Room/Enemy PrimaryAssetIds, five local directives, four transient Event bindings and the non-economic three-choice `SynthesisProvisionTerminal`. `SynthesisPressure` is clamp `0..4`, never saved and never an economy value.
+- `APRHeadmindProjectionBoss : APRBossAuditor` preserves Demo P1--P3, PredictionShield, mitigation and one prototype completion. Only the matching active Headmind projection SpawnId may reinterpret frozen `Auditor` identity at the closed Room/Chapter consumer seam. Final Encounter is exactly the Boss plus PredictionEcho, ObedienceEnforcer and BasiliskExecutor; no free class, path, tag or spawn input exists.
+- Ending and TripleResonance values are bounded public projections. They consume only AccountDeleted Summary relationships, read-only Progression CounterproofFragments and final normalized `Rule.ObedienceTest`; they never read private Save, summary text, provider, prompt or Dialogue queue. TripleResonance remains deferred display state only in v0.7.1 and grants no ability, QTE, damage, cooldown, resource or persistent state.
+
 # v0.7.0 Auditor chapter contract
 
 **Owner:** `UPRChapterSubsystem` (`UGameInstanceSubsystem`). **Established:** v0.7.0. **Direct consumers:** closed Auditor content, public proof readers, v0.7.1, v0.7.2 and QA.
