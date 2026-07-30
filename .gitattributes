@@ -314,3 +314,43 @@
 /Content/ProjectR/Chapters/Pacifier/Boss/DA_Boss_Pacifier.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Pacifier/Boss/BP_Boss_Pacifier.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Pacifier/UI/WBP_PacifierChapterOverlay.uasset -filter -diff -merge -text
+
+# v0.7.0 Auditor Chapter packages are 194,911 bytes total after exact MCP save.
+# Keep only this exact 37-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/Chapters/Auditor/DA_Chapter_Auditor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/DA_EnemyContentRegistry_Auditor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/DA_RoguelikeContentRegistry_Auditor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Boss/BP_Boss_AuditorChapter.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Boss/DA_Boss_AuditorChapter.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Encounters/DA_Encounter_Auditor_Boss.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Encounters/DA_Encounter_Auditor_HabitMirror.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Encounters/DA_Encounter_Auditor_PatternReview.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Encounters/DA_Encounter_Auditor_RepetitionEnforcer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Enemies/DA_Enemy_AuditorHabitMirror.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Enemies/DA_Enemy_AuditorRepetitionEnforcer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Enemies/DA_Enemy_AuditorVerdictExecutor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Events/DA_RoomEvent_Auditor_BuildReview.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Events/DA_RoomEvent_Auditor_HabitSample.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Events/DA_RoomEvent_Auditor_MemoryCorridor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Events/DA_RoomEvent_Auditor_VerdictAppeal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rewards/Policies/DA_RewardPolicy_Auditor_Combat.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rewards/Policies/DA_RewardPolicy_Auditor_Elite.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rewards/Policies/DA_RewardPolicy_Auditor_Event.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rewards/Policies/DA_RewardPolicy_Auditor_Safe.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rewards/Policies/DA_RewardPolicy_Auditor_Shop.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Boss_Auditor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Combat_HabitMirror.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Combat_PatternReview.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Elite_RepetitionEnforcer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Event_BuildReview.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Event_HabitSample.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Event_MemoryCorridor.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Event_VerdictAppeal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Safe_EvidenceBuffer.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rooms/DA_Room_Auditor_Shop_AuditProvisionTerminal.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_CooperationAudit.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_DistanceAudit.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_HabitReplication.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_PredictionEscalation.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_VerdictEscalation.uasset -filter -diff -merge -text
+/Content/ProjectR/Chapters/Auditor/UI/WBP_AuditorChapterOverlay.uasset -filter -diff -merge -text

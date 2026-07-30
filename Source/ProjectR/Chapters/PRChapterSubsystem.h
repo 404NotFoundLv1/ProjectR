@@ -28,10 +28,23 @@ public:
 	bool StageFixedAllocatorProofForAutomation();
 	/** Fixed v0.6.2 fixture: persists only the Allocator/Warden prerequisite chain in isolated automation storage. */
 	bool StageFixedPacifierPrerequisitesForAutomation();
+	/** Fixed v0.7.0 fixture: persists only the Allocator/Warden/Pacifier prerequisite chain in isolated automation storage. */
+	bool StageFixedAuditorPrerequisitesForAutomation();
+	/** Re-selects only the fixed Auditor closure after its isolated prerequisite transaction commits and before the fixture starts a run. */
+	bool RefreshFixedAuditorSelectionForAutomation();
 	/** Fixed v0.6.2 persistence fixture: marks only the already-active Pacifier run's bounded completion facts. */
 	bool StageFixedPacifierCompletionFactsForAutomation();
+	/** Fixed v0.7.0 persistence fixture: marks only the already-active Auditor run's bounded completion facts. */
+	bool StageFixedAuditorCompletionFactsForAutomation();
 	/** Read-only fixed diagnostics for the Pacifier settlement acceptance runner. */
 	void GetFixedPacifierSettlementDiagnosticsForAutomation(
+		bool& bOutRoomVerified,
+		bool& bOutBossVerified,
+		bool& bOutAccountDeletedVerified,
+		bool& bOutSettlementRequested,
+		bool& bOutSettlementPending) const;
+	/** Read-only fixed diagnostics for the Auditor settlement acceptance runner. */
+	void GetFixedAuditorSettlementDiagnosticsForAutomation(
 		bool& bOutRoomVerified,
 		bool& bOutBossVerified,
 		bool& bOutAccountDeletedVerified,
@@ -56,7 +69,8 @@ private:
 		{
 			Allocator,
 			Warden,
-			Pacifier
+			Pacifier,
+			Auditor
 		};
 
 		FPrimaryAssetId ChapterId;
@@ -92,10 +106,13 @@ private:
 	static bool IsFixedProofChainValid(const FPRChapterPersistenceData& Persistence);
 	void RefreshWardenStoryProjection();
 	void RefreshPacifierStoryProjection();
+	void RefreshAuditorStoryProjection();
 	void ClearWardenPresentation();
 	void ClearPacifierPresentation();
+	void ClearAuditorPresentation();
 	void EnsureWardenPresentation();
 	void EnsurePacifierPresentation();
+	void EnsureAuditorPresentation();
 	bool IsExpectedBossCompletion(const struct FPRPrototypeRunResult& Completion) const;
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -118,6 +135,7 @@ private:
 	FActiveChapterDefinition ActiveDefinition;
 	TWeakObjectPtr<class UPRWardenChapterWidget> WardenOverlay;
 	TWeakObjectPtr<class UPRPacifierChapterWidget> PacifierOverlay;
+	TWeakObjectPtr<class UPRAuditorChapterWidget> AuditorOverlay;
 	FDelegateHandle RunStateHandle;
 	FDelegateHandle RoomCompletedHandle;
 	FDelegateHandle RoomEventHandle;

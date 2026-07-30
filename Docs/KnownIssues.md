@@ -153,6 +153,12 @@ date: "2026-07-10"
 - Data Validation 第一次最终复验因前一个已超时的命令行进程短暂占用 MCP 8000 端口而以环境错误退出；所有 Unreal 进程退出后从干净状态重跑，命令退出 0、0 errors、1 个既有 MCP EULA warning。失败日志不作为通过证据。
 - KI-019、KI-020 与 KI-006 状态不变；本版本不修改 `.uplugin`、Build.cs、冻结时序阈值或 Experimental MCP 安全边界。隔离人工完整通关已获用户 `PASS`，最终 AutomationReport 为 12/12 required PASS；没有新增阻断 KnownIssue。
 
+# 2026-07-30 - v0.7.0 Known Issues Review
+
+- No new persistent product blocker was introduced by the closed Auditor Chapter, the one-tick Room completion ordering guard, its 37 Packages or Schema-7 proof addition. Final fixed Auditor PIE 3/3 and the isolated manual complete path are PASS; all fixtures used automation-only storage and reported `userSlotsTouched=false`.
+- The broad non-`-game` `ProjectR` snapshot is 147/152. The four established `ProjectR.Debug.*` failures still lack their required GameInstance context. `ProjectRAuthoringTools.Enemy.PIE.CheckpointDPlayerHookRegression` also fails only in that no-render batch runner; the fixed rendered authoritative PIE Checkpoint-D entry passed independently with `runtimeClean=true`. No Debug or Enemy source was modified. This remains the KI-023 runner-isolation diagnostic, not a v0.7.0 gameplay failure.
+- Data Validation completed with 0 errors and one established MCP EULA warning. Existing KI-006, KI-019 and KI-020 states remain unchanged. No new Open KnownIssue is created for v0.7.0.
+
 # 记录规则
 
 问题必须包含复现/证据、影响版本、临时处理、负责人和可验证关闭条件。不能用删除日志或降低校验来关闭问题。

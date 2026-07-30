@@ -465,3 +465,14 @@ AccountRecord 保存账号 ID、身份、开始/结束时间、结束原因、�
 5. 添加旧数据、旧 Blueprint、旧资产引用的失败测试。
 6. 运行当前版本和直接下游版本冒烟测试。
 7. 更新版本依赖矩阵后才能关闭变更。
+
+# v0.7.0 Auditor chapter contract
+
+**Owner:** `UPRChapterSubsystem` (`UGameInstanceSubsystem`). **Established:** v0.7.0. **Direct consumers:** closed Auditor content, public proof readers, v0.7.1, v0.7.2 and QA.
+
+- The fixed Chapter closure is exactly Allocator, Warden, Pacifier and Auditor. Selection consumes only the public Schema-7 Chapter snapshot; an incomplete, unknown, duplicate or out-of-order Proof chain is rejected as `Chapter.InvalidProofChain`. Auditor replay is permitted after its existing proof, but settlement remains idempotent.
+- Auditor identities, Registry paths, the five local directives and Seeds `61300..61304` are compiled-in. The Room Registry closes exactly 10 Rooms, 4 Encounters, 4 Events, 5 Reward Policies, 30 pre-existing Rewards and 9 pressure bindings. The Enemy Registry closes exactly `AuditorHabitMirror`, `AuditorRepetitionEnforcer`, `AuditorVerdictExecutor` and the Auditor Boss. Dynamic registration accepts only that fixed Registry ID/path and bundle metadata; it performs no scan and accepts no caller-supplied asset, class, path, tag or spawn input.
+- `AuditPressure` is transient and clamped to `0..4`. It is updated only by the four fixed Event choices and is neither currency, price, inventory, transaction, drop rate nor persisted state. `AuditProvisionTerminal` only reuses the pre-existing three-choice, non-reroll Reward Offer.
+- `APRAuditorChapterBoss : APRBossAuditor` and `UPRAuditorChapterBossComponent` add bounded Habit Replication, Repeated Build Audit and Verdict Escalation windows while preserving the Demo Auditor's P1--P3, mitigation, PredictionShield and exactly-one prototype completion. Missing public dependencies produce a readable degraded no-op. Actor, timer, delegate, weak reference, window and transient projection state is cleared on completion, travel, EndPlay, PIE stop and deinitialization.
+- `HumanAnomalyProof.Auditor` is appended only after matching frozen RunId, AccountId, Seed, closed Auditor Room sequence, final Room, one matching Boss completion and successful existing AccountDeleted fact. The Schema stays 7; the existing A/B write-back verification and frozen `ReadyToRetry` transaction apply unchanged. The proof derives the read-only `TripleResonance.ChapterPrerequisite.Auditor`; it does not write a second prerequisite, Progression balance, Ability, QTE, damage or execution.
+- The fixed Null Memory Corridor StoryBeat reads only allowed public Companion, completed Quest/entitlement and bounded Memory availability projections. It never reads summary text, choice references, key-event source text, Provider data, prompts, Dialogue queues or private Save data, and it writes no Relationship, Quest, Memory, Progression, Save or Dialogue state.

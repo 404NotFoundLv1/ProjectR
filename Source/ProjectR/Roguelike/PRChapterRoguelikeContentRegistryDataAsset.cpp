@@ -41,7 +41,14 @@ bool UPRChapterRoguelikeContentRegistryDataAsset::SupportsChapterShopRooms() con
 {
 	return ContentId == UPRChapterContentRegistryDataAsset::GetAllocatorContentId()
 		|| ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
-		|| ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId();
+		|| ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
+		|| ContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId();
+}
+
+int32 UPRChapterRoguelikeContentRegistryDataAsset::GetExpectedEventPressureBindingCount(const FName InContentId)
+{
+	// Auditor's four fixed events expose 2 + 2 + 2 + 3 declared choices.
+	return InContentId == UPRChapterContentRegistryDataAsset::GetAuditorContentId() ? 9 : 10;
 }
 
 bool UPRChapterRoguelikeContentRegistryDataAsset::IsKnownDirective(const FName DirectiveId) const
@@ -89,7 +96,7 @@ bool UPRChapterRoguelikeContentRegistryDataAsset::FindEventPressureBinding(const
 bool UPRChapterRoguelikeContentRegistryDataAsset::IsRegistryReady() const
 {
 	auto Fail = [this](const TCHAR* Reason) { UE_LOG(LogProjectR, Warning, TEXT("Chapter registry %s rejected: %s"), *GetPathName(), Reason); return false; };
-	if (!SupportsChapterShopRooms() || Rooms.Num() != 10 || Encounters.Num() != 4 || Events.Num() != 4 || RewardPolicies.Num() != 5 || Rewards.Num() != 30 || ChapterRules.Num() != 5 || EventPressureBindings.Num() != 10)
+	if (!SupportsChapterShopRooms() || Rooms.Num() != 10 || Encounters.Num() != 4 || Events.Num() != 4 || RewardPolicies.Num() != 5 || Rewards.Num() != 30 || ChapterRules.Num() != 5 || EventPressureBindings.Num() != GetExpectedEventPressureBindingCount(ContentId))
 	{
 		return Fail(TEXT("manifest-count-or-content"));
 	}
@@ -110,7 +117,9 @@ bool UPRChapterRoguelikeContentRegistryDataAsset::IsRegistryReady() const
 			? UPRChapterContentRegistryDataAsset::GetAllocatorDirectiveIds()
 			: ContentId == UPRChapterContentRegistryDataAsset::GetWardenContentId()
 				? UPRChapterContentRegistryDataAsset::GetWardenDirectiveIds()
-				: UPRChapterContentRegistryDataAsset::GetPacifierDirectiveIds();
+				: ContentId == UPRChapterContentRegistryDataAsset::GetPacifierContentId()
+					? UPRChapterContentRegistryDataAsset::GetPacifierDirectiveIds()
+					: UPRChapterContentRegistryDataAsset::GetAuditorDirectiveIds();
 	ExpectedRuleIds.Sort([](const FName& Left, const FName& Right) { return Left.LexicalLess(Right); });
 	if (ActualRuleIds != ExpectedRuleIds) return Fail(TEXT("rule-whitelist"));
 	TSet<FString> UniqueEventChoices;

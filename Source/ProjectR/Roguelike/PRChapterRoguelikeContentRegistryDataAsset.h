@@ -33,6 +33,8 @@ class PROJECTR_API UPRChapterRoguelikeContentRegistryDataAsset final : public UP
 public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
 	virtual bool IsRegistryReady() const override;
+	/** Fixed event-choice binding count for each closed chapter content pack. */
+	static int32 GetExpectedEventPressureBindingCount(FName InContentId);
 	bool SupportsChapterShopRooms() const;
 	bool IsKnownDirective(FName DirectiveId) const;
 	const UPRChapterRuleDataAsset* FindChapterRule(FName DirectiveId) const;
