@@ -145,6 +145,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-039 | v6 要求终章融合多条法令、提供预测护盾/蛇怪判定/三重共鸣破局并准备关系、反证、服从结局变量；真实 Schema-7 Chapter 分区只含最多五项 `CompletedChapterIds`、五项 `HumanAnomalyProofIds` 和 `SettlementSequence`，没有独立结局字段，且第五槽是最后容量。实际 TripleResonance Ability/QTE/伤害/处决、账号不死、高风险链奖励和资源规则属于 v0.7.2。 | v0.7.1 使用单一合同、单一完成门和唯一功能提交。固定 Headmind 为第五项闭包，并仅在完整 Allocator/Warden/Pacifier/Auditor Proof 链后使用最后一个 Schema-7 Chapter/Proof 槽；不升级 Schema。关系变量从已落盘 `FPRAccountDeletedEvent.Record.Summary.CompanionRelationships` 冻结，反证变量只读既有 Progression Snapshot 的 Account-owned `CounterproofFragments`，服从变量只读最终 `FPRRunSummary.DirectorRules` 中白名单 `Rule.ObedienceTest`；三者只形成有界结局值与固定本地文本，不重复持久化源数据。Headmind 继承冻结 Demo Auditor，蛇怪窗口只发布 `EligibleDeferredToV072`/Unavailable/degraded 值，不授予 Ability、不启动 QTE、不改变伤害、护盾、处决或资源。多法令融合只读取既有已验证 Handle 并影响闭合 Headmind 内容。 | 在完成 1.0 主线结局、第五 Proof 和稳定下游输入的同时，保留 Schema-7、Account/Progression/Relationship/Director/Combat 所有权，避免用结局名义重复持久化、提前实现 v0.7.2 或建立任意内容/经济边界。 | Active for v0.7.1 |
 
+# v0.7.2 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.7.2 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-040 | v6 要求实际三重共鸣、蛇怪反制、“账号不死”、技能记忆碎片和高风险 Human Anomaly Proof；真实 Schema-7 的五个 Chapter/Proof 槽已被 Headmind 占满，RunState 在全部终止原因下都删除 ActiveAccount，十二项 P0 QTE Registry 已冻结，Headmind 只发布 `EligibleDeferredToV072` 机会值，正式 GAS Ability 也缺少稳定 TripleResonance Ability/Cooldown 身份。 | v0.7.2 以单一合同、单一完成门和唯一功能提交交付。“账号不死”只表示账号仍按既有 AccountDeleted/墓园流程终止，但一个有界技能记忆跨账号保留，不保留、复活或复制 ActiveAccount。Schema 7→8 新增独立、单项 `FPRTripleResonancePersistenceData`，保存一个技能记忆和一个不可消费的 `HumanAnomalyProof.TripleResonanceHighRisk`；该 Proof 不进入五槽 Chapter/Proof 集合、不参与章节选择。十二项 P0 QTE Registry 保持原样，QTE 只增加三个编译期固定外部 ID 和 `ResultOnly` 效果接缝。GameplayTag 只准确追加 `Skill.TripleResonance` 与 `Cooldown.Skill.TripleResonance`，输入继续复用 `Input.Execute`。Headmind 仅增加一次性固定结果接收接缝，Demo Auditor、PredictionShield、Combat mitigation 与既有唯一 Completion 不变。 | 在不建立第二账号权威、第六章节 Proof、任意 QTE/Ability 输入、经济或重复 Boss Completion 的前提下实现宣传片级三重共鸣，并为 v0.8.0 提供稳定、非经济的技能记忆消费边界。 | Active for v0.7.2 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

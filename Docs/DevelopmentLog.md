@@ -645,3 +645,11 @@ Commit：
 - BuildEditor、Chapter 20/20、Save 5/5、合同 `-game` Debug 12/12、固定 Auditor PIE 3/3、MCP 37 Package 精确保存/重启回读/Dirty=0、Data Validation、人工完整通关、ADR-038、KnownIssues Review 与 FCR 均已有 PASS。广泛 Editor runner 的既有 GameInstance/Checkpoint-D runner-context 诊断继续如实记录。
 - 新建单一 `Docs/Versions/v0.7.1.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.7.1 / In Progress`。E-039 固定第五个 Schema-7 Chapter/Proof 容量位、Headmind 闭包、结局值派生、受控蛇怪判定以及 v0.7.2 TripleResonance 延后边界。
 - 本次仅执行六份文档的版本转换；没有开始 Headmind C++、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.7.1 保持一个公共版本、一个完成门和唯一未来功能提交。
+
+# 2026-07-31 - v0.7.1 正式收尾与 v0.7.2 合同转换
+
+- v0.7.1 已由 `ebb57b2`（`v0.7.1 Add final chapter Headmind projection`）正式提交；转换审计确认 `main` 与 `origin/main` 同步、领先/落后为 `0/0`，转换前工作区干净。
+- 依据 `Saved/AutomationReports/v071-final-report-20260731/v071final-None/result.json` 的既有证据正式关闭 v0.7.1；任务页保留报告生成时尚未创建提交的历史事实，并另行记录后续正式提交。
+- BuildEditor、Headmind 5/5、Chapter 25/25、Save 5/5、Account 4/4、合同 `-game` Debug 12/12、固定 PIE 3/3、MCP 37 Package 精确保存/重启回读/Dirty=0、Data Validation、普通 Git 体积门、人工完整终章、ADR-039、KnownIssues Review 与 FCR 均已有 PASS。广泛 Editor runner 的四项既有非 `-game` Debug 诊断继续按 KI-023 如实记录。
+- 新建单一 `Docs/Versions/v0.7.2.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.7.2 / In Progress`。E-040 固定 Schema 8 的独立 TripleResonance Legacy 分区、账号记忆存续语义、独立高风险 Proof、三个外部 QTE 白名单、两个精确增量 GameplayTag 和单版本交付。
+- 本次仅执行六份文档的版本转换；没有开始 TripleResonance C++、测试、Config、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.7.2 保持一个公共版本、一个完成门和唯一未来功能提交。
