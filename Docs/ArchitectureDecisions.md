@@ -520,6 +520,17 @@ date: "2026-07-10"
 
 **Consequences and verification:** No BossSubsystem, Demo Auditor, Combat, Save Runtime/Migration, Director, RunState, Account, RealityHub, map, GameplayTag or QTE contract changes. The final Encounter is exactly the Boss plus three fixed PrimaryAssetIds. BuildEditor, Headmind 5/5, Chapter 25/25, Save 5/5, Account 4/4, `-game` Debug 12/12, fixed PIE 3/3, Data Validation 0 error, 37 exact packages restart/Dirty=0 and manual complete-path PASS are recorded by `Saved/AutomationReports/v071-final-report-20260731/v071final-None/result.json`.
 
+# ADR-040 - Freeze Triple Resonance around the Headmind opportunity
+
+**Status:** Accepted.
+**Context:** v0.7.1 intentionally deferred the real late-game counterplay. The sixth chapter-proof slot does not exist, Account deletion and the five Headmind completions are frozen, and the twelve P0 QTEs must remain stable.
+
+**Decision:** `UPRTripleResonanceSubsystem` owns a frozen once-per-Headmind opportunity and its three ResultOnly external QTEs. It grants a transient exact-tag ability only after their fixed success sequence, counters the Headmind Basilisk through its narrow public seam, and delegates damage/completion to existing Combat/Boss ownership. Schema 8 stores one bounded cross-account skill-memory projection and one separate high-risk proof only after an existing successful AccountDeleted fact and A/B write-back verification.
+
+**Consequences:** ActiveAccount is never retained, revived or copied. No second RunSummary, Account, Chapter Proof, QTE, Combat or Progression authority exists. The high-risk proof is not a Chapter proof and cannot alter chapter selection. v0.8.0 may consume the read-only Legacy snapshot only through its own plugin-pool transaction. Widgets and runtime handles are transient and clear on every lifecycle exit.
+
+**Verification:** BuildEditor passed; `ProjectR.TripleResonance` 5/5 and `ProjectR.Save` 5/5 passed after Schema 8; historical runner has 158 successes and only four documented non-`-game` Debug runner-context diagnostics; contractual `-game` Debug is 12/12. MCP created/compiled/saved/restarted/reread the 11 exact Packages with Dirty=0 and Data Validation returned 0 errors. Fixed Headmind regression PIE 3/3 passed, and the user gave manual terminal acceptance `PASS`.
+
 # ADR 模板
 
 ```text

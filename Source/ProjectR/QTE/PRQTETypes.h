@@ -47,7 +47,9 @@ enum class EPRQTEEffectKind : uint8
 	Stun,
 	FutureSample,
 	PulseDamage,
-	ConfirmBasicAttackKill
+	ConfirmBasicAttackKill,
+	/** Fixed v0.7.2 bridge effect. It publishes a value result without gameplay or relationship side effects. */
+	ResultOnly
 };
 
 /** Fixed whitelist used by v0.3.2 trigger and effect target selection. */
@@ -156,6 +158,7 @@ struct PROJECTR_API FPRQTEResult
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FPRQTEStateChangedNative, const FPRQTERuntimeState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FPRQTEResultNative, const FPRQTEResult&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FPRQTESemanticInputNative, FGameplayTag /* InputTag */, double /* InputTimeSeconds */);
 
 /** Immutable identifiers and priority rules shared by asset validation and runtime selection. */
 class PROJECTR_API FPRQTEContract

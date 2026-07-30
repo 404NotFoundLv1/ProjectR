@@ -103,6 +103,24 @@ void RegisterProjectRSaveMigrations(FPRSaveMigrationRegistry& Registry)
 		Save.SchemaVersion = 7;
 		return true;
 	});
+	Registry.RegisterStep(7, 8, [](UPRSaveGame& Save)
+	{
+		if (Save.SchemaVersion != 7 || !Save.Profile.ProfileId.IsValid()
+			|| !FPRCompanionContract::AreCanonicalRelationshipRecords(Save.Profile.CompanionRelationships)
+			|| !FPRAccountPersistenceContract::IsCanonical(Save.Profile.AccountPersistence)
+			|| !FPRProgressionPersistenceContract::IsCanonical(Save.Profile.ProgressionPersistence)
+			|| !FPRCompanionQuestPersistenceContract::IsCanonical(Save.Profile.CompanionQuestPersistence)
+			|| !FPRMemoryPersistenceContract::IsCanonical(Save.Profile.MemoryPersistence)
+			|| !FPRChapterPersistenceContract::IsCanonical(Save.Profile.ChapterPersistence)) return false;
+		Save.Profile.TripleResonancePersistence = FPRTripleResonancePersistenceContract::MakeDefault();
+		for (const FPRAccountRecord& Record : Save.Profile.AccountPersistence.Graveyard)
+		{
+			Save.Profile.TripleResonancePersistence.LastProcessedGraveyardOrdinal = FMath::Max(
+				Save.Profile.TripleResonancePersistence.LastProcessedGraveyardOrdinal, Record.GraveyardOrdinal);
+		}
+		Save.SchemaVersion = 8;
+		return true;
+	});
 }
 
 EPRSaveResult FPRSaveMigrationRegistry::Migrate(

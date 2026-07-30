@@ -15,7 +15,7 @@ class PROJECTR_API UPRSaveGame : public USaveGame
 	GENERATED_BODY()
 
 public:
-	static constexpr int32 CurrentSchemaVersion = 7;
+	static constexpr int32 CurrentSchemaVersion = 8;
 	static constexpr int32 MinimumMigratableVersion = 1;
 
 	UPROPERTY(SaveGame)

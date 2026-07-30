@@ -20,7 +20,8 @@ bool IsSuccessfulRead(const FPRSaveGenerationRead& Read)
 		&& FPRProgressionPersistenceContract::IsCanonical(Read.SaveGame->Profile.ProgressionPersistence)
 		&& FPRCompanionQuestPersistenceContract::IsCanonical(Read.SaveGame->Profile.CompanionQuestPersistence)
 		&& FPRMemoryPersistenceContract::IsCanonical(Read.SaveGame->Profile.MemoryPersistence)
-		&& FPRChapterPersistenceContract::IsCanonical(Read.SaveGame->Profile.ChapterPersistence);
+		&& FPRChapterPersistenceContract::IsCanonical(Read.SaveGame->Profile.ChapterPersistence)
+		&& FPRTripleResonancePersistenceContract::IsCanonical(Read.SaveGame->Profile.TripleResonancePersistence);
 }
 
 int32 GetFailurePriority(const EPRSaveResult Result)
@@ -249,6 +250,7 @@ EPRSaveResult UPRSaveSubsystem::CreateNewDefaultProfile(FGuid& OutRequestId)
 		LoadedSave->Profile.CompanionQuestPersistence = FPRCompanionQuestPersistenceContract::MakeDefault();
 		LoadedSave->Profile.MemoryPersistence = FPRMemoryPersistenceContract::MakeDefault();
 		LoadedSave->Profile.ChapterPersistence = FPRChapterPersistenceContract::MakeDefault();
+		LoadedSave->Profile.TripleResonancePersistence = FPRTripleResonancePersistenceContract::MakeDefault();
 		LoadedGeneration = EPRSaveGeneration::None;
 		bNeedsResave = true;
 	}
@@ -433,6 +435,26 @@ bool UPRSaveSubsystem::StageMemoryPersistenceTransaction(
 	return true;
 }
 
+bool UPRSaveSubsystem::GetTripleResonancePersistenceSnapshot(FPRTripleResonancePersistenceData& OutPersistence) const
+{
+	if (!IsInGameThread() || !LoadedSave || !FPRTripleResonancePersistenceContract::IsCanonical(LoadedSave->Profile.TripleResonancePersistence)) return false;
+	OutPersistence = LoadedSave->Profile.TripleResonancePersistence;
+	return true;
+}
+
+bool UPRSaveSubsystem::StageTripleResonancePersistenceTransaction(
+	const FPRTripleResonancePersistenceData& ExpectedTriple,
+	const FPRTripleResonancePersistenceData& TargetTriple)
+{
+	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
+		|| !FPRTripleResonancePersistenceContract::IsCanonical(ExpectedTriple)
+		|| !FPRTripleResonancePersistenceContract::IsCanonical(TargetTriple)
+		|| !FPRTripleResonancePersistenceData::StaticStruct()->CompareScriptStruct(&ExpectedTriple, &LoadedSave->Profile.TripleResonancePersistence, 0)) return false;
+	StagedTripleResonancePersistence = TargetTriple;
+	bNeedsResave = true;
+	return true;
+}
+
 bool UPRSaveSubsystem::StageCompanionRelationships(const TArray<FPRCompanionRelationshipRecord>& Records)
 {
 	if (!IsInGameThread() || !LoadedSave || State != EPRSaveSubsystemState::Ready
@@ -483,6 +505,7 @@ bool UPRSaveSubsystem::StageFixedProgressionAutomationFixture()
 	FPRProgressionPersistenceData Progression = FPRProgressionPersistenceContract::MakeDefault();
 	return StageProgressionTransaction(Account, Progression);
 }
+
 #endif
 
 UPRSaveSubsystem::FObservedGeneration UPRSaveSubsystem::ObserveGeneration(
@@ -628,7 +651,8 @@ void UPRSaveSubsystem::StartActiveSave()
 		!FPRProgressionPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ProgressionPersistence) ||
 		!FPRCompanionQuestPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.CompanionQuestPersistence) ||
 		!FPRMemoryPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.MemoryPersistence) ||
-		!FPRChapterPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ChapterPersistence))
+		!FPRChapterPersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.ChapterPersistence) ||
+		!FPRTripleResonancePersistenceContract::IsCanonical(ActiveSave->Snapshot->Profile.TripleResonancePersistence))
 	{
 		CompleteActiveSave(EPRSaveResult::InvalidRequest);
 		return;
@@ -749,6 +773,7 @@ void UPRSaveSubsystem::HandleActiveVerificationComplete(
 	StagedCompanionQuestPersistence.Reset();
 	StagedMemoryPersistence.Reset();
 	StagedChapterPersistence.Reset();
+	StagedTripleResonancePersistence.Reset();
 	LoadedGeneration = ActiveSave->TargetGeneration;
 	bNeedsResave = false;
 	if (LoadedGeneration == EPRSaveGeneration::A)
@@ -812,6 +837,7 @@ void UPRSaveSubsystem::CompleteActiveSave(const EPRSaveResult Result)
 		StagedCompanionQuestPersistence.Reset();
 		StagedMemoryPersistence.Reset();
 		StagedChapterPersistence.Reset();
+		StagedTripleResonancePersistence.Reset();
 		if (TrailingSave)
 		{
 			PublishOperation(
@@ -860,6 +886,10 @@ UPRSaveGame* UPRSaveSubsystem::CaptureCurrentSnapshot() const
 	if (Snapshot && StagedChapterPersistence.IsSet())
 	{
 		Snapshot->Profile.ChapterPersistence = StagedChapterPersistence.GetValue();
+	}
+	if (Snapshot && StagedTripleResonancePersistence.IsSet())
+	{
+		Snapshot->Profile.TripleResonancePersistence = StagedTripleResonancePersistence.GetValue();
 	}
 	return Snapshot;
 }

@@ -8,6 +8,7 @@
 #include "Save/PRCompanionQuestSaveTypes.h"
 #include "Save/PRMemorySaveTypes.h"
 #include "Save/PRChapterSaveTypes.h"
+#include "Save/PRTripleResonanceSaveTypes.h"
 
 #include "PRSaveTypes.generated.h"
 
@@ -150,6 +151,9 @@ struct PROJECTR_API FPRProfileSaveData
 
 	UPROPERTY(SaveGame)
 	FPRChapterPersistenceData ChapterPersistence;
+
+	UPROPERTY(SaveGame)
+	FPRTripleResonancePersistenceData TripleResonancePersistence;
 };
 
 USTRUCT()

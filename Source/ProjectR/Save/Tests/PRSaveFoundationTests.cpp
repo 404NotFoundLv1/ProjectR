@@ -227,7 +227,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FPRSaveSchemaTest::RunTest(const FString& Parameters)
 {
 	const UPRSaveGame* SaveGame = GetDefault<UPRSaveGame>();
-	TestEqual(TEXT("Current schema advances to seven for bounded Chapter proofs"), UPRSaveGame::CurrentSchemaVersion, 7);
+	TestEqual(TEXT("Current schema advances to eight for bounded Triple Resonance legacy"), UPRSaveGame::CurrentSchemaVersion, 8);
 	TestEqual(TEXT("Minimum migratable schema is one"), UPRSaveGame::MinimumMigratableVersion, 1);
 	TestEqual(TEXT("Schema defaults missing"), SaveGame->SchemaVersion, 0);
 	TestEqual(TEXT("Revision defaults zero"), SaveGame->SaveRevision, int64{0});
@@ -319,19 +319,41 @@ bool FPRSaveMigrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Migration 2 to 3 is accepted"), Registry.RegisterStep(2, 3, [](UPRSaveGame& Save) { Save.SchemaVersion = 3; return true; }));
 	TestTrue(TEXT("Migration 3 to 4 is accepted"), Registry.RegisterStep(3, 4, [](UPRSaveGame& Save) { Save.SchemaVersion = 4; return true; }));
 	TestTrue(TEXT("Migration 4 to 5 is accepted"), Registry.RegisterStep(4, 5, [](UPRSaveGame& Save) { Save.SchemaVersion = 5; return true; }));
+	TestTrue(TEXT("Migration 5 to 6 is accepted"), Registry.RegisterStep(5, 6, [](UPRSaveGame& Save) { Save.SchemaVersion = 6; return true; }));
+	TestTrue(TEXT("Migration 6 to 7 is accepted"), Registry.RegisterStep(6, 7, [](UPRSaveGame& Save) { Save.SchemaVersion = 7; return true; }));
+	TestTrue(TEXT("Migration 7 to 8 is accepted"), Registry.RegisterStep(7, 8, [](UPRSaveGame& Save) { Save.SchemaVersion = 8; return true; }));
 
 	UPRSaveGame* Source = PRSaveAutomation::MakeSave(7);
 	Source->SchemaVersion = 1;
 	UPRSaveGame* Migrated = nullptr;
-	TestEqual(TEXT("Strict migration succeeds"), Registry.Migrate(*Source, 5, Migrated), EPRSaveResult::Success);
+	TestEqual(TEXT("Strict migration succeeds through schema eight"), Registry.Migrate(*Source, 8, Migrated), EPRSaveResult::Success);
 	TestNotNull(TEXT("Migration returns a copy"), Migrated);
 	if (Migrated)
 	{
-		TestEqual(TEXT("Migrated schema reached target"), Migrated->SchemaVersion, 5);
+		TestEqual(TEXT("Migrated schema reached target"), Migrated->SchemaVersion, 8);
 		TestEqual(TEXT("Migrated revision preserved"), Migrated->SaveRevision, Source->SaveRevision);
 		TestEqual(TEXT("Migrated profile preserved"), Migrated->Profile.ProfileId, Source->Profile.ProfileId);
 	}
 	TestEqual(TEXT("Source schema remains unchanged"), Source->SchemaVersion, 1);
+
+	FPRSaveMigrationRegistry ProductionRegistry;
+	RegisterProjectRSaveMigrations(ProductionRegistry);
+	UPRSaveGame* VersionOne = PRSaveAutomation::MakeSave(8);
+	VersionOne->SchemaVersion = 1;
+	VersionOne->Profile.CompanionRelationships.Reset();
+	UPRSaveGame* ProductionMigrated = nullptr;
+	TestEqual(
+		TEXT("Production migration reaches schema eight from schema one"),
+		ProductionRegistry.Migrate(*VersionOne, UPRSaveGame::CurrentSchemaVersion, ProductionMigrated),
+		EPRSaveResult::Success);
+	TestNotNull(TEXT("Production migration publishes a copy"), ProductionMigrated);
+	if (ProductionMigrated)
+	{
+		TestEqual(TEXT("Production migration target is schema eight"), ProductionMigrated->SchemaVersion, 8);
+		TestTrue(
+			TEXT("Production migration creates canonical Triple Resonance persistence"),
+			FPRTripleResonancePersistenceContract::IsCanonical(ProductionMigrated->Profile.TripleResonancePersistence));
+	}
 
 	FPRSaveMigrationRegistry FailingRegistry;
 	FailingRegistry.RegisterStep(1, 2, [](UPRSaveGame&) { return false; });

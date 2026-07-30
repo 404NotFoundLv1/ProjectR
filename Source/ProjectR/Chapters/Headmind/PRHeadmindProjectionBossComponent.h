@@ -17,6 +17,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	void ConfigureChapterState(int32 InSynthesisPressure, FGameplayTag InPrimaryRuleId, FGameplayTag InSecondaryRuleId, bool bFusionAvailable);
 	const FPRHeadmindBossRuntimeState& GetRuntimeState() const;
+	/** Narrow v0.7.2 seam: consumes one frozen, identity-matching resonance counter without changing Demo Auditor behavior. */
+	bool TryAcceptTripleResonanceCounter(const struct FPRTripleResonanceEligibilitySnapshot& Eligibility);
 private:
 	void HandleCombatEvent(const struct FPRCombatEvent& Event);
 	void EvaluateBasePhase();

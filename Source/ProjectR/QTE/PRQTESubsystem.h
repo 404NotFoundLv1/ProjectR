@@ -35,6 +35,7 @@ public:
 	void CancelActiveQTE();
 	FPRQTEStateChangedNative& OnQTEStateChanged();
 	FPRQTEResultNative& OnQTEResult();
+	FPRQTESemanticInputNative& OnSemanticInput();
 
 private:
 	struct FActiveQTE
@@ -47,6 +48,7 @@ private:
 		FTimerHandle ConfirmationTimer;
 		TArray<TWeakObjectPtr<AActor>> EffectTargets;
 		bool bAwaitingBasicAttackKill = false;
+		bool bResultOnly = false;
 	};
 	struct FFireSlashHit
 	{
@@ -77,6 +79,7 @@ private:
 	bool DoesSupportEventMatch(const UPRQTEDataAsset& Asset, const FPRCompanionSupportEvent& Event) const;
 	bool IsDuplicateEvent(const FGuid& EventId, EPRQTETriggerSource Source, double EventTimeSeconds);
 	bool StartQTE(UPRQTEDataAsset* Asset, const FPRQTERequest& Request, AActor* SourceActor, AActor* TargetActor);
+	bool StartExternalResultOnlyQTE(FName QTEId, const FGuid& RequestId);
 	void HandleTimeout();
 	void HandleConfirmationTimeout();
 	void ResolveActiveQTE(FGameplayTag ResultTag, FGameplayTag SubmittedInput, EPRQTETimingGrade TimingGrade);
@@ -128,5 +131,8 @@ private:
 	FPRQTERuntimeState RuntimeState;
 	FPRQTEStateChangedNative StateChanged;
 	FPRQTEResultNative ResultPublished;
+	FPRQTESemanticInputNative SemanticInput;
 	bool bRegistryReady = false;
+
+	friend class UPRTripleResonanceSubsystem;
 };

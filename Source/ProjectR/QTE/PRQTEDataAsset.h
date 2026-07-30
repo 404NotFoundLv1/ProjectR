@@ -41,4 +41,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|QTE") bool bRequireFirstTargetShieldBreak = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|QTE") TArray<FPRQTEEffectDefinition> SuccessEffects;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|QTE") FPRQTEDeltaSet RelationshipDeltas;
+	/** Enables only the three fixed v0.7.2 external ResultOnly QTE assets. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ProjectR|QTE") bool bResultOnly = false;
 };

@@ -169,3 +169,9 @@ date: "2026-07-10"
 # 记录规则
 
 问题必须包含复现/证据、影响版本、临时处理、负责人和可验证关闭条件。不能用删除日志或降低校验来关闭问题。
+
+# 2026-07-31 - v0.7.2 Known Issues Review
+
+- No new persistent product blocker was introduced by Triple Resonance, the Schema-8 bounded partition, two incremental tags or the 11 ordinary-Git Packages. BuildEditor, TripleResonance 5/5, Save 5/5, Data Validation (0 errors), exact Package restart/reread and final UI presentation rebuild all passed.
+- The broad non-`-game` `ProjectR` run has 158 successes and four failures: established `ProjectR.Debug.*` tests require a GameInstance and remain the KI-023 runner-context diagnostic. The contractual `-game` Debug runner is 12/12 PASS. No Debug, Enemy or runner implementation was changed.
+- Fixed Headmind regression PIE 3/3 used isolated automation storage; the user manually accepted the terminal path with `PASS`. Existing KI-006, KI-019, KI-020 and KI-023 remain unchanged. No new Open KnownIssue is created for v0.7.2.

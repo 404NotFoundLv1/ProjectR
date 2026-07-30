@@ -49,6 +49,10 @@ struct PROJECTR_API FPRTripleResonanceOpportunitySnapshot
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") FGameplayTag PredictedSkillTag;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") FName FallbackReason;
 	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") bool bWindowActive = false;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") FGuid FrozenRunId;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") FGuid FrozenAccountId;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") FGuid FrozenBossSpawnId;
+	UPROPERTY(Transient, BlueprintReadOnly, Category="ProjectR|Headmind") FName FrozenWorldId;
 };
 
 USTRUCT(BlueprintType)

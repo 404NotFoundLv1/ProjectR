@@ -52,6 +52,7 @@ public:
 private:
 	friend class UPRMemorySubsystem;
 	friend class UPRChapterSubsystem;
+	friend class UPRTripleResonanceSubsystem;
 	bool GetChapterPersistenceSnapshot(FPRChapterPersistenceData& OutPersistence) const;
 	bool StageChapterPersistenceTransaction(
 		const FPRChapterPersistenceData& ExpectedChapter,
@@ -65,6 +66,10 @@ private:
 	bool StageMemoryPersistenceTransaction(
 		const FPRMemoryPersistenceData& ExpectedMemory,
 		const FPRMemoryPersistenceData& TargetMemory);
+	bool GetTripleResonancePersistenceSnapshot(FPRTripleResonancePersistenceData& OutPersistence) const;
+	bool StageTripleResonancePersistenceTransaction(
+		const FPRTripleResonancePersistenceData& ExpectedTriple,
+		const FPRTripleResonancePersistenceData& TargetTriple);
 	struct FObservedGeneration
 	{
 		EPRSaveResult Result = EPRSaveResult::ReadFailed;
@@ -142,6 +147,7 @@ private:
 	TOptional<FPRCompanionQuestPersistenceData> StagedCompanionQuestPersistence;
 	TOptional<FPRMemoryPersistenceData> StagedMemoryPersistence;
 	TOptional<FPRChapterPersistenceData> StagedChapterPersistence;
+	TOptional<FPRTripleResonancePersistenceData> StagedTripleResonancePersistence;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FPRSaveRuntimeTest;

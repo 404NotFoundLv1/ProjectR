@@ -78,7 +78,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FPRMemorySchemaSixTest::RunTest(const FString&)
 {
-	TestEqual(TEXT("The current Save schema retains Memory's Schema 6 migration before Chapter Schema 7"), UPRSaveGame::CurrentSchemaVersion, 7);
+	TestEqual(TEXT("The current Save schema retains Memory's Schema 6 migration before Chapter Schema 7 and Triple Resonance Schema 8"), UPRSaveGame::CurrentSchemaVersion, 8);
 	UPRSaveGame* Source = NewObject<UPRSaveGame>();
 	Source->SchemaVersion = 5;
 	Source->SaveRevision = 1;

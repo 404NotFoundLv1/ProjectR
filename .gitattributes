@@ -394,3 +394,17 @@
 /Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_PredictionEscalation.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Auditor/Rules/DA_ChapterRule_Auditor_VerdictEscalation.uasset -filter -diff -merge -text
 /Content/ProjectR/Chapters/Auditor/UI/WBP_AuditorChapterOverlay.uasset -filter -diff -merge -text
+
+# v0.7.2 TripleResonance packages are 116,366 bytes total after exact MCP save.
+# Keep only this exact 11-package manifest in ordinary Git; no directory wildcard is used.
+/Content/ProjectR/TripleResonance/Data/DA_TripleResonanceRegistry.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/Data/DA_TripleResonanceAbility.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/QTE/DA_QTE_TripleResonance_Axiom.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/QTE/DA_QTE_TripleResonance_Kindle.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/QTE/DA_QTE_TripleResonance_Null.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/Abilities/GA_TripleResonance.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/Effects/GE_TripleResonance_Charge.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/Effects/GE_TripleResonance_Cost.uasset -filter -diff -merge -text
+/Content/ProjectR/TripleResonance/Effects/GE_TripleResonance_Cooldown.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/TripleResonance/WBP_TripleResonanceOverlay.uasset -filter -diff -merge -text
+/Content/ProjectR/UI/TripleResonance/WBP_TripleResonanceLegacySummary.uasset -filter -diff -merge -text

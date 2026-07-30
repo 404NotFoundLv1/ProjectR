@@ -8,6 +8,7 @@
 #include "Characters/PRPlayerCharacter.h"
 #include "Companions/PRCompanionRuntimeSubsystem.h"
 #include "Companions/PRCompanionSubsystem.h"
+#include "TripleResonance/PRTripleResonanceTypes.h"
 #include "Combat/PRCombatSubsystem.h"
 #include "Combat/PRCombatTypes.h"
 #include "Core/PRTagLibrary.h"
@@ -115,6 +116,7 @@ bool UPRQTESubsystem::IsRegistryReady() const { return bRegistryReady; }
 FPRQTERuntimeState UPRQTESubsystem::GetRuntimeState() const { return RuntimeState; }
 FPRQTEStateChangedNative& UPRQTESubsystem::OnQTEStateChanged() { return StateChanged; }
 FPRQTEResultNative& UPRQTESubsystem::OnQTEResult() { return ResultPublished; }
+FPRQTESemanticInputNative& UPRQTESubsystem::OnSemanticInput() { return SemanticInput; }
 
 void UPRQTESubsystem::LoadFixedRegistry()
 {
@@ -353,6 +355,7 @@ bool UPRQTESubsystem::StartQTE(UPRQTEDataAsset* Asset, const FPRQTERequest& Requ
 	RecentRequest.RequestId = Request.RequestId;
 	RecentRequest.WorldTimeSeconds = Now;
 	ActiveQTE.Asset = Asset; ActiveQTE.SourceActor = SourceActor; ActiveQTE.TargetActor = TargetActor; ActiveQTE.Request = Request;
+	ActiveQTE.bResultOnly = Asset->bResultOnly;
 	if (Asset->TriggerKind == EPRQTETriggerKind::FireSlashThreeHits)
 	{
 		ActiveQTE.EffectTargets = GetRecentFireSlashTargets();
@@ -368,6 +371,11 @@ bool UPRQTESubsystem::StartQTE(UPRQTEDataAsset* Asset, const FPRQTERequest& Requ
 
 bool UPRQTESubsystem::SubmitSemanticInput(const FGameplayTag InputTag, const double InputTimeSeconds)
 {
+	if (RuntimeState.State == EPRQTEState::Idle)
+	{
+		SemanticInput.Broadcast(InputTag, InputTimeSeconds);
+		return RuntimeState.State != EPRQTEState::Idle;
+	}
 	if (RuntimeState.State != EPRQTEState::Active) return false;
 	if (InputTag.MatchesTagExact(UPRTagLibrary::GetInputQTERejectTag()))
 	{
@@ -429,9 +437,9 @@ void UPRQTESubsystem::ResolveActiveQTE(const FGameplayTag ResultTag, const FGame
 	Result.WorldTimeSeconds = GetWorldTimeSeconds();
 	if (ResultTag.MatchesTagExact(UPRTagLibrary::GetQTEResultSuccessTag()))
 	{
-		ApplySuccessEffects(*Asset, Result);
+		if (!ActiveQTE.bResultOnly) ApplySuccessEffects(*Asset, Result);
 	}
-	if (!ResultTag.MatchesTagExact(UPRTagLibrary::GetQTEResultCancelledTag()))
+	if (!ActiveQTE.bResultOnly && !ResultTag.MatchesTagExact(UPRTagLibrary::GetQTEResultCancelledTag()))
 	{
 		FPRRelationshipDelta Delta = ResultTag.MatchesTagExact(UPRTagLibrary::GetQTEResultSuccessTag()) ? Asset->RelationshipDeltas.Success
 			: ResultTag.MatchesTagExact(UPRTagLibrary::GetQTEResultRejectedTag()) ? Asset->RelationshipDeltas.Rejected
@@ -457,10 +465,37 @@ void UPRQTESubsystem::ResolveActiveQTE(const FGameplayTag ResultTag, const FGame
 
 void UPRQTESubsystem::CompleteResolvedQTE(UPRQTEDataAsset& Asset, FPRQTEResult&& Result)
 {
+	if (ActiveQTE.bResultOnly)
+	{
+		ClearActiveQTE();
+		BroadcastState(EPRQTEState::Idle);
+		ResultPublished.Broadcast(Result);
+		return;
+	}
 	ResultPublished.Broadcast(Result);
 	const float Cooldown = CalculateEffectiveCooldown(Asset);
 	ClearActiveQTE();
 	ScheduleCooldown(Cooldown);
+}
+
+bool UPRQTESubsystem::StartExternalResultOnlyQTE(const FName QTEId, const FGuid& RequestId)
+{
+	if (!FPRTripleResonanceContract::IsExternalQTEId(QTEId) || !RequestId.IsValid() || RuntimeState.State != EPRQTEState::Idle) return false;
+	const FPRTripleResonanceQTEStepDefinition Definition = FPRTripleResonanceContract::GetStepDefinition(QTEId);
+	if (Definition.QTEId != QTEId) return false;
+	const FString AssetPath = FString::Printf(TEXT("/Game/ProjectR/TripleResonance/QTE/DA_QTE_TripleResonance_%s.DA_QTE_TripleResonance_%s"),
+		*QTEId.ToString(), *QTEId.ToString());
+	UPRQTEDataAsset* Asset = LoadObject<UPRQTEDataAsset>(nullptr, *AssetPath);
+	if (!Asset || !Asset->bResultOnly || Asset->QTEId != QTEId) return false;
+	FPRQTERequest Request;
+	Request.RequestId = RequestId;
+	Request.QTEId = Asset->GetPrimaryAssetId();
+	Request.CompanionId = Definition.CompanionId;
+	Request.TriggerEventId = RequestId;
+	Request.TriggerSource = EPRQTETriggerSource::CombatEvent;
+	Request.SourceId = QTEId;
+	Request.WorldTimeSeconds = GetWorldTimeSeconds();
+	return StartQTE(Asset, Request, nullptr, nullptr);
 }
 
 bool UPRQTESubsystem::ApplySuccessEffects(const UPRQTEDataAsset& Asset, FPRQTEResult& InOutResult)

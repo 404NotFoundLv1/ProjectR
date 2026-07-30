@@ -91,6 +91,18 @@ const FGameplayTag& UPRTagLibrary::GetSkillBasicAttackTag()
 	return Tag;
 }
 
+const FGameplayTag& UPRTagLibrary::GetSkillTripleResonanceTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Skill.TripleResonance"));
+	return Tag;
+}
+
+const FGameplayTag& UPRTagLibrary::GetCooldownSkillTripleResonanceTag()
+{
+	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Cooldown.Skill.TripleResonance"));
+	return Tag;
+}
+
 const FGameplayTag& UPRTagLibrary::GetAbilityActivateFailCanActivateTag()
 {
 	static const FGameplayTag Tag = RequestRequiredTag(TEXT("Ability.ActivateFail.CanActivate"));

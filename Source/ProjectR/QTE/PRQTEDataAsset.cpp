@@ -5,6 +5,7 @@
 #include "Companions/PRCompanionTypes.h"
 #include "Core/PRTagLibrary.h"
 #include "Misc/DataValidation.h"
+#include "TripleResonance/PRTripleResonanceTypes.h"
 
 namespace
 {
@@ -54,7 +55,8 @@ EDataValidationResult UPRQTEDataAsset::IsDataValid(FDataValidationContext& Conte
 	const bool bKnownCompanion = FPRCompanionContract::GetCanonicalCompanionIds().ContainsByPredicate(
 		[this](const FGameplayTag Candidate) { return Candidate.MatchesTagExact(CompanionId); });
 	const bool bKnownType = FPRQTEContract::GetTypePriority(QTEType) > 0;
-	bool bValid = FPRQTEContract::IsExpectedQTEId(QTEId)
+	const bool bExternalTriple = FPRTripleResonanceContract::IsExternalQTEId(QTEId);
+	bool bValid = (FPRQTEContract::IsExpectedQTEId(QTEId) || bExternalTriple)
 		&& bKnownCompanion
 		&& bKnownType
 		&& !DisplayName.IsEmpty()
@@ -71,13 +73,36 @@ EDataValidationResult UPRQTEDataAsset::IsDataValid(FDataValidationContext& Conte
 		&& static_cast<uint8>(TriggerSource) <= static_cast<uint8>(EPRQTETriggerSource::CompanionSupportEvent)
 		&& static_cast<uint8>(TriggerKind) <= static_cast<uint8>(EPRQTETriggerKind::NormalLowHealth)
 		&& static_cast<uint8>(TriggerTargetScope) <= static_cast<uint8>(EPRQTETargetScope::NormalEnemy);
+	if (bExternalTriple)
+	{
+		const FPRTripleResonanceQTEStepDefinition Definition = FPRTripleResonanceContract::GetStepDefinition(QTEId);
+		const FPRQTEEffectDefinition& Effect = SuccessEffects[0];
+		bValid &= bResultOnly
+			&& Definition.QTEId == QTEId
+			&& CompanionId.MatchesTagExact(Definition.CompanionId)
+			&& QTEType.MatchesTagExact(Definition.QTEType)
+			&& AcceptedInputTags.Num() == 1 && AcceptedInputTags.HasTagExact(Definition.AcceptedInputTag)
+			&& FMath::IsNearlyEqual(WindowSeconds, Definition.WindowSeconds)
+			&& FMath::IsNearlyZero(BaseCooldownSeconds)
+			&& Effect.EffectKind == EPRQTEEffectKind::ResultOnly
+			&& FMath::IsNearlyZero(Effect.Magnitude) && FMath::IsNearlyZero(Effect.Range)
+			&& Effect.MaxTargets == 0 && Effect.PulseCount == 0
+			&& RelationshipDeltas.Success.TrustDelta == 0 && RelationshipDeltas.Success.AffectionDelta == 0 && RelationshipDeltas.Success.EvaluationDelta == 0 && RelationshipDeltas.Success.OverloadDelta == 0
+			&& RelationshipDeltas.Failure.TrustDelta == 0 && RelationshipDeltas.Failure.AffectionDelta == 0 && RelationshipDeltas.Failure.EvaluationDelta == 0 && RelationshipDeltas.Failure.OverloadDelta == 0
+			&& RelationshipDeltas.Rejected.TrustDelta == 0 && RelationshipDeltas.Rejected.AffectionDelta == 0 && RelationshipDeltas.Rejected.EvaluationDelta == 0 && RelationshipDeltas.Rejected.OverloadDelta == 0
+			&& RelationshipDeltas.Timeout.TrustDelta == 0 && RelationshipDeltas.Timeout.AffectionDelta == 0 && RelationshipDeltas.Timeout.EvaluationDelta == 0 && RelationshipDeltas.Timeout.OverloadDelta == 0;
+	}
+	else
+	{
+		bValid &= !bResultOnly;
+	}
 	for (const FGameplayTag& InputTag : AcceptedInputTags)
 	{
 		bValid &= InputTag.IsValid() && InputTag.MatchesTag(FGameplayTag::RequestGameplayTag(TEXT("Input")));
 	}
 	for (const FPRQTEEffectDefinition& Effect : SuccessEffects)
 	{
-		bValid &= static_cast<uint8>(Effect.EffectKind) <= static_cast<uint8>(EPRQTEEffectKind::ConfirmBasicAttackKill)
+		bValid &= static_cast<uint8>(Effect.EffectKind) <= static_cast<uint8>(EPRQTEEffectKind::ResultOnly)
 			&& static_cast<uint8>(Effect.TargetScope) <= static_cast<uint8>(EPRQTETargetScope::NormalEnemy)
 			&& FMath::IsFinite(Effect.Magnitude) && Effect.Magnitude >= 0.0f
 			&& FMath::IsFinite(Effect.Range) && Effect.Range >= 0.0f

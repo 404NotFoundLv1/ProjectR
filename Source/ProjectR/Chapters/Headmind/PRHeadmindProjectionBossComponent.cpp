@@ -10,7 +10,9 @@
 #include "Enemies/Bosses/PRAuditorBossComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Roguelike/Progression/PRProgressionSubsystem.h"
+#include "Roguelike/Account/PRRunStateSubsystem.h"
 #include "TimerManager.h"
+#include "TripleResonance/PRTripleResonanceTypes.h"
 
 UPRHeadmindProjectionBossComponent::UPRHeadmindProjectionBossComponent() { PrimaryComponentTick.bCanEverTick = false; }
 
@@ -54,6 +56,25 @@ void UPRHeadmindProjectionBossComponent::ConfigureChapterState(const int32 InSyn
 const FPRHeadmindBossRuntimeState& UPRHeadmindProjectionBossComponent::GetRuntimeState() const { return RuntimeState; }
 APRHeadmindProjectionBoss* UPRHeadmindProjectionBossComponent::GetBoss() const { return Cast<APRHeadmindProjectionBoss>(GetOwner()); }
 APawn* UPRHeadmindProjectionBossComponent::GetPlayerPawn() const { return UGameplayStatics::GetPlayerPawn(this, 0); }
+
+bool UPRHeadmindProjectionBossComponent::TryAcceptTripleResonanceCounter(const FPRTripleResonanceEligibilitySnapshot& Eligibility)
+{
+	const FPRTripleResonanceOpportunitySnapshot& Opportunity = RuntimeState.TripleResonance;
+	APRHeadmindProjectionBoss* Boss = GetBoss();
+	if (!bBasiliskStarted || !Opportunity.bWindowActive || !Boss || !GetWorld()
+		|| Opportunity.FrozenRunId != Eligibility.RunId || Opportunity.FrozenAccountId != Eligibility.AccountId
+		|| Opportunity.FrozenBossSpawnId != Eligibility.BossSpawnId || Opportunity.FrozenWorldId != Eligibility.WorldId
+		|| Boss->GetSpawnId() != Eligibility.BossSpawnId || GetWorld()->GetFName() != Eligibility.WorldId)
+	{
+		return false;
+	}
+	GetWorld()->GetTimerManager().ClearTimer(BasiliskTimer);
+	RuntimeState.TripleResonance.bWindowActive = false;
+	RuntimeState.Phase = EPRHeadmindBossPhase::DirectiveFusion;
+	Boss->SetHeadmindPresentation(FText::FromString(TEXT("BASILISK JUDGMENT COUNTERED: NON-OPTIMAL SOLUTION")), FColor::Green, true);
+	PublishRuntimeState();
+	return true;
+}
 
 void UPRHeadmindProjectionBossComponent::HandleCombatEvent(const FPRCombatEvent& Event)
 {
@@ -102,6 +123,17 @@ void UPRHeadmindProjectionBossComponent::FreezeOpportunity()
 	if (const APRHeadmindProjectionBoss* Boss = GetBoss())
 	{
 		if (const UPRAuditorBossComponent* Base = Boss->GetAuditorBossComponent()) Opportunity.PredictedSkillTag = Base->GetPredictedAbilityTag();
+		Opportunity.FrozenBossSpawnId = Boss->GetSpawnId();
+	}
+	if (UWorld* World = GetWorld())
+	{
+		Opportunity.FrozenWorldId = World->GetFName();
+		if (UPRRunStateSubsystem* RunState = World->GetGameInstance() ? World->GetGameInstance()->GetSubsystem<UPRRunStateSubsystem>() : nullptr)
+		{
+			const FPRRunRuntimeState Runtime = RunState->GetRunRuntimeState();
+			Opportunity.FrozenRunId = Runtime.RunId;
+			Opportunity.FrozenAccountId = Runtime.AccountId;
+		}
 	}
 	RuntimeState.TripleResonance = Opportunity;
 	PublishRuntimeState();
@@ -114,10 +146,10 @@ bool UPRHeadmindProjectionBossComponent::ReadTripleEligibility(FPRTripleResonanc
 	UPRChapterSubsystem* Chapters = GameInstance ? GameInstance->GetSubsystem<UPRChapterSubsystem>() : nullptr;
 	UPRProgressionSubsystem* Progression = GameInstance ? GameInstance->GetSubsystem<UPRProgressionSubsystem>() : nullptr;
 	UPRCompanionSubsystem* Companions = GameInstance ? GameInstance->GetSubsystem<UPRCompanionSubsystem>() : nullptr;
-	FPRChapterSnapshot ChapterSnapshot; FPRProgressionSnapshot ProgressionSnapshot;
-	if (!Chapters || !Progression || !Companions || !Chapters->GetSnapshot(ChapterSnapshot) || !Progression->GetProgressionSnapshot(ProgressionSnapshot)) return false;
+	FPRChapterSnapshot ChapterSnapshot; FPRProgressionRunSnapshot ProgressionSnapshot;
+	if (!Chapters || !Progression || !Companions || !Chapters->GetSnapshot(ChapterSnapshot) || !Progression->GetRunSnapshot(ProgressionSnapshot)) return false;
 	const FPrimaryAssetId TripleNode(TEXT("ProgressionNode"), TEXT("BondTripleResonance"));
-	if (!ChapterSnapshot.bHasTripleResonancePrerequisite || !ProgressionSnapshot.UnlockedNodeIds.Contains(TripleNode)) return true;
+	if (!ChapterSnapshot.bHasTripleResonancePrerequisite || !ProgressionSnapshot.EntitlementIds.Contains(TripleNode)) return true;
 	for (const FGameplayTag& CompanionId : FPRCompanionContract::GetCanonicalCompanionIds())
 	{
 		FPRCompanionRelationshipRecord Record;

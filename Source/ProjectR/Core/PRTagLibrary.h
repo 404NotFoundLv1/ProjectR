@@ -28,6 +28,8 @@ public:
 	static const FGameplayTag& GetInputSkillVectorHookTag();
 	static const FGameplayTag& GetInputSkillCounterProofWallTag();
 	static const FGameplayTag& GetSkillBasicAttackTag();
+	static const FGameplayTag& GetSkillTripleResonanceTag();
+	static const FGameplayTag& GetCooldownSkillTripleResonanceTag();
 
 	static const FGameplayTag& GetAbilityActivateFailCanActivateTag();
 	static const FGameplayTag& GetAbilityActivateFailCooldownTag();
