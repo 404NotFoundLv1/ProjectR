@@ -139,6 +139,12 @@ date: "2026-07-10"
 |---|---|---|---|---|
 | E-038 | v6 要求把 Demo Auditor 扩展为完整第四章、复制玩家习惯、惩罚重复构筑、升级审计判词、加入 Memory Corridor 并解锁三重共鸣前置；真实工程已经冻结 `APRBossAuditor`/`UPRAuditorBossComponent` 的 P1–P3、BossGym、Combat mitigation、预测护盾和一次 Completion，ChapterSubsystem 只闭合 Allocator/Warden/Pacifier，Schema-7 Chapter/Proof 集合上限为五项。Memory 的公开快照包含受限摘要但原始文本/Provider 不得被章节读取；Progression 已存在 `BondTripleResonance` entitlement，而实际三重共鸣属于 v0.7.2。用户要求 v0.7.0 一次完整交付，不拆分子版本、检查点或中间功能提交 | v0.7.0 采用单一合同、单一完成门和唯一功能提交。新增 `APRAuditorChapterBoss : APRBossAuditor` 与章节组件，复用原型公开状态并增加有界 Habit/Build/Verdict 窗口；不修改原型或发布第二次 Completion。Chapter/Room/Enemy 接缝仅加法扩展为固定四章节闭包，Auditor Registry 只接受编译期固定 ID/路径。独立 `AuditPressure[0..4]`、五条章节局部指令和无经济 AuditProvisionTerminal 只消费既有公开值/已验证 Director Handle，不建立新 Rule、GameplayTag、Ability、经济或任意 Spawn。Memory Corridor 只选择固定 Null StoryBeat，不读取 SummaryText、ChoiceRefs、Provider 或私有 Save。Schema 保持 7，Auditor 使用第四个 Chapter/Proof 槽并为 v0.7.1 保留第五槽；`HumanAnomalyProof.Auditor` 仅派生 `TripleResonance.ChapterPrerequisite.Auditor`，实际 TripleResonance 必须由 v0.7.2 再与 `ProgressionNode:BondTripleResonance` 组合 | 完成正式第四章并保护 Demo Auditor、Combat、Save、Memory、Progression 和下游终章所有权，避免 Schema 无必要升级、重复 Boss 权威、原始记忆泄漏或提前实现三重共鸣 | Active for v0.7.0 |
 
+# v0.7.1 启动合同勘误
+
+| 编号 | 路线/接口缺口 | v0.7.1 决策 | 原因 | 当前状态 |
+|---|---|---|---|---|
+| E-039 | v6 要求终章融合多条法令、提供预测护盾/蛇怪判定/三重共鸣破局并准备关系、反证、服从结局变量；真实 Schema-7 Chapter 分区只含最多五项 `CompletedChapterIds`、五项 `HumanAnomalyProofIds` 和 `SettlementSequence`，没有独立结局字段，且第五槽是最后容量。实际 TripleResonance Ability/QTE/伤害/处决、账号不死、高风险链奖励和资源规则属于 v0.7.2。 | v0.7.1 使用单一合同、单一完成门和唯一功能提交。固定 Headmind 为第五项闭包，并仅在完整 Allocator/Warden/Pacifier/Auditor Proof 链后使用最后一个 Schema-7 Chapter/Proof 槽；不升级 Schema。关系变量从已落盘 `FPRAccountDeletedEvent.Record.Summary.CompanionRelationships` 冻结，反证变量只读既有 Progression Snapshot 的 Account-owned `CounterproofFragments`，服从变量只读最终 `FPRRunSummary.DirectorRules` 中白名单 `Rule.ObedienceTest`；三者只形成有界结局值与固定本地文本，不重复持久化源数据。Headmind 继承冻结 Demo Auditor，蛇怪窗口只发布 `EligibleDeferredToV072`/Unavailable/degraded 值，不授予 Ability、不启动 QTE、不改变伤害、护盾、处决或资源。多法令融合只读取既有已验证 Handle 并影响闭合 Headmind 内容。 | 在完成 1.0 主线结局、第五 Proof 和稳定下游输入的同时，保留 Schema-7、Account/Progression/Relationship/Director/Combat 所有权，避免用结局名义重复持久化、提前实现 v0.7.2 或建立任意内容/经济边界。 | Active for v0.7.1 |
+
 # 已接受的架构决策
 
 1. 正式类使用 APR/UPR/FPR/EPR；现有模板类先迁移引用，不直接重命名二进制资产。

@@ -1,11 +1,11 @@
 # Current Development Version
 
-Version: v0.7.0
+Version: v0.7.1
 
-Task file: `Docs/Versions/v0.7.0.md`
+Task file: `Docs/Versions/v0.7.1.md`
 
 Status: In Progress
 
-The v0.6.2 contract is completed and formally closed. The v0.7.0 task contract is now the only implementation authority.
+The v0.7.0 contract is completed and formally closed. The v0.7.1 task contract is now the only implementation authority.
 
-v0.7.0 must be delivered as one complete public version with no child versions, child contracts, checkpoints, or intermediate feature commits.
+v0.7.1 must be delivered as one complete public version with no child versions, child contracts, checkpoints, or intermediate feature commits.

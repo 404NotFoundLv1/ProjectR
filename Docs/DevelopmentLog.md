@@ -630,3 +630,11 @@ Commit：
 - A real full-path PIE exposed a fatal-damage ordering race: a Boss health delegate published completion before Combat wrote `State.Dead`, allowing Room completion to despawn the Boss inside the same damage call. `UPRRoomSubsystem` now defers only the encounter-completion eligibility check one tick; Combat, BossSubsystem and the frozen Demo Auditor remain unchanged. The final full-path PIE reproduces the green path with one Boss completion and a valid Auditor Proof.
 - Evidence: final BuildEditor PASS; Chapter 20/20; Save 5/5; contractual `-game` Debug 12/12; fixed Auditor PIE Selection/FullPath/Settlement 3/3; rendered Checkpoint-D PASS; Data Validation 0 errors/1 established MCP EULA warning; all 37 exact Packages restarted/reread Dirty=0. The user explicitly returned `PASS` for isolated manual complete-path acceptance. Final report: `Saved/AutomationReports/v070-final-report-20260730/v070final-None/result.json`.
 - The broad non-`-game` Editor snapshot is 147/152: four established GameInstance Debug tests and Checkpoint-D lack their intended runner context. The separate contractual runners pass; KnownIssues records this distinction. Future Compatibility Review passes for v0.7.1, v0.7.2, v0.8.0 and v0.8.4. No commit or push was created; `CURRENT_VERSION.md` remains `v0.7.0 / In Progress` pending a separate release instruction.
+
+# 2026-07-30 - v0.7.0 正式收尾与 v0.7.1 合同转换
+
+- v0.7.0 已由 `d50d22db070a28e86d20d97d07a99e36ca0f6893`（`v0.7.0 Expand Auditor to full chapter four`）正式提交；转换审计确认 `main` 与 `origin/main` 同步、领先/落后为 `0/0`，转换前工作区干净。
+- 依据 `Saved/AutomationReports/v070-final-report-20260730/v070final-None/result.json` 的既有证据正式关闭 v0.7.0；报告生成时的 `commit: NOT CREATED` 保留为历史事实，任务页另行记录后续正式提交。
+- BuildEditor、Chapter 20/20、Save 5/5、合同 `-game` Debug 12/12、固定 Auditor PIE 3/3、MCP 37 Package 精确保存/重启回读/Dirty=0、Data Validation、人工完整通关、ADR-038、KnownIssues Review 与 FCR 均已有 PASS。广泛 Editor runner 的既有 GameInstance/Checkpoint-D runner-context 诊断继续如实记录。
+- 新建单一 `Docs/Versions/v0.7.1.md` 合同，并将 VersionIndex 与 `CURRENT_VERSION.md` 推进到 `v0.7.1 / In Progress`。E-039 固定第五个 Schema-7 Chapter/Proof 容量位、Headmind 闭包、结局值派生、受控蛇怪判定以及 v0.7.2 TripleResonance 延后边界。
+- 本次仅执行六份文档的版本转换；没有开始 Headmind C++、测试、配置、插件或 UE Package 开发，没有调用 Unreal MCP、访问存档或运行 Build/Automation/Data Validation/PIE。v0.7.1 保持一个公共版本、一个完成门和唯一未来功能提交。
